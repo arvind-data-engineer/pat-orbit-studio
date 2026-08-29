@@ -259,8 +259,11 @@ export default function Home() {
       if (isInput) return;
 
       if (result) {
-        if (e.key === 'ArrowLeft' && activeScene > 1) { e.preventDefault(); setActiveScene(activeScene - 1); }
-        if (e.key === 'ArrowRight' && activeScene < result.scenes.length) { e.preventDefault(); setActiveScene(activeScene + 1); }
+        const currentIdx = result.scenes.findIndex((s) => s.id === activeScene);
+        if (e.key === 'ArrowLeft' && currentIdx > 0) { e.preventDefault(); setActiveScene(result.scenes[currentIdx - 1].id); }
+        if (e.key === 'ArrowRight' && currentIdx < result.scenes.length - 1) { e.preventDefault(); setActiveScene(result.scenes[currentIdx + 1].id); }
+        if (e.key === 'Home') { e.preventDefault(); setActiveScene(result.scenes[0].id); }
+        if (e.key === 'End') { e.preventDefault(); setActiveScene(result.scenes[result.scenes.length - 1].id); }
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -377,7 +380,39 @@ export default function Home() {
     setSaved(false);
   }
 
-  function updateScene(sceneId: number, field: "title" | "narration" | "visual", value: string) {
+  function duplicateScene(sceneId: number) {
+    if (!result) return;
+    const scene = result.scenes.find((s) => s.id === sceneId);
+    if (!scene) return;
+    const newId = Date.now();
+    const idx = result.scenes.findIndex((s) => s.id === sceneId);
+    const newScene: Scene = {
+      id: newId,
+      title: scene.title + ' (Copy)',
+      narration: scene.narration,
+      visual: scene.visual,
+      beat: scene.beat,
+      sceneDuration: scene.sceneDuration,
+    };
+    const newScenes = [...result.scenes];
+    newScenes.splice(idx + 1, 0, newScene);
+    setResult({ ...result, scenes: newScenes });
+    // Copy character assignments
+    if (sceneCharacters[sceneId]) {
+      setSceneCharacters((prev) => ({ ...prev, [newId]: [...(sceneCharacters[sceneId] || [])] }));
+    }
+    setActiveScene(newId);
+    setSaved(false);
+  }
+
+  /* Total duration calculation */
+  const totalDurationSec = result?.scenes.reduce((sum, s) => {
+    const d = parseInt(s.sceneDuration || '10', 10);
+    return sum + (isNaN(d) ? 10 : d);
+  }, 0) || 0;
+  const totalDurationFormatted = `${String(Math.floor(totalDurationSec / 60)).padStart(2, '0')}:${String(totalDurationSec % 60).padStart(2, '0')}`;
+
+  function updateScene(sceneId: number, field: "title" | "narration" | "visual" | "beat" | "sceneDuration", value: string) {
     if (!result) return;
     setResult({
       ...result,
@@ -1448,24 +1483,24 @@ export default function Home() {
                     <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
                       <label className="mb-1.5 block text-[12px] font-medium text-white/80">Scene Title</label>
                       <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition-all focus:border-white/[0.20]" />
-                      {/* Scene metadata */}
-                      <div className="mt-2.5 flex items-center gap-3">
-                        {currentScene.beat && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-violet-400/60" />
-                            <span className="text-[10px] font-medium text-violet-400/70">{currentScene.beat}</span>
-                          </div>
-                        )}
-                        {currentScene.sceneDuration && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-blue-400/60" />
-                            <span className="text-[10px] font-medium text-blue-400/70">~{currentScene.sceneDuration}s</span>
-                          </div>
-                        )}
+                      {/* Scene metadata - editable */}
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-violet-400/60" />
+                          <input value={currentScene.beat || ''} onChange={(e) => updateScene(currentScene.id, 'beat', e.target.value)} placeholder="Beat" className="w-24 bg-transparent text-[10px] font-medium text-violet-400/70 outline-none placeholder:text-white/20" />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-blue-400/60" />
+                          <input value={currentScene.sceneDuration || ''} onChange={(e) => updateScene(currentScene.id, 'sceneDuration', e.target.value)} placeholder="10" className="w-10 bg-transparent text-[10px] font-medium text-blue-400/70 outline-none placeholder:text-white/20" />
+                          <span className="text-[10px] text-blue-400/40">s</span>
+                        </div>
                         <div className="flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
-                          <span className="text-[10px] font-medium text-emerald-400/70">Scene {currentScene.id} of {result.scenes.length}</span>
+                          <span className="text-[10px] font-medium text-emerald-400/70">Scene {result.scenes.findIndex((s) => s.id === currentScene.id) + 1} of {result.scenes.length}</span>
                         </div>
+                        <button onClick={() => duplicateScene(currentScene.id)} className="flex items-center gap-1 rounded border border-white/[0.06] px-2 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
+                          <Icon.Copy2 />Duplicate
+                        </button>
                       </div>
                     </div>
 
@@ -1803,16 +1838,21 @@ export default function Home() {
             {/* ===== TIMELINE ===== */}
             <div id="timeline" className="mt-6 rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
               {/* Timeline header */}
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-[13px] font-semibold text-white/85">Timeline</span>
                   <span className="text-[11px] text-white/45">{result.scenes.length} scenes</span>
+                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-white/60">{totalDurationFormatted}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-white/55">{duration}</span>
+                  {/* Captions indicator */}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-white/40">Project order:</span>
-                    <span className="text-[10px] font-medium text-white/55">Drag scenes to reorder</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/40'}`}>{captions ? 'CAPTIONS ON' : 'CAPTIONS OFF'}</span>
+                  </div>
+                  {/* Music indicator */}
+                  <div className="flex items-center gap-1.5">
+                    <Icon.Music className="h-3 w-3 text-white/30" />
+                    <span className="text-[10px] text-white/45">{music}</span>
                   </div>
                 </div>
               </div>
@@ -1912,9 +1952,47 @@ export default function Home() {
                           <span className="rounded bg-emerald-500/15 px-2 py-1 text-[9px] font-bold text-emerald-400">COMPLETE</span>
                         </div>
                       )}
+
+                      {/* Duplicate button */}
+                      <div className="flex items-center border-l border-white/[0.04] px-1.5">
+                        <button onClick={(e) => { e.stopPropagation(); duplicateScene(scene.id); }}
+                          aria-label="Duplicate scene"
+                          className="flex h-6 w-6 items-center justify-center rounded text-white/20 transition-colors hover:bg-white/[0.06] hover:text-white/50">
+                          <Icon.Copy2 />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Audio layer */}
+              <div className="mt-3 border-t border-white/[0.04] pt-3">
+                <div className="flex items-center gap-4">
+                  {/* Voice layer */}
+                  <div className="flex items-center gap-2">
+                    <Icon.Mic className="h-3 w-3 text-white/30" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/40">Voice</span>
+                    <div className="flex gap-1">
+                      {result.scenes.map((scene) => {
+                        const hasVoice = voiceStatus[scene.id] === 'ready';
+                        return (
+                          <div key={scene.id} className={`h-3 rounded-sm ${hasVoice ? 'w-8 bg-violet-500/30' : 'w-8 bg-white/[0.04]'}`} title={`Scene ${scene.id}: ${hasVoice ? 'Voice ready' : 'No voice'}`} />
+                        );
+                      })}
+                    </div>
+                    <span className="text-[9px] text-white/30">{Object.values(voiceStatus).filter((s) => s === 'ready').length}/{result.scenes.length}</span>
+                  </div>
+                  {/* Music layer */}
+                  <div className="flex items-center gap-2">
+                    <Icon.Music className="h-3 w-3 text-white/30" />
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/40">Music</span>
+                    <div className="h-3 w-24 rounded-sm bg-white/[0.04]">
+                      {music !== 'None' && <div className="h-full w-full rounded-sm bg-rose-500/20" />}
+                    </div>
+                    <span className="text-[9px] text-white/30">{music !== 'None' ? music : 'None'}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Timeline footer */}
