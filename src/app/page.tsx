@@ -142,6 +142,11 @@ export default function Home() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  /* Abort controllers for generation requests */
+  const storyAbortRef = useRef<AbortController | null>(null);
+  const imageAbortRef = useRef<Record<number, AbortController>>({});
+  const videoAbortRef = useRef<Record<number, AbortController>>({});
+
   /* Close settings dropdown on outside click */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -157,10 +162,17 @@ export default function Home() {
     try {
       const stored = localStorage.getItem("pat-orbit-projects");
       if (stored) {
-        setProjects(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          /* Filter out corrupted entries */
+          const valid = parsed.filter((p) => p && typeof p === 'object' && p.id && p.title);
+          setProjects(valid);
+        }
       }
     } catch {
-      console.error("Could not load projects.");
+      /* Corrupted localStorage data — start fresh */
+      console.error("Could not load projects. Starting fresh.");
+      localStorage.removeItem("pat-orbit-projects");
     }
   }, []);
 
@@ -218,6 +230,11 @@ export default function Home() {
       setError("Please enter a story idea first.");
       return;
     }
+    /* Cancel any in-flight generation */
+    if (storyAbortRef.current) storyAbortRef.current.abort();
+    const controller = new AbortController();
+    storyAbortRef.current = controller;
+
     setLoading(true);
     setError("");
     setResult(null);
@@ -227,6 +244,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ story, language, style, duration, contentType: "Story" }),
+        signal: controller.signal,
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to generate story.");
@@ -238,6 +256,7 @@ export default function Home() {
       setSceneStatus({});
       setActiveScene(1);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
@@ -264,6 +283,18 @@ export default function Home() {
     }
   }, [result, projectName, story, language, style, duration, sceneImages]);
 
+  /* Warn before leaving with unsaved changes */
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   function saveCurrentProject() {
     if (!result) return;
     const project: Project = {
@@ -281,13 +312,14 @@ export default function Home() {
   }
 
   function loadProject(project: Project) {
-    setStory(project.story);
-    setLanguage(project.language);
-    setStyle(project.style);
-    setDuration(project.duration);
-    setResult(project.result);
-    setProjectName(project.title);
-    setSceneImages(project.sceneImages ?? {});
+    /* Safe fallbacks for old/corrupted project data */
+    setStory(project.story || '');
+    setLanguage(project.language || 'Hindi');
+    setStyle(project.style || 'Cartoon');
+    setDuration(project.duration || '60 sec');
+    setResult(project.result || { title: 'Untitled', scenes: [] });
+    setProjectName(project.title || 'Untitled Video');
+    setSceneImages(project.sceneImages && typeof project.sceneImages === 'object' ? project.sceneImages : {});
     setSceneVideos({});
     setSceneStatus({});
     setActiveScene(1);
@@ -305,6 +337,11 @@ export default function Home() {
     if (!result) return;
     const scene = result.scenes.find((item) => item.id === sceneId);
     if (!scene) return;
+    /* Cancel any in-flight image generation for this scene */
+    if (imageAbortRef.current[sceneId]) imageAbortRef.current[sceneId].abort();
+    const controller = new AbortController();
+    imageAbortRef.current[sceneId] = controller;
+
     setSceneStatus((c) => ({ ...c, [sceneId]: "image" }));
     setError("");
     try {
@@ -312,12 +349,14 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: scene.visual }),
+        signal: controller.signal,
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to generate image.");
       if (!data.image) throw new Error("No image was returned.");
       setSceneImages((c) => ({ ...c, [sceneId]: data.image }));
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : "Failed to generate image.");
     } finally {
       setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
@@ -328,6 +367,11 @@ export default function Home() {
     if (!result) return;
     const scene = result.scenes.find((item) => item.id === sceneId);
     if (!scene) return;
+    /* Cancel any in-flight video generation for this scene */
+    if (videoAbortRef.current[sceneId]) videoAbortRef.current[sceneId].abort();
+    const controller = new AbortController();
+    videoAbortRef.current[sceneId] = controller;
+
     setSceneStatus((c) => ({ ...c, [sceneId]: "video" }));
     setError("");
     try {
@@ -343,6 +387,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to generate video.");
@@ -354,6 +399,7 @@ export default function Home() {
         throw new Error("No video was returned.");
       }
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : "Failed to generate video.");
     } finally {
       setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
@@ -1060,8 +1106,18 @@ export default function Home() {
                 {/* Error card */}
                 {error && (
                   <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3">
-                    <div className="mb-1 text-[11px] font-semibold text-red-400/80">Generation failed</div>
-                    <p className="text-[12px] text-red-300/70">{error}</p>
+                    <div className="mb-1 text-[12px] font-semibold text-red-400">Generation failed</div>
+                    <p className="text-[13px] text-red-300/80">{error}</p>
+                    {currentScene && (
+                      <div className="mt-2 flex gap-2">
+                        {!sceneImages[currentScene.id] && (
+                          <button onClick={() => startImageGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try image again</button>
+                        )}
+                        {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && (
+                          <button onClick={() => startVideoGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try video again</button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
