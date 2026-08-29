@@ -91,9 +91,10 @@ const Icon = {
 };
 
 const EXAMPLE_PROMPTS = [
-  { label: "Mystery adventure", text: "A young boy discovers a mysterious room inside his grandfather's abandoned house. The room is filled with glowing artifacts and ancient maps that hint at a hidden treasure beneath the city." },
-  { label: "Motivational story", text: "An underdog athlete trains for years in silence while everyone doubts them. On the day of the championship, they deliver a performance that leaves the entire stadium in shock." },
-  { label: "Sci-fi short", text: "In the year 2187, a lone astronaut receives a signal from deep space that appears to be a message from their future self. They must decide whether to follow the instructions or trust their own instincts." },
+  { label: "Boy discovers a mysterious door", text: "A young boy discovers a mysterious door hidden behind the walls of his grandfather's old house. Beyond the door lies a world of glowing plants, floating crystals, and ancient secrets waiting to be uncovered." },
+  { label: "A robot finds its lost creator", text: "In a quiet abandoned factory, a small robot powers on for the first time in decades. It begins a journey across a changing world to find the scientist who built it, discovering friendship and purpose along the way." },
+  { label: "Village protected by a magical tree", text: "High in the mountains, a tiny village thrives under the protection of an enormous ancient tree. When the tree begins to wither, a young villager must embark on a dangerous quest to restore its magic before it is too late." },
+  { label: "A detective solves a strange mystery", text: "A private detective receives an anonymous letter that predicts events before they happen. As the predictions grow darker, the detective must uncover who is behind them and why before the final prediction comes true." },
 ];
 
 export default function Home() {
@@ -485,48 +486,62 @@ export default function Home() {
       <section className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 sm:py-12">
         {!result ? (
           <>
-            {/* ===== HERO ===== */}
-            <div className="mx-auto mb-8 max-w-3xl text-center">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest text-white/40">
+            {/* ===== HERO (with animated background) ===== */}
+            <div className="relative mx-auto mb-6 max-w-3xl text-center">
+              {/* Animated background glow */}
+              <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                <div className="absolute left-1/2 top-0 h-[500px] w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.07] via-emerald-500/[0.02] to-transparent blur-3xl" />
+                <div className="absolute left-[30%] top-10 h-[300px] w-[300px] rounded-full bg-blue-500/[0.03] blur-3xl" />
+                <div className="absolute right-[30%] top-10 h-[300px] w-[300px] rounded-full bg-violet-500/[0.03] blur-3xl" />
+                {/* Faint grid texture */}
+                <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
+              </div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest text-white/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 AI Video Creator
               </div>
-              <h1 className="text-4xl font-bold tracking-tight leading-[1.1] sm:text-5xl lg:text-6xl">
+              <h1 className="text-3xl font-bold tracking-tight leading-[1.1] sm:text-4xl lg:text-5xl">
                 Turn your idea into<br />
                 <span className="bg-gradient-to-r from-white via-white/80 to-white/40 bg-clip-text text-transparent">a video.</span>
               </h1>
-              <p className="mx-auto mt-6 max-w-xl text-[15px] leading-7 text-white/35">
-                Generate stories, scenes and visuals with AI &mdash; all from one creative workspace.
+              <p className="mx-auto mt-4 max-w-xl text-[14px] leading-7 text-white/35">
+                Generate stories, scenes, visuals, voice and video from one creative workspace.
               </p>
             </div>
 
-            {/* ===== WORKFLOW INDICATOR ===== */}
-            <div className="mx-auto mb-10 flex max-w-2xl items-center justify-center gap-2 sm:gap-3">
-              {[
-                { icon: <Icon.Lightbulb className="text-amber-400/70" />, label: "Idea", desc: "Your story concept" },
-                { icon: <Icon.Film className="text-blue-400/70" />, label: "Scenes", desc: "5 scenes created" },
-                { icon: <Icon.Image className="text-emerald-400/70" />, label: "Visuals", desc: "AI images & video" },
-                { icon: <Icon.Video className="text-violet-400/70" />, label: "Video", desc: "Final 60 sec video" },
-              ].map((step, i) => (
-                <div key={step.label} className="flex items-center gap-2 sm:gap-3">
-                  <div className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] transition-colors group-hover:border-white/[0.15] group-hover:bg-white/[0.06]">
-                      {step.icon}
+            {/* ===== HOW IT WORKS STRIP ===== */}
+            <div className="mx-auto mb-8 max-w-3xl">
+              <div className="flex items-start justify-between gap-1 overflow-x-auto px-1 pb-1 sm:overflow-visible">
+                {[
+                  { icon: <Icon.Lightbulb className="h-4 w-4 text-amber-400/80" />, label: "Idea", desc: "Your concept" },
+                  { icon: <Icon.FileText className="h-4 w-4 text-blue-400/80" />, label: "Story", desc: "AI writes the narrative" },
+                  { icon: <Icon.Film className="h-4 w-4 text-emerald-400/80" />, label: "Scenes", desc: "5 cinematic scenes" },
+                  { icon: <Icon.Image className="h-4 w-4 text-violet-400/80" />, label: "Visuals", desc: "Generate visuals" },
+                  { icon: <Icon.Video className="h-4 w-4 text-rose-400/80" />, label: "Video", desc: "Render your final video" },
+                ].map((step, i) => (
+                  <div key={step.label} className="flex items-center gap-1 sm:gap-0">
+                    <div className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] transition-colors group-hover:border-white/[0.15] group-hover:bg-white/[0.06]">
+                        {step.icon}
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[11px] font-semibold text-white/60">{step.label}</div>
+                        <div className="hidden text-[9px] text-white/25 sm:block">{step.desc}</div>
+                      </div>
                     </div>
-                    <span className="text-[11px] font-medium text-white/50">{step.label}</span>
+                    {i < 4 && (
+                      <div className="relative mb-6 h-px w-4 sm:w-6 lg:w-8">
+                        <div className="absolute inset-0 bg-white/[0.06]" />
+                        <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-emerald-500/30 to-emerald-400/10 animate-[pulse_3s_ease-in-out_infinite]" />
+                      </div>
+                    )}
                   </div>
-                  {i < 3 && (
-                    <div className="relative mb-5 hidden h-px w-6 sm:block lg:w-10">
-                      <div className="absolute inset-0 bg-white/[0.08]" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/30 via-emerald-400/50 to-emerald-500/30 animate-[shimmer_3s_ease-in-out_infinite]" />
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {/* ===== DEMO PRODUCT PREVIEW ===== */}
-            <div className="mx-auto mb-12 max-w-5xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0b10] shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)]">
+            <div className="mx-auto mb-10 max-w-5xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0b10] shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)]">
               <div className="grid lg:grid-cols-[200px_1fr_240px]">
                 {/* Demo scene list */}
                 <div className="hidden border-r border-white/[0.06] bg-white/[0.01] p-4 lg:block">
@@ -544,19 +559,14 @@ export default function Home() {
                     <span className="rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/50 backdrop-blur-sm">SCENE 01</span>
                     <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-medium text-emerald-400/70 backdrop-blur-sm">AI GENERATED</span>
                   </div>
-                  {/* Cinematic gradient scene */}
                   <div className="relative flex aspect-video items-center justify-center overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-b from-[#0d0f1a] via-[#0a1628] to-[#050810]" />
-                    {/* Atmospheric glow */}
                     <div className="absolute left-1/2 top-1/2 h-48 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-amber-500/15 via-orange-500/8 to-transparent blur-2xl" />
                     <div className="absolute left-1/2 top-[40%] h-64 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-amber-400/10 via-transparent to-transparent blur-3xl" />
-                    {/* Doorway shape */}
                     <div className="relative z-10 flex h-36 w-20 flex-col items-center justify-end overflow-hidden rounded-t-full border border-amber-500/20 bg-gradient-to-b from-amber-500/10 to-transparent shadow-[0_0_60px_-10px_rgba(245,158,11,0.15)]">
                       <div className="h-4 w-4 rounded-full bg-amber-400/30 blur-sm" />
                     </div>
-                    {/* Floor reflection */}
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
-                    {/* Play button */}
                     <div className="absolute z-20 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all hover:scale-105 hover:bg-white/15 border border-white/10">
                       <Icon.Play className="ml-0.5 text-white/80" />
                     </div>
@@ -604,10 +614,13 @@ export default function Home() {
             </div>
 
             {/* ===== CREATE FORM ===== */}
-            <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 shadow-[0_0_80px_-20px_rgba(255,255,255,0.03)] sm:p-8">
+            <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-6 shadow-[0_0_80px_-20px_rgba(255,255,255,0.03)] sm:p-8">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <div className="mb-1 text-[10px] font-medium uppercase tracking-widest text-emerald-400/60">Create your video</div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-emerald-400/60">AI Story Engine</span>
+                  </div>
                   <h2 className="text-lg font-semibold tracking-tight">Start with a story</h2>
                   <p className="mt-0.5 text-[13px] text-white/30">Describe an idea, concept or script and let AI build your video.</p>
                 </div>
@@ -693,23 +706,99 @@ export default function Home() {
               <p className="mt-3 text-center text-[11px] text-white/20">AI will create 5 scenes with narration and visual prompts.</p>
             </div>
 
-            {/* ===== FEATURE CARDS ===== */}
+            {/* ===== VISUAL PIPELINE SHOWCASE ===== */}
+            <div className="mx-auto mt-14 max-w-5xl">
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">From idea to final scene.</h2>
+                <p className="mt-3 text-[14px] text-white/35">Watch your concept transform through every stage of production.</p>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible">
+                {/* Step 1: Idea */}
+                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
+                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
+                    <div className="flex flex-col items-center gap-1">
+                      <Icon.Lightbulb className="h-7 w-7 text-amber-400/60" />
+                      <span className="text-[10px] font-medium text-amber-400/50">IDEA</span>
+                    </div>
+                  </div>
+                  <span className="text-[12px] font-semibold text-white/60">Your concept</span>
+                  <span className="mt-0.5 text-[10px] text-white/25">A mysterious door</span>
+                </div>
+                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
+                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
+                </div>
+                {/* Step 2: Story */}
+                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
+                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-blue-500/15 bg-blue-500/[0.04]">
+                    <div className="flex flex-col items-center gap-1">
+                      <Icon.FileText className="h-7 w-7 text-blue-400/60" />
+                      <span className="text-[10px] font-medium text-blue-400/50">STORY</span>
+                    </div>
+                  </div>
+                  <span className="text-[12px] font-semibold text-white/60">AI narrative</span>
+                  <span className="mt-0.5 text-[10px] text-white/25">5 scenes written</span>
+                </div>
+                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
+                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
+                </div>
+                {/* Step 3: Scenes */}
+                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
+                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04]">
+                    <div className="flex flex-col items-center gap-1">
+                      <Icon.Sparkles className="h-7 w-7 text-emerald-400/60" />
+                      <span className="text-[10px] font-medium text-emerald-400/50">SCENES</span>
+                    </div>
+                  </div>
+                  <span className="text-[12px] font-semibold text-white/60">Structured scenes</span>
+                  <span className="mt-0.5 text-[10px] text-white/25">Title, narration, visual</span>
+                </div>
+                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
+                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
+                </div>
+                {/* Step 4: Visuals */}
+                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
+                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-violet-500/15 bg-violet-500/[0.04]">
+                    <div className="flex flex-col items-center gap-1">
+                      <Icon.Image className="h-7 w-7 text-violet-400/60" />
+                      <span className="text-[10px] font-medium text-violet-400/50">VISUALS</span>
+                    </div>
+                  </div>
+                  <span className="text-[12px] font-semibold text-white/60">Cinematic frames</span>
+                  <span className="mt-0.5 text-[10px] text-white/25">AI images & video</span>
+                </div>
+                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
+                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
+                </div>
+                {/* Step 5: Video */}
+                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
+                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-rose-500/15 bg-rose-500/[0.04]">
+                    <div className="flex flex-col items-center gap-1">
+                      <Icon.Video className="h-7 w-7 text-rose-400/60" />
+                      <span className="text-[10px] font-medium text-rose-400/50">VIDEO</span>
+                    </div>
+                  </div>
+                  <span className="text-[12px] font-semibold text-white/60">Final output</span>
+                  <span className="mt-0.5 text-[10px] text-white/25">MP4 with voice & music</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ===== WHY PAT ORBIT ===== */}
             <div className="mx-auto mt-16 max-w-5xl">
               <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">From idea to finished video.</h2>
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Why PAT Orbit.</h2>
                 <p className="mt-3 text-[14px] text-white/35">Everything you need to turn a simple idea into a complete AI video.</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { step: "01", icon: <Icon.FileText className="h-6 w-6 text-amber-400/70" />, title: "Write", desc: "Describe your idea in plain words. A concept, a story, anything." },
-                  { step: "02", icon: <Icon.Sparkles className="h-6 w-6 text-blue-400/70" />, title: "Build", desc: "AI creates your story with 5 scenes, narration and visual prompts." },
-                  { step: "03", icon: <Icon.Wand className="h-6 w-6 text-emerald-400/70" />, title: "Create", desc: "Generate cinematic AI images and video for each scene." },
-                  { step: "04", icon: <Icon.Music className="h-6 w-6 text-violet-400/70" />, title: "Render", desc: "Add voice, captions and music. Export a complete MP4 video." },
+                  { icon: <Icon.Sparkles className="h-6 w-6 text-emerald-400/70" />, title: "AI Storytelling", desc: "Turn one idea into a structured 5-scene story with narration and visual prompts." },
+                  { icon: <Icon.Image className="h-6 w-6 text-blue-400/70" />, title: "Cinematic Visuals", desc: "Generate consistent AI visuals for every scene in your story." },
+                  { icon: <Icon.Video className="h-6 w-6 text-violet-400/70" />, title: "AI Video", desc: "Transform scenes into moving video with image-to-video generation." },
+                  { icon: <Icon.Mic className="h-6 w-6 text-amber-400/70" />, title: "One-Click Render", desc: "Combine scenes, voice, captions and music into a final MP4." },
                 ].map((card) => (
-                  <div key={card.step} className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
-                    <div className="mb-4 flex items-center justify-between">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] transition-colors group-hover:border-white/[0.12]">{card.icon}</div>
-                      <span className="text-[11px] font-bold text-white/15">{card.step}</span>
+                  <div key={card.title} className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] transition-colors group-hover:border-white/[0.12]">
+                      {card.icon}
                     </div>
                     <h3 className="mb-1.5 text-[15px] font-semibold text-white/80">{card.title}</h3>
                     <p className="text-[12px] leading-relaxed text-white/30">{card.desc}</p>
