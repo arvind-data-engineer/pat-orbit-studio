@@ -1002,44 +1002,26 @@ export default function Home() {
         {!result ? (
           <>
             {/* ===== CREATE SCREEN ===== */}
-            <div className="mx-auto max-w-4xl">
-              {/* Hero - compact */}
-              <div className="relative mb-6 text-center">
+            <div className="mx-auto max-w-3xl">
+              {/* Hero - minimal */}
+              <div className="relative mb-5 text-center">
                 <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                  <div className="absolute left-1/2 top-0 h-[300px] w-[400px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.05] via-emerald-500/[0.02] to-transparent blur-3xl" />
-                  <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.015) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
+                  <div className="absolute left-1/2 top-0 h-[200px] w-[300px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.04] to-transparent blur-3xl" />
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight leading-[1.1] sm:text-4xl text-white">
+                <h1 className="text-[28px] font-bold tracking-tight leading-tight sm:text-[34px] text-white">
                   Create your next video
                 </h1>
-                <p className="mx-auto mt-2.5 max-w-lg text-[14px] leading-6 text-white/60">
-                  Turn one idea into a complete cinematic video with AI-generated story, scenes, visuals, voice and music.
+                <p className="mt-2 text-[13px] text-white/50">
+                  One idea. Full cinematic production. Story, scenes, visuals, voice and final video.
                 </p>
               </div>
 
-              {/* Pipeline indicator */}
-              <div className="mb-6 flex items-center justify-center gap-0.5 overflow-x-auto px-2">
-                {[
-                  { label: "IDEA", color: "text-amber-400/70" },
-                  { label: "STORY", color: "text-blue-400/70" },
-                  { label: "SCENES", color: "text-emerald-400/70" },
-                  { label: "VISUALS", color: "text-violet-400/70" },
-                  { label: "MOTION", color: "text-rose-400/70" },
-                  { label: "FINAL", color: "text-white/50" },
-                ].map((step, i) => (
-                  <div key={step.label} className="flex items-center">
-                    <span className={`whitespace-nowrap text-[8px] font-bold tracking-widest ${step.color} sm:text-[9px]`}>{step.label}</span>
-                    {i < 5 && <div className="mx-1 h-px w-2 sm:w-3 bg-white/[0.08]" />}
-                  </div>
-                ))}
-              </div>
-
               {/* Quick start templates */}
-              <div className="mb-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Start with a template</span>
+              <div className="mb-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Quick start</span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+                <div className="grid grid-cols-4 gap-1 sm:grid-cols-8">
                   {TEMPLATES.map((t) => (
                     <button key={t.label} onClick={() => {
                       if (t.text) setStory(t.text);
@@ -1047,148 +1029,136 @@ export default function Home() {
                       setDuration(t.duration);
                       setAspectRatio(t.aspectRatio);
                       setError("");
-                    }} className="group flex flex-col items-center gap-1 rounded-lg border border-white/[0.04] bg-white/[0.01] p-2.5 text-center transition-all hover:border-emerald-500/15 hover:bg-emerald-500/[0.03]">
-                      <span className="text-[10px] font-bold text-white/25 group-hover:text-emerald-400/50">{t.icon}</span>
-                      <span className="text-[10px] font-medium text-white/55 group-hover:text-white/75 leading-tight">{t.label}</span>
+                    }} className="group flex flex-col items-center gap-0.5 rounded-lg border border-white/[0.04] bg-white/[0.01] p-2 text-center transition-all hover:border-emerald-500/15 hover:bg-emerald-500/[0.03]">
+                      <span className="text-[9px] font-bold text-white/20 group-hover:text-emerald-400/40">{t.icon}</span>
+                      <span className="text-[9px] font-medium text-white/45 group-hover:text-white/65 leading-tight">{t.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Main creation card */}
-              <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-5 shadow-[0_0_60px_-15px_rgba(255,255,255,0.03)] sm:p-7">
+              <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-5 shadow-[0_0_60px_-15px_rgba(255,255,255,0.03)] sm:p-6">
                 {/* Card header */}
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <Icon.Sparkles className="h-4 w-4 text-emerald-400" />
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10">
+                      <Icon.Sparkles className="h-3.5 w-3.5 text-emerald-400" />
                     </div>
                     <div>
-                      <h2 className="text-[15px] font-semibold text-white/90">What do you want to create?</h2>
-                      <p className="text-[11px] text-white/45">Describe your idea and AI will build the complete video.</p>
+                      <h2 className="text-[14px] font-semibold text-white/90">What do you want to create?</h2>
                     </div>
                   </div>
-                  <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/40">AI Powered</span>
+                  <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-400/70">AI Powered</span>
                 </div>
 
-                {/* Textarea */}
+                {/* Textarea - the main focus */}
                 <div className="relative group">
                   <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-emerald-500/[0.08] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
                   <textarea
                     value={story}
                     onChange={(e) => { setStory(e.target.value); setError(""); }}
                     placeholder="Describe your video idea..."
-                    rows={4}
-                    className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[14px] leading-6 text-white outline-none transition-all placeholder:text-white/30 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
+                    rows={5}
+                    className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[15px] leading-7 text-white outline-none transition-all placeholder:text-white/30 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
                   />
-                  <div className="absolute bottom-2.5 right-3">
-                    <span className="text-[10px] text-white/30 tabular-nums">{story.length}</span>
+                  <div className="absolute bottom-2.5 right-3 flex items-center gap-2">
+                    <span className="text-[10px] text-white/25 tabular-nums">{story.length}</span>
                   </div>
                 </div>
 
-                {/* Characters shortcut */}
-                <button onClick={() => setShowCharacters(true)} className="mt-2.5 flex items-center gap-1.5 text-[11px] text-white/40 transition-colors hover:text-white/60">
-                  <Icon.User className="h-3 w-3" />
-                  <span>Characters</span>
-                  <span className="text-white/20">-</span>
-                  <span className="text-white/30">Add characters to keep appearance consistent</span>
-                </button>
-
-                {/* Settings grid */}
-                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Language</label>
-                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[12px] font-medium text-white outline-none transition focus:border-white/[0.15]">
-                      <option>Hindi</option><option>Hinglish</option><option>English</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Style</label>
-                    <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[12px] font-medium text-white outline-none transition focus:border-white/[0.15]">
-                      <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Duration</label>
-                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[12px] font-medium text-white outline-none transition focus:border-white/[0.15]">
-                      <option>30 sec</option><option>60 sec</option><option>90 sec</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/35">Format</label>
-                    <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[12px] font-medium text-white outline-none transition focus:border-white/[0.15]">
-                      <option value="9:16">9:16 Vertical</option><option value="16:9">16:9 Landscape</option><option value="1:1">1:1 Square</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Secondary settings */}
-                <div className="mt-2.5 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-white/30">Voice:</span>
-                    <select value={voice} onChange={(e) => setVoice(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-1 text-[11px] font-medium text-white/70 outline-none">
-                      <option>Natural</option><option>Deep</option><option>Soft</option>
-                    </select>
-                  </div>
-                  <button onClick={() => setCaptions(!captions)} className="flex items-center gap-1.5 text-[11px] text-white/45 transition-colors hover:text-white/65">
-                    <span className={`h-3 w-3 rounded border ${captions ? 'border-emerald-500/40 bg-emerald-500/15' : 'border-white/15'}`}>{captions && <Icon.Check className="h-2.5 w-2.5 text-emerald-400 m-px" />}</span>
-                    Captions
+                {/* Characters + Generate row */}
+                <div className="mt-3 flex items-center justify-between">
+                  <button onClick={() => setShowCharacters(true)} className="flex items-center gap-1.5 text-[11px] text-white/35 transition-colors hover:text-white/55">
+                    <Icon.User className="h-3 w-3" />
+                    Characters
                   </button>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-white/30">Music:</span>
-                    <select value={music} onChange={(e) => setMusic(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-1 text-[11px] font-medium text-white/70 outline-none">
-                      <option>None</option><option>Ambient</option><option>Cinematic</option><option>Emotional</option>
-                    </select>
-                  </div>
+                  <button onClick={generateStory} disabled={!story.trim() || loading} className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-6 py-2.5 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                    {loading ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating...</>) : (<><Icon.Sparkles className="h-3.5 w-3.5" />Create Video</>)}
+                  </button>
                 </div>
 
-                {/* Error */}
-                {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2.5 text-[12px] text-red-300/90">{error}</div>}
-
-                {/* Generate button or loading */}
-                {loading ? (
-                  <div className="mt-4 rounded-xl border border-white/[0.06] bg-[#0a0b0f] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <Icon.Spinner className="h-4 w-4 text-emerald-400" />
-                      <span className="text-[12px] font-semibold text-white/80">Creating your story...</span>
-                    </div>
-                    <div className="space-y-2">
+                {/* Loading stages */}
+                {loading && (
+                  <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0a0b0f] p-3">
+                    <div className="space-y-1.5">
                       {loadingSteps.map((step, i) => (
-                        <div key={i} className="flex items-center gap-2.5">
+                        <div key={i} className="flex items-center gap-2">
                           {step.done ? (
-                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
-                              <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />
+                            <span className="flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                              <Icon.Check className="h-2 w-2 text-emerald-400" />
                             </span>
                           ) : (
-                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-white/[0.04]">
-                              <span className="h-1 w-1 rounded-full bg-white/20" />
+                            <span className="flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full bg-white/[0.04]">
+                              <span className="h-0.5 w-0.5 rounded-full bg-white/20" />
                             </span>
                           )}
-                          <span className={`text-[11px] ${step.done ? "text-white/40" : "text-white/60"}`}>{step.label}</span>
+                          <span className={`text-[10px] ${step.done ? "text-white/35" : "text-white/55"}`}>{step.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <button onClick={generateStory} disabled={!story.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-5 py-3 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
-                    <Icon.Sparkles className="h-3.5 w-3.5" />
-                    Create Video
-                  </button>
                 )}
+
+                {/* Error */}
+                {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2 text-[12px] text-red-300/90">{error}</div>}
+
+                {/* Settings - compact row */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/[0.04] pt-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Lang</span>
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
+                      <option>Hindi</option><option>Hinglish</option><option>English</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Style</span>
+                    <select value={style} onChange={(e) => setStyle(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
+                      <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Duration</span>
+                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
+                      <option>30s</option><option>60s</option><option>90s</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Format</span>
+                    <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
+                      <option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Voice</span>
+                    <select value={voice} onChange={(e) => setVoice(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
+                      <option>Natural</option><option>Deep</option><option>Soft</option>
+                    </select>
+                  </div>
+                  <button onClick={() => setCaptions(!captions)} className="flex items-center gap-1 text-[11px] text-white/40 transition-colors hover:text-white/55">
+                    <span className={`h-2.5 w-2.5 rounded border ${captions ? 'border-emerald-500/40 bg-emerald-500/15' : 'border-white/15'}`}>{captions && <Icon.Check className="h-2 w-2 text-emerald-400 m-px" />}</span>
+                    CC
+                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Music</span>
+                    <select value={music} onChange={(e) => setMusic(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
+                      <option>None</option><option>Ambient</option><option>Cinematic</option><option>Emotional</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              {/* Compact pipeline showcase */}
-              <div className="mt-6 grid grid-cols-3 gap-3">
+              {/* How it works - compact */}
+              <div className="mt-6 grid grid-cols-3 gap-2">
                 {[
-                  { num: "01", label: "Story", desc: "AI writes 5 cinematic scenes", color: "from-amber-500/[0.06] to-amber-500/[0.02]", icon: <Icon.FileText className="h-5 w-5 text-amber-400/40" /> },
-                  { num: "02", label: "Visuals", desc: "Generate images and motion video", color: "from-emerald-500/[0.06] to-emerald-500/[0.02]", icon: <Icon.Image className="h-5 w-5 text-emerald-400/40" /> },
-                  { num: "03", label: "Final Video", desc: "Voice, captions, music and render", color: "from-violet-500/[0.06] to-violet-500/[0.02]", icon: <Icon.Video className="h-5 w-5 text-violet-400/40" /> },
+                  { num: "01", label: "Story", desc: "AI writes 5 scenes", icon: <Icon.FileText className="h-4 w-4 text-amber-400/35" /> },
+                  { num: "02", label: "Visuals", desc: "Images and motion", icon: <Icon.Image className="h-4 w-4 text-emerald-400/35" /> },
+                  { num: "03", label: "Final", desc: "Voice, music, render", icon: <Icon.Video className="h-4 w-4 text-violet-400/35" /> },
                 ].map((card) => (
-                  <div key={card.num} className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 transition-all hover:border-white/[0.10] hover:bg-white/[0.025]">
-                    <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${card.color}`}>{card.icon}</div>
-                    <div className="text-[9px] font-bold uppercase tracking-widest text-white/30">{card.num}</div>
-                    <div className="mt-0.5 text-[13px] font-semibold text-white/75">{card.label}</div>
-                    <div className="mt-0.5 text-[11px] text-white/40">{card.desc}</div>
+                  <div key={card.num} className="rounded-lg border border-white/[0.04] bg-white/[0.01] p-3 text-center transition-all hover:border-white/[0.08] hover:bg-white/[0.02]">
+                    <div className="mx-auto mb-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.03]">{card.icon}</div>
+                    <div className="text-[11px] font-semibold text-white/60">{card.label}</div>
+                    <div className="text-[10px] text-white/30">{card.desc}</div>
                   </div>
                 ))}
               </div>
