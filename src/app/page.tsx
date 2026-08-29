@@ -1022,12 +1022,29 @@ export default function Home() {
               </div>
 
               {/* Hero */}
-              <div className="mb-8 text-center">
+              <div className="mb-6 text-center">
                 <h1 className="text-[32px] font-bold tracking-tight leading-tight sm:text-[40px] text-white">
                   Create your next <span className="italic text-white/80">video</span>
                 </h1>
                 <p className="mt-2 text-[14px] text-white/45">One idea. Full cinematic production.</p>
                 <p className="text-[12px] text-white/30">Story, scenes, visuals, voice and final video.</p>
+              </div>
+
+              {/* 3-Step guide */}
+              <div className="mx-auto mb-6 flex max-w-lg items-center justify-center gap-2">
+                {[
+                  { num: "1", label: "Describe idea" },
+                  { num: "2", label: "Choose settings" },
+                  { num: "3", label: "Create video" },
+                ].map((s, i) => (
+                  <div key={s.num} className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-[9px] font-bold text-emerald-400">{s.num}</span>
+                      <span className="text-[11px] text-white/50">{s.label}</span>
+                    </div>
+                    {i < 2 && <span className="text-white/15">-</span>}
+                  </div>
+                ))}
               </div>
 
               {/* Two-column layout */}
@@ -1045,14 +1062,14 @@ export default function Home() {
                       </div>
 
                       <div className="relative group">
-                        <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-emerald-500/[0.06] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
+                        <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-emerald-500/[0.08] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
                         <textarea
                           value={story}
                           onChange={(e) => { setStory(e.target.value); setError(""); }}
-                          placeholder="Describe your video idea..."
-                          rows={4}
+                          placeholder="Describe your video idea... e.g. A young boy discovers a mysterious portal beneath his school and enters a glowing world."
+                          rows={5}
                           maxLength={1500}
-                          className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[14px] leading-6 text-white outline-none transition-all placeholder:text-white/25 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
+                          className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[15px] leading-7 text-white outline-none transition-all placeholder:text-white/20 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
                         />
                         <div className="absolute bottom-2.5 right-3 flex items-center gap-3">
                           <span className="text-[10px] text-white/20 tabular-nums">{story.length} / 1500</span>
@@ -1074,15 +1091,17 @@ export default function Home() {
                         ))}
                       </div>
 
-                      {/* Characters link */}
-                      <div className="mt-3 flex items-center gap-2 border-t border-white/[0.04] pt-3">
-                        <Icon.User className="h-3 w-3 text-white/30" />
-                        <span className="text-[11px] text-white/35">Characters</span>
-                        <span className="text-[11px] text-white/25">Add characters to keep appearance consistent across scenes.</span>
-                        <button onClick={() => setShowCharacters(true)} className="ml-auto rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/55 transition-all hover:bg-white/[0.08] hover:text-white/75">
-                          Manage Characters
-                        </button>
-                      </div>
+                      {/* Characters button */}
+                      <button onClick={() => setShowCharacters(true)} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-left transition-all hover:border-violet-500/20 hover:bg-violet-500/[0.03]">
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+                          <Icon.User className="h-4 w-4 text-violet-400/70" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12px] font-medium text-white/70">Add Characters <span className="text-white/30">(Optional)</span></div>
+                          <div className="mt-0.5 text-[10px] text-white/30">Keep character appearance consistent across all scenes.</div>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/20"><path d="M9 18l6-6-6-6" /></svg>
+                      </button>
                     </div>
 
                     {/* Section 2: Set your production */}
@@ -1102,15 +1121,17 @@ export default function Home() {
                           <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
                             <option>Hindi</option><option>Hinglish</option><option>English</option>
                           </select>
+                          <span className="mt-0.5 block text-[8px] text-white/20">Narration language</span>
                         </div>
-                        {/* Style */}
+                        {/* Visual Style */}
                         <div>
                           <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
-                            <Icon.Image className="h-2.5 w-2.5" />Style
+                            <Icon.Image className="h-2.5 w-2.5" />Visual Style
                           </label>
                           <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
                             <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
                           </select>
+                          <span className="mt-0.5 block text-[8px] text-white/20">Look and feel</span>
                         </div>
                         {/* Duration */}
                         <div>
@@ -1120,11 +1141,12 @@ export default function Home() {
                           <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
                             <option>30s</option><option>60s</option><option>90s</option>
                           </select>
+                          <span className="mt-0.5 block text-[8px] text-white/20">Total video length</span>
                         </div>
-                        {/* Aspect Ratio */}
+                        {/* Video Format */}
                         <div>
                           <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
-                            <Icon.Square className="h-2.5 w-2.5" />Aspect Ratio
+                            <Icon.Square className="h-2.5 w-2.5" />Video Format
                           </label>
                           <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
                             <option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option>
@@ -1139,8 +1161,9 @@ export default function Home() {
                           <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
                             <option>Natural</option><option>Deep</option><option>Soft</option>
                           </select>
+                          <span className="mt-0.5 block text-[8px] text-white/20">Narration tone</span>
                         </div>
-                        {/* Captions + Music combined */}
+                        {/* Music */}
                         <div>
                           <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
                             <Icon.Music className="h-2.5 w-2.5" />Music
@@ -1148,6 +1171,7 @@ export default function Home() {
                           <select value={music} onChange={(e) => setMusic(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
                             <option>None</option><option>Ambient</option><option>Cinematic</option><option>Emotional</option>
                           </select>
+                          <span className="mt-0.5 block text-[8px] text-white/20">Background score</span>
                         </div>
                       </div>
 
@@ -1163,11 +1187,11 @@ export default function Home() {
                       </div>
 
                       {/* Create Video button */}
-                      <button onClick={generateStory} disabled={!story.trim() || loading} className="mt-4 w-full rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-3.5 text-[14px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.4)] transition-all hover:shadow-[0_8px_30px_-4px_rgba(139,92,246,0.5)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                      <button onClick={generateStory} disabled={!story.trim() || loading} className="mt-5 w-full rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-4 text-[15px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.4)] transition-all hover:shadow-[0_8px_30px_-4px_rgba(139,92,246,0.5)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
                         {loading ? (<span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-4 w-4 animate-spin" />Creating...</span>) : (<span className="flex items-center justify-center gap-2"><Icon.Sparkles className="h-4 w-4" />Create Video</span>)}
                       </button>
 
-                      <p className="mt-2 text-center text-[10px] text-white/25">AI will create 5 scenes with narration and visual prompts.</p>
+                      <p className="mt-2.5 text-center text-[11px] text-white/30">AI will create your story, scenes, visuals, voice and video.</p>
                     </div>
 
                     {/* Loading stages */}
