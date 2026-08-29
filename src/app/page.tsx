@@ -24,6 +24,8 @@ type Project = {
   result: StoryResult;
   createdAt: string;
   sceneImages?: Record<number, string>;
+  sceneVideos?: Record<number, string>;
+  finalVideoUrl?: string | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -281,7 +283,7 @@ export default function Home() {
     } else {
       setHasUnsavedChanges(false);
     }
-  }, [result, projectName, story, language, style, duration, sceneImages]);
+  }, [result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo]);
 
   /* Warn before leaving with unsaved changes */
   useEffect(() => {
@@ -303,6 +305,8 @@ export default function Home() {
       story, language, style, duration, result,
       createdAt: new Date().toISOString(),
       sceneImages: { ...sceneImages },
+      sceneVideos: { ...sceneVideos },
+      finalVideoUrl: finalVideo,
     };
     saveProjects([project, ...projects]);
     setSaved(true);
@@ -320,7 +324,8 @@ export default function Home() {
     setResult(project.result || { title: 'Untitled', scenes: [] });
     setProjectName(project.title || 'Untitled Video');
     setSceneImages(project.sceneImages && typeof project.sceneImages === 'object' ? project.sceneImages : {});
-    setSceneVideos({});
+    setSceneVideos(project.sceneVideos && typeof project.sceneVideos === 'object' ? project.sceneVideos : {});
+    setFinalVideo(typeof project.finalVideoUrl === 'string' ? project.finalVideoUrl : null);
     setSceneStatus({});
     setActiveScene(1);
     setSaved(true);
@@ -472,15 +477,23 @@ export default function Home() {
     }
   }
 
-  function exportVideo() {
+  async function exportVideo() {
     if (!finalVideo) return;
-    const link = document.createElement("a");
-    link.href = finalVideo;
     const safeName = (projectName || "pat-orbit-video").replace(/[^a-zA-Z0-9\s\-_]/g, "").replace(/\s+/g, "-").toLowerCase();
-    link.download = `${safeName}.mp4`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const response = await fetch(finalVideo);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${safeName}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      setError("Export failed. Please try again.");
+    }
   }
 
   function copyToClipboard(text: string, fieldKey: string) {
