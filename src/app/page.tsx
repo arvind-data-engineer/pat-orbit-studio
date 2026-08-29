@@ -391,7 +391,9 @@ export default function Home() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to generate video.");
-      if (data.video) {
+      if (data.videoUrl) {
+        setSceneVideos((c) => ({ ...c, [sceneId]: data.videoUrl }));
+      } else if (data.video) {
         setSceneVideos((c) => ({ ...c, [sceneId]: data.video }));
       } else if (data.videoUri) {
         setSceneVideos((c) => ({ ...c, [sceneId]: data.videoUri }));
@@ -456,8 +458,9 @@ export default function Home() {
       setRenderProgress(90);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to render video.");
-      if (!data.video) throw new Error("No video was returned from render.");
-      setFinalVideo(data.video);
+      const finalUrl = data.videoUrl || data.video;
+      if (!finalUrl) throw new Error("No video was returned from render.");
+      setFinalVideo(finalUrl);
       setRenderStage("Complete");
       setRenderProgress(100);
     } catch (err) {

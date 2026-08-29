@@ -5,24 +5,14 @@ import { promisify } from "util";
 import { writeFile, readFile, mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+import { uploadToBlob, downloadAsBuffer } from "@/lib/blob";
 
 const execFileAsync = promisify(execFile);
 
-/**
- * Helper: decode a data URI or raw base64 string into a Buffer.
- */
-function decodeMedia(data: string): Buffer {
-  if (data.startsWith("data:")) {
-    const commaIdx = data.indexOf(",");
-    if (commaIdx === -1) throw new Error("Malformed data URI.");
-    return Buffer.from(data.substring(commaIdx + 1), "base64");
-  }
-  return Buffer.from(data, "base64");
-}
+export const maxDuration = 300;
 
 /**
  * Generate a simple ambient/music tone using FFmpeg's sine generator.
- * Returns the path to the generated WAV file.
  */
 async function generateMusicTone(
   ffmpeg: string,
@@ -30,7 +20,6 @@ async function generateMusicTone(
   style: string,
   outPath: string
 ): Promise<void> {
-  /* Different frequencies and amplitudes for different moods */
   const presets: Record<string, { freq: string; vol: string }> = {
     Ambient: { freq: "220", vol: "0.03" },
     Cinematic: { freq: "165", vol: "0.04" },
@@ -64,11 +53,15 @@ export async function POST(request: Request) {
       music,
       voiceAudios,
     } = body as {
-      scenes: Array<{ id: number; video: string; narration?: string }>;
+      scenes: Array<{
+        id: number;
+        video: string; // URL or data URI
+        narration?: string;
+      }>;
       aspectRatio?: string;
       captions?: boolean;
       music?: string;
-      voiceAudios?: Record<number, string>;
+      voiceAudios?: Record<number, string>; // data URIs for voice
     };
 
     /* ---- Validate input ---- */
@@ -101,12 +94,12 @@ export async function POST(request: Request) {
     /* ---- Prepare temp directory ---- */
     tempDir = await mkdtemp(join(tmpdir(), "pat-render-"));
 
-    /* ---- Write each scene video to a temp file ---- */
+    /* ---- Download/write each scene video to a temp file ---- */
     const inputFiles: string[] = [];
 
     for (let i = 0; i < scenes.length; i++) {
       const s = scenes[i];
-      const buffer = decodeMedia(s.video);
+      const buffer = await downloadAsBuffer(s.video);
 
       if (buffer.length === 0) {
         return NextResponse.json(
@@ -127,7 +120,7 @@ export async function POST(request: Request) {
         const s = scenes[i];
         const audioData = voiceAudios[s.id];
         if (audioData) {
-          const audioBuffer = decodeMedia(audioData);
+          const audioBuffer = await downloadAsBuffer(audioData);
           const audioPath = join(tempDir, `voice_${String(i + 1).padStart(2, "0")}.wav`);
           await writeFile(audioPath, audioBuffer);
           voiceFiles[i] = audioPath;
@@ -146,7 +139,7 @@ export async function POST(request: Request) {
         ], { timeout: 10000 });
         return parseFloat(stdout.trim()) || 5;
       } catch {
-        return 5; /* fallback */
+        return 5;
       }
     };
 
@@ -167,16 +160,14 @@ export async function POST(request: Request) {
     const filterParts: string[] = [];
     const inputArgs: string[] = [];
 
-    /* Input 0: concatenated video */
     const concatListPath = join(tempDir, "concat.txt");
     const concatContent = inputFiles
-      .map((f) => `file '${f.replace(/\\/g, "/").replace(/'/g, "'\\''")}'`)
+      .map((f) => `file '${f.replace(/\\\\/g, "/").replace(/'/g, "'\\''")}'`)
       .join("\n");
     await writeFile(concatListPath, concatContent, "utf-8");
 
     inputArgs.push("-f", "concat", "-safe", "0", "-i", concatListPath);
 
-    /* Input 1+: voice audio tracks (one per scene that has voice) */
     const voiceInputIndices: number[] = [];
     let inputIdx = 1;
 
@@ -188,7 +179,6 @@ export async function POST(request: Request) {
       }
     }
 
-    /* Input for music (if any) */
     let musicInputIdx = -1;
     if (musicPath) {
       inputArgs.push("-i", musicPath);
@@ -197,8 +187,6 @@ export async function POST(request: Request) {
     }
 
     /* ---- Build filter complex ---- */
-
-    /* Scale video to target aspect ratio */
     let scaleFilter: string;
     if (aspectRatio === "9:16") {
       scaleFilter = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black";
@@ -208,20 +196,16 @@ export async function POST(request: Request) {
       scaleFilter = "scale=1080:1080:force_original_aspect_ratio=decrease,pad=1080:1080:(ow-iw)/2:(oh-ih)/2:color=black";
     }
 
-    /* Apply scale to video stream [0:v] -> [vscaled] */
     filterParts.push(`[0:v]${scaleFilter},setsar=1,format=yuv420p[vscaled]`);
 
-    /* Build audio mix */
     const audioInputs: string[] = [];
 
-    /* Voice audio: concatenate and delay each scene's voice */
     if (voiceInputIndices.length > 0) {
       let cumulativeDelay = 0;
 
       for (let i = 0; i < scenes.length; i++) {
         if (voiceInputIndices[i] !== undefined) {
           const idx = voiceInputIndices[i];
-          /* Delay the voice to align with its scene start time */
           const delayMs = Math.round(cumulativeDelay * 1000);
           filterParts.push(
             `[${idx}:a]adelay=${delayMs}|${delayMs},aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=mono[v${i}]`
@@ -231,7 +215,6 @@ export async function POST(request: Request) {
         cumulativeDelay += sceneDurations[i];
       }
 
-      /* Mix all voice tracks together */
       if (audioInputs.length > 1) {
         filterParts.push(
           `${audioInputs.join("")}amix=inputs=${audioInputs.length}:duration=longest:dropout_transition=0[voice]`
@@ -241,14 +224,12 @@ export async function POST(request: Request) {
       }
     }
 
-    /* Music: mix at low volume */
     if (musicInputIdx >= 0) {
       filterParts.push(
         `[${musicInputIdx}:a]volume=0.15,afade=t=in:st=0:d=2,afade=t=out:st=${Math.max(0, totalDuration - 2)}:d=2[music]`
       );
     }
 
-    /* Final audio mix: voice + music (or just voice, or silence) */
     const hasVoice = voiceInputIndices.length > 0;
     const hasMusic = musicInputIdx >= 0;
 
@@ -259,16 +240,13 @@ export async function POST(request: Request) {
     } else if (hasMusic) {
       filterParts.push("[music]acopy[aout]");
     } else {
-      /* No audio: generate silence */
-      filterParts.push(
-        `anullsrc=r=44100:cl=mono[silence]`
-      );
+      filterParts.push(`anullsrc=r=44100:cl=mono[silence]`);
       filterParts.push(
         `[silence]atrim=duration=${totalDuration},aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=mono[aout]`
       );
     }
 
-    /* ---- Captions: burn subtitles using drawtext ---- */
+    /* ---- Captions ---- */
     if (captions && scenes.some((s) => s.narration)) {
       let cumulativeTime = 0;
       const drawTexts: string[] = [];
@@ -278,14 +256,13 @@ export async function POST(request: Request) {
         if (s.narration && s.narration.trim()) {
           const startTime = cumulativeTime;
           const endTime = cumulativeTime + sceneDurations[i];
-          /* Escape special characters for FFmpeg drawtext */
           const text = s.narration
             .replace(/\\/g, "\\\\")
             .replace(/:/g, "\\:")
             .replace(/'/g, "\\'")
             .replace(/%/g, "%%")
             .replace(/\n/g, " ")
-            .substring(0, 120); /* Limit length */
+            .substring(0, 120);
 
           drawTexts.push(
             `drawtext=text='${text}':fontcolor=white:fontsize=28:box=1:boxcolor=black@0.6:boxborderw=8:x=(w-text_w)/2:y=h-th-60:enable='between(t,${startTime.toFixed(2)},${endTime.toFixed(2)})'`
@@ -295,8 +272,7 @@ export async function POST(request: Request) {
       }
 
       if (drawTexts.length > 0) {
-        const chainedFilters = drawTexts.join(",");
-        filterParts.push(`[vscaled]${chainedFilters}[vout]`);
+        filterParts.push(`[vscaled]${drawTexts.join(",")}[vout]`);
       } else {
         filterParts.push("[vscaled]copy[vout]");
       }
@@ -307,7 +283,6 @@ export async function POST(request: Request) {
     /* ---- Output file ---- */
     const outputPath = join(tempDir, "final.mp4");
 
-    /* ---- Build FFmpeg command ---- */
     const filterComplex = filterParts.join(";");
 
     const args = [
@@ -329,25 +304,28 @@ export async function POST(request: Request) {
     ];
 
     await execFileAsync(ffmpeg, args, {
-      timeout: 600000, /* 10 minutes max */
-      maxBuffer: 100 * 1024 * 1024, /* 100MB buffer */
+      timeout: 600000,
+      maxBuffer: 100 * 1024 * 1024,
     });
 
-    /* ---- Read the output ---- */
+    /* ---- Read and upload the output ---- */
     const outputBuffer = await readFile(outputPath);
 
     if (outputBuffer.length === 0) {
       throw new Error("FFmpeg produced an empty output file.");
     }
 
-    const base64Video = outputBuffer.toString("base64");
+    /* Upload to Vercel Blob instead of returning base64 */
+    const filename = `final-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
+    const videoUrl = await uploadToBlob(outputBuffer, filename, "video/mp4");
 
     return NextResponse.json({
-      video: `data:video/mp4;base64,${base64Video}`,
+      videoUrl,
       size: outputBuffer.length,
+      duration: totalDuration,
       scenes: scenes.length,
-      hasVoice: voiceInputIndices.length > 0,
-      hasMusic: hasMusic,
+      hasVoice,
+      hasMusic,
       hasCaptions: !!captions,
     });
   } catch (error) {
