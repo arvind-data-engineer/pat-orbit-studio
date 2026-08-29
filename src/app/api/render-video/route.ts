@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { writeFile, unlink, readFile, mkdtemp, readdir, rmdir } from "fs/promises";
+import { writeFile, readFile, mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -361,13 +361,9 @@ export async function POST(request: Request) {
     /* ---- Clean up temp files ---- */
     if (tempDir) {
       try {
-        const files = await readdir(tempDir);
-        for (const file of files) {
-          await unlink(join(tempDir, file)).catch(() => {});
-        }
-        await rmdir(tempDir).catch(() => {});
+        await rm(tempDir, { recursive: true, force: true });
       } catch {
-        /* Best-effort cleanup */
+        // Best-effort cleanup
       }
     }
   }
