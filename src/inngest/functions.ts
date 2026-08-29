@@ -212,8 +212,8 @@ export const renderVideoJob = inngest.createFunction(
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const voiceMap: Record<string, string> = { Natural: "Aoede", Deep: "Charon", Soft: "Kore" };
         const langMap: Record<string, string> = { Hindi: "hi-IN", Hinglish: "hi-IN", English: "en-US" };
-        const voiceName = voiceMap[(render.voiceAudios as Record<string, string>)?.[`voice`] || ""] || "Aoede";
-        const langCode = langMap[(render.voiceAudios as Record<string, string>)?.[`lang`] || ""] || "en-US";
+        const voiceName = voiceMap[render.voice || ""] || "Aoede";
+        const langCode = langMap[render.language || ""] || "en-US";
 
         try {
           const response = await ai.models.generateContent({

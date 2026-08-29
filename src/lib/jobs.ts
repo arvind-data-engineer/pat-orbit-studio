@@ -53,6 +53,8 @@ export interface JobData {
     captions?: boolean;
     music?: string;
     voiceAudios?: Record<number, string>;
+    voice?: string;
+    language?: string;
   };
 }
 

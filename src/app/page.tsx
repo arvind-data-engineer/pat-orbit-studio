@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -41,6 +41,10 @@ type Project = {
   finalVideoUrl?: string | null;
   characters?: Character[];
   sceneCharacters?: Record<number, number[]>;
+  aspectRatio?: string;
+  voice?: string;
+  captions?: boolean;
+  music?: string;
 };
 
 /* ------------------------------------------------------------------ */
@@ -188,6 +192,7 @@ export default function Home() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 
   /* Abort controllers */
   const storyAbortRef = useRef<AbortController | null>(null);
@@ -317,46 +322,46 @@ export default function Home() {
       setActiveScene(1);
       setSceneCharacters({});
 
-      /* Auto-detect characters from generated story */
-      try {
-        const allText = [
-          data.title || '',
-          ...data.scenes.map((s: Scene) => `${s.title} ${s.narration} ${s.visual}`),
-        ].join(' ');
-        const detectedNames = new Set<string>();
-        const nameRegex = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g;
-        let match;
-        while ((match = nameRegex.exec(allText)) !== null) {
-          const name = match[1];
-          // Filter out common English words that aren't names
-          const stopwords = ['The', 'This', 'When', 'Then', 'Scene', 'Inside', 'Through', 'Beyond', 'Under', 'Over', 'Before', 'After', 'While', 'Where', 'What', 'How', 'Every', 'Each', 'Some', 'From', 'With', 'Into', 'About', 'Between', 'Around', 'Behind', 'Near', 'Across', 'Along', 'Toward', 'Until', 'Since', 'During', 'Without', 'Within', 'Against', 'Along', 'Among', 'There', 'Here', 'Their', 'These', 'Those', 'Another', 'Suddenly', 'Finally', 'Together', 'Discover', 'Reveals', 'Creates', 'Appears', 'Turns', 'Begins', 'Looks', 'Finds', 'Enters', 'Walks', 'Sees', 'Takes', 'Makes', 'Says', 'Calls', 'Moves', 'Races', 'Grows', 'Starts', 'Lands', 'Stops', 'Waits', 'Goes', 'Runs', 'Faces', 'Holds', 'Keeps', 'Lets', 'Puts', 'Sets', 'Rises', 'Falls', 'Heard', 'Felt', 'Saw', 'Knew', 'Woke', 'Pat', 'Orbit', 'Studio', 'NARRATION', 'VISUAL', 'TITLE'];
-          if (!stopwords.includes(name) && name.length > 1 && !detectedNames.has(name)) {
-            detectedNames.add(name);
+      /* Auto-detect characters from generated story (only if no pre-defined characters) */
+      if (characters.length === 0) {
+        try {
+          const allText = [
+            data.title || '',
+            ...data.scenes.map((s: Scene) => `${s.title} ${s.narration} ${s.visual}`),
+          ].join(' ');
+          const detectedNames = new Set<string>();
+          const nameRegex = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g;
+          let match;
+          while ((match = nameRegex.exec(allText)) !== null) {
+            const name = match[1];
+            const stopwords = ['The', 'This', 'When', 'Then', 'Scene', 'Inside', 'Through', 'Beyond', 'Under', 'Over', 'Before', 'After', 'While', 'Where', 'What', 'How', 'Every', 'Each', 'Some', 'From', 'With', 'Into', 'About', 'Between', 'Around', 'Behind', 'Near', 'Across', 'Along', 'Toward', 'Until', 'Since', 'During', 'Without', 'Within', 'Against', 'Among', 'There', 'Here', 'Their', 'These', 'Those', 'Another', 'Suddenly', 'Finally', 'Together', 'Discover', 'Reveals', 'Creates', 'Appears', 'Turns', 'Begins', 'Looks', 'Finds', 'Enters', 'Walks', 'Sees', 'Takes', 'Makes', 'Says', 'Calls', 'Moves', 'Races', 'Grows', 'Starts', 'Lands', 'Stops', 'Waits', 'Goes', 'Runs', 'Faces', 'Holds', 'Keeps', 'Lets', 'Puts', 'Sets', 'Rises', 'Falls', 'Heard', 'Felt', 'Saw', 'Knew', 'Woke', 'Pat', 'Orbit', 'Studio', 'NARRATION', 'VISUAL', 'TITLE'];
+            if (!stopwords.includes(name) && name.length > 1 && !detectedNames.has(name)) {
+              detectedNames.add(name);
+            }
           }
-        }
-        if (detectedNames.size > 0) {
-          const autoChars: Character[] = Array.from(detectedNames).slice(0, 6).map((name) => ({
-            name,
-            description: '',
-            appearance: '',
-            role: '',
-          }));
-          setCharacters(autoChars);
-          // Auto-assign characters to scenes
-          const autoSceneChars: Record<number, number[]> = {};
-          for (const scene of data.scenes) {
-            const sceneText = `${scene.title} ${scene.narration} ${scene.visual}`;
-            const assignedIndices: number[] = [];
-            autoChars.forEach((char, idx) => {
-              if (sceneText.toLowerCase().includes(char.name.toLowerCase())) {
-                assignedIndices.push(idx);
-              }
-            });
-            if (assignedIndices.length > 0) autoSceneChars[scene.id] = assignedIndices;
+          if (detectedNames.size > 0) {
+            const autoChars: Character[] = Array.from(detectedNames).slice(0, 6).map((name) => ({
+              name,
+              description: '',
+              appearance: '',
+              role: '',
+            }));
+            setCharacters(autoChars);
+            const autoSceneChars: Record<number, number[]> = {};
+            for (const scene of data.scenes) {
+              const sceneText = `${scene.title} ${scene.narration} ${scene.visual}`;
+              const assignedIndices: number[] = [];
+              autoChars.forEach((char, idx) => {
+                if (sceneText.toLowerCase().includes(char.name.toLowerCase())) {
+                  assignedIndices.push(idx);
+                }
+              });
+              if (assignedIndices.length > 0) autoSceneChars[scene.id] = assignedIndices;
+            }
+            setSceneCharacters(autoSceneChars);
           }
-          setSceneCharacters(autoSceneChars);
-        }
-      } catch { /* Character detection is best-effort */ }
+        } catch { /* Character detection is best-effort */ }
+      }
 
       /* Auto-scroll to workspace */
       setTimeout(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
@@ -452,18 +457,41 @@ export default function Home() {
 
   function saveCurrentProject() {
     if (!result) return;
-    const project: Project = {
-      id: crypto.randomUUID(),
-      title: projectName || result.title,
-      story, language, style, duration, result,
-      createdAt: new Date().toISOString(),
-      sceneImages: { ...sceneImages },
-      sceneVideos: { ...sceneVideos },
-      finalVideoUrl: finalVideo,
-      characters: characters.length > 0 ? [...characters] : undefined,
-      sceneCharacters: Object.keys(sceneCharacters).length > 0 ? { ...sceneCharacters } : undefined,
-    };
-    saveProjects([project, ...projects]);
+    if (currentProjectId) {
+      // Update existing project
+      const updated = projects.map((p) => {
+        if (p.id !== currentProjectId) return p;
+        return {
+          ...p,
+          title: projectName || result.title,
+          story, language, style, duration, result,
+          sceneImages: { ...sceneImages },
+          sceneVideos: { ...sceneVideos },
+          finalVideoUrl: finalVideo,
+          characters: characters.length > 0 ? [...characters] : undefined,
+          sceneCharacters: Object.keys(sceneCharacters).length > 0 ? { ...sceneCharacters } : undefined,
+          aspectRatio, voice, captions, music,
+        };
+      });
+      saveProjects(updated);
+    } else {
+      // Create new project
+      const newId = crypto.randomUUID();
+      const project: Project = {
+        id: newId,
+        title: projectName || result.title,
+        story, language, style, duration, result,
+        createdAt: new Date().toISOString(),
+        sceneImages: { ...sceneImages },
+        sceneVideos: { ...sceneVideos },
+        finalVideoUrl: finalVideo,
+        characters: characters.length > 0 ? [...characters] : undefined,
+        sceneCharacters: Object.keys(sceneCharacters).length > 0 ? { ...sceneCharacters } : undefined,
+        aspectRatio, voice, captions, music,
+      };
+      saveProjects([project, ...projects]);
+      setCurrentProjectId(newId);
+    }
     setSaved(true);
     setHasUnsavedChanges(false);
     setToast("Project saved");
@@ -482,10 +510,15 @@ export default function Home() {
     setFinalVideo(typeof project.finalVideoUrl === 'string' ? project.finalVideoUrl : null);
     setCharacters(Array.isArray(project.characters) ? project.characters : []);
     setSceneCharacters(project.sceneCharacters && typeof project.sceneCharacters === 'object' ? project.sceneCharacters : {});
+    setAspectRatio(project.aspectRatio || '9:16');
+    setVoice(project.voice || 'Natural');
+    setCaptions(typeof project.captions === 'boolean' ? project.captions : true);
+    setMusic(project.music || 'None');
     setSceneStatus({});
     setVoiceStatus({});
     setVoiceAudios({});
     setActiveScene(1);
+    setCurrentProjectId(project.id);
     setSaved(true);
     setToast("Project loaded");
     setTimeout(() => setToast(null), 2500);
@@ -752,7 +785,7 @@ export default function Home() {
       const createResp = await fetch("/api/jobs/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voiceAudios: renderVoiceAudios }),
+        body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voice, language, voiceAudios: renderVoiceAudios }),
       });
       const createData = await createResp.json();
       if (!createResp.ok) throw new Error(createData.error || "Failed to start render.");
