@@ -135,6 +135,7 @@ export default function Home() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const [loadingStep, setLoadingStep] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
 
   /* Close settings dropdown on outside click */
   useEffect(() => {
@@ -228,6 +229,8 @@ export default function Home() {
     };
     saveProjects([project, ...projects]);
     setSaved(true);
+    setToast("Project saved");
+    setTimeout(() => setToast(null), 2500);
   }
 
   function loadProject(project: Project) {
@@ -773,40 +776,53 @@ export default function Home() {
         ) : (
           <>
             {/* ===== WORKSPACE HEADER ===== */}
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <button onClick={() => setResult(null)} className="mb-3 flex items-center gap-1.5 text-[12px] text-white/30 transition-colors hover:text-white/60">
-                  <Icon.ArrowLeft />
-                  Back to creator
-                </button>
-                <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl" />
-                <p className="mt-1.5 text-[13px] text-white/30">{result.scenes.length} scenes &middot; {language} &middot; {style} &middot; {duration}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={saveCurrentProject} className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[13px] text-white/50 transition-all hover:bg-white/[0.08] hover:text-white/70 active:scale-[0.98]">{saved ? "Saved" : "Save Project"}</button>
-                <button onClick={finalVideo ? exportVideo : undefined} className="rounded-lg bg-white px-4 py-2 text-[13px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98]">Export</button>
-              </div>
-            </div>
-
-            {/* ===== PROGRESS SUMMARY ===== */}
-            <div className="mb-5 flex flex-wrap gap-2">
-              {[
-                { label: "STORY", done: true },
-                { label: `IMAGES ${totalImagesGenerated}/${result.scenes.length}`, done: totalImagesGenerated === result.scenes.length },
-                { label: `VIDEOS ${totalVideosGenerated}/${result.scenes.length}`, done: totalVideosGenerated === result.scenes.length },
-                { label: "FINAL", done: !!finalVideo, extra: finalVideo ? "Rendered" : "Not rendered" },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5">
-                  {item.done ? (
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20">
-                      <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />
-                    </span>
-                  ) : (
-                    <span className="h-1.5 w-1.5 rounded-full bg-white/15" />
-                  )}
-                  <span className={`text-[10px] font-medium tracking-wider ${item.done ? "text-white/50" : "text-white/25"}`}>{item.label}</span>
+            <div className="mb-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <button onClick={() => setResult(null)} className="mb-2 flex items-center gap-1.5 text-[11px] text-white/30 transition-colors hover:text-white/60">
+                    <Icon.ArrowLeft /> PAT Orbit Studio / Back
+                  </button>
+                  <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl" />
+                  <p className="mt-1 text-[12px] text-white/25">{result.scenes.length} scenes &middot; {language} &middot; {style} &middot; {duration}</p>
                 </div>
-              ))}
+                <div className="flex items-center gap-2">
+                  <button onClick={saveCurrentProject} className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[12px] font-medium text-white/50 transition-all hover:bg-white/[0.08] hover:text-white/70 active:scale-[0.98]">
+                    <Icon.Folder className="text-white/30" />{saved ? "Saved" : "Save"}
+                  </button>
+                  <button onClick={finalVideo ? exportVideo : undefined} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98]">
+                    <Icon.Download className="text-black/60" />Export
+                  </button>
+                </div>
+              </div>
+
+              {/* Video progress bar */}
+              <div className="mb-3">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">Video Progress</span>
+                  <span className="text-[11px] text-white/40">{totalVideosGenerated} / {result.scenes.length} scenes ready</span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500" style={{ width: `${(totalVideosGenerated / result.scenes.length) * 100}%` }} />
+                </div>
+              </div>
+
+              {/* Scene completion circles */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-white/25">Scenes</span>
+                <div className="flex gap-1.5">
+                  {result.scenes.map((scene) => {
+                    const hasVideo = !!sceneVideos[scene.id];
+                    const hasImage = !!sceneImages[scene.id];
+                    return (
+                      <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                        title={`Scene ${scene.id}: ${hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
+                        className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all duration-200 ${activeScene === scene.id ? 'ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-[#08090c]' : ''} ${hasVideo ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : hasImage ? 'bg-emerald-500/10 text-emerald-400/60 border border-emerald-500/20' : 'bg-white/[0.04] text-white/25 border border-white/[0.06]'}`}>
+                        {hasVideo ? <Icon.Check className="h-3 w-3" /> : scene.id}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* ===== 3-COLUMN WORKSPACE ===== */}
@@ -815,74 +831,95 @@ export default function Home() {
               <div className="hidden lg:block">
                 <div className="sticky top-20">
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[12px] font-medium text-white/40">Scenes</span>
-                    <span className="text-[11px] text-white/25">{result.scenes.length}/5</span>
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-white/35">Scenes</span>
+                    <span className="text-[10px] text-white/20">{result.scenes.length} total</span>
                   </div>
                   <div className="space-y-1">
-                    {result.scenes.map((scene) => (
-                      <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150 ${activeScene === scene.id ? "bg-white/[0.08] border border-white/[0.12] shadow-[0_0_20px_-10px_rgba(255,255,255,0.06)]" : "border border-transparent hover:bg-white/[0.04]"}`}>
-                        <div className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-[11px] font-bold">
-                          <div className={`absolute inset-0 rounded-md transition-colors ${activeScene === scene.id ? "bg-white" : "bg-white/[0.08]"}`} />
-                          <span className={`relative z-10 ${activeScene === scene.id ? "text-black" : "text-white/40"}`}>{scene.id}</span>
-                          <span className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-[#08090c] transition-colors ${getStatusDotColor(scene.id)}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[12px] font-medium text-white/70">{scene.title}</div>
-                          <div className="mt-0.5">
-                            <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-medium ${getStatusColor(scene.id)}`}>{getStatusLabel(scene.id)}</span>
+                    {result.scenes.map((scene) => {
+                      const hasVideo = !!sceneVideos[scene.id];
+                      const hasImage = !!sceneImages[scene.id];
+                      return (
+                        <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                          className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 ${activeScene === scene.id ? "bg-white/[0.08] border border-white/[0.12] shadow-[0_0_20px_-10px_rgba(255,255,255,0.06)]" : "border border-transparent hover:bg-white/[0.04]"}`}>
+                          {/* Thumbnail */}
+                          <div className="relative h-10 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.04]">
+                            {hasImage ? (
+                              <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center">
+                                <span className="text-[9px] font-bold text-white/15">{scene.id}</span>
+                              </div>
+                            )}
+                            {hasVideo && (
+                              <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-500/90">
+                                <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-[11px] font-medium text-white/60">{scene.title}</div>
+                            <div className="mt-0.5">
+                              <span className={`inline-block rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${getStatusColor(scene.id)}`}>{getStatusLabel(scene.id)}</span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
 
               {/* CENTER -- Preview + Actions */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Mobile scene tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
+                <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
                   {result.scenes.map((scene) => (
                     <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                      className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition-all ${activeScene === scene.id ? "bg-white/[0.1] text-white border border-white/[0.15]" : "bg-white/[0.03] text-white/40 border border-transparent"}`}>
+                      className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${activeScene === scene.id ? "bg-white/[0.1] text-white border border-white/[0.15]" : "bg-white/[0.03] text-white/40 border border-transparent"}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(scene.id)}`} />
                       {scene.id}
                     </button>
                   ))}
                 </div>
 
+                {/* Preview info bar */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-white/50">Scene {String(activeScene).padStart(2, "0")}</span>
+                    <span className="text-[10px] text-white/20">&middot;</span>
+                    <span className="text-[10px] text-white/20">{result.scenes.length} scenes</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {currentScene && sceneImages[currentScene.id] && (
+                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">IMAGE READY</span>
+                    )}
+                    {currentScene && sceneVideos[currentScene.id] && (
+                      <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-400/70">VIDEO READY</span>
+                    )}
+                  </div>
+                </div>
+
                 {/* Preview card */}
                 <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0d12] shadow-[0_4px_40px_-12px_rgba(0,0,0,0.5)]">
-                  <div className="absolute left-4 top-4 z-10 flex items-center gap-2">
-                    <span className="rounded-md bg-black/60 px-2 py-1 text-[10px] font-medium text-white/50 backdrop-blur-sm">Scene {String(activeScene).padStart(2, "0")}</span>
-                    <span className="rounded-md bg-black/60 px-2 py-1 text-[10px] font-medium text-white/50 backdrop-blur-sm">Preview</span>
-                  </div>
-
-                  {/* Image/video generation overlay */}
+                  {/* Generation overlays */}
                   {currentScene && sceneStatus[currentScene.id] === "image" ? (
                     <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                       <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
                         <Icon.Spinner className="h-6 w-6 text-amber-400" />
                       </div>
-                      <span className="text-[12px] font-semibold text-white/60">Creating visual</span>
-                      <span className="mt-1 text-[11px] text-white/25">Scene {String(activeScene).padStart(2, "0")} &middot; Building cinematic composition...</span>
+                      <span className="text-[12px] font-semibold text-white/60">Generating Image</span>
+                      <span className="mt-1 text-[11px] text-white/25">Creating cinematic scene...</span>
                     </div>
                   ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
                     <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                       <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
                         <Icon.Spinner className="h-6 w-6 text-violet-400" />
                       </div>
-                      <span className="text-[12px] font-semibold text-white/60">Generating video</span>
-                      <span className="mt-1 text-[11px] text-white/25">Scene {String(activeScene).padStart(2, "0")} &middot; Turning your visual into motion...</span>
+                      <span className="text-[12px] font-semibold text-white/60">Generating Video</span>
+                      <span className="mt-1 text-[11px] text-white/25">Creating motion from this scene...</span>
                     </div>
                   ) : currentScene && sceneVideos[currentScene.id] ? (
-                    <video
-                      src={sceneVideos[currentScene.id]}
-                      controls
-                      className="aspect-video w-full object-cover bg-black"
-                      poster={sceneImages[currentScene.id]}
-                    />
+                    <video src={sceneVideos[currentScene.id]} controls className="aspect-video w-full object-cover bg-black" poster={sceneImages[currentScene.id]} />
                   ) : currentScene && sceneImages[currentScene.id] ? (
                     <img src={sceneImages[currentScene.id]} alt={currentScene.title} className="aspect-video w-full object-cover" />
                   ) : (
@@ -890,97 +927,109 @@ export default function Home() {
                       <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
                         <Icon.Image className="text-white/15" />
                       </div>
-                      <span className="text-[13px] font-medium text-white/35">Generate a visual for this scene</span>
-                      <span className="mt-1.5 text-[11px] text-white/20">Turn the scene description into a cinematic visual.</span>
+                      <span className="text-[13px] font-medium text-white/40">Scene preview</span>
+                      <span className="mt-1 text-[11px] text-white/20">Generate an image to visualize this scene.</span>
                     </div>
                   )}
                 </div>
 
-                {/* Action buttons */}
+                {/* Generation actions */}
                 {currentScene && (
                   <div className="flex gap-2">
                     <button onClick={() => startImageGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "image"}
                       className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                      {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating image...</>) : sceneImages[currentScene.id] ? "Regenerate Image" : "Generate Image"}
+                      {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneImages[currentScene.id] ? "Regenerate Image" : "Generate Image"}
                     </button>
                     <button onClick={() => startVideoGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "video"}
                       className="flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                      {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating video...</>) : sceneVideos[currentScene.id] ? "Regenerate Video" : "Generate Video"}
+                      {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneVideos[currentScene.id] ? "Regenerate Video" : "Generate Video"}
                     </button>
                   </div>
                 )}
 
-                {error && <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3 text-[13px] text-red-300/90">{error}</div>}
+                {/* Next-step guidance */}
+                {currentScene && !sceneStatus[currentScene.id] && (
+                  <div className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2">
+                    <p className="text-[11px] text-white/30">
+                      {!sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Start by generating the scene image."}
+                      {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Your scene is visualized. Generate a video next."}
+                      {sceneVideos[currentScene.id] && "Scene complete. Continue to the next scene."}
+                    </p>
+                  </div>
+                )}
+
+                {/* Error card */}
+                {error && (
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3">
+                    <div className="mb-1 text-[11px] font-semibold text-red-400/80">Generation failed</div>
+                    <p className="text-[12px] text-red-300/70">{error}</p>
+                  </div>
+                )}
               </div>
 
               {/* RIGHT -- Scene Details + Settings */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {currentScene && (<>
                   {/* Scene title */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                    <div className="mb-2 flex items-center justify-between">
-                      <label className="text-[11px] font-medium uppercase tracking-wider text-white/30">Scene title</label>
-                    </div>
-                    <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white/80 outline-none transition-all focus:border-white/[0.18]" />
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-wider text-white/25">Scene Title</label>
+                    <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2 text-[13px] font-medium text-white/80 outline-none transition-all focus:border-white/[0.15]" />
                   </div>
 
                   {/* Narration */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                    <div className="mb-2 flex items-center justify-between">
-                      <label className="text-[11px] font-medium uppercase tracking-wider text-white/30">Narration</label>
-                      <button onClick={() => copyToClipboard(currentScene.narration, "narration")} aria-label="Copy narration" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/25 transition-colors hover:bg-white/[0.06] hover:text-white/50">
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-[10px] font-medium uppercase tracking-wider text-white/25">Narration</label>
+                      <button onClick={() => copyToClipboard(currentScene.narration, "narration")} aria-label="Copy narration" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/20 transition-colors hover:bg-white/[0.06] hover:text-white/40">
                         {copiedField === "narration" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
                       </button>
                     </div>
-                    <textarea value={currentScene.narration} onChange={(e) => updateScene(currentScene.id, "narration", e.target.value)} rows={5} className="w-full resize-y rounded-lg border border-white/[0.08] bg-[#0c0d12] p-3 text-[13px] leading-relaxed text-white/60 outline-none transition-all focus:border-white/[0.18]" />
+                    <textarea value={currentScene.narration} onChange={(e) => updateScene(currentScene.id, "narration", e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.06] bg-[#0c0d12] p-2.5 text-[12px] leading-relaxed text-white/50 outline-none transition-all focus:border-white/[0.15]" />
                   </div>
 
                   {/* Visual prompt */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                    <div className="mb-2 flex items-center justify-between">
-                      <label className="text-[11px] font-medium uppercase tracking-wider text-white/30">Visual prompt</label>
-                      <button onClick={() => copyToClipboard(currentScene.visual, "visual")} aria-label="Copy visual prompt" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-white/25 transition-colors hover:bg-white/[0.06] hover:text-white/50">
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-[10px] font-medium uppercase tracking-wider text-white/25">Visual Prompt</label>
+                      <button onClick={() => copyToClipboard(currentScene.visual, "visual")} aria-label="Copy visual prompt" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/20 transition-colors hover:bg-white/[0.06] hover:text-white/40">
                         {copiedField === "visual" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
                       </button>
                     </div>
-                    <textarea value={currentScene.visual} onChange={(e) => updateScene(currentScene.id, "visual", e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.08] bg-[#0c0d12] p-3 text-[13px] leading-relaxed text-white/45 outline-none transition-all focus:border-white/[0.18]" />
+                    <textarea value={currentScene.visual} onChange={(e) => updateScene(currentScene.id, "visual", e.target.value)} rows={3} className="w-full resize-y rounded-lg border border-white/[0.06] bg-[#0c0d12] p-2.5 text-[12px] leading-relaxed text-white/40 outline-none transition-all focus:border-white/[0.15]" />
                   </div>
 
                   {/* Video Settings */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                    <div className="mb-4">
-                      <div className="text-[13px] font-medium text-white/70">Video settings</div>
-                      <div className="mt-0.5 text-[11px] text-white/25">Configure your final video.</div>
-                    </div>
-                    <div className="space-y-4">
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div className="mb-3 text-[11px] font-medium text-white/50">Video Settings</div>
+                    <div className="space-y-3">
                       <div>
-                        <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-white/30">Aspect Ratio</label>
-                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-1">
+                        <label className="mb-1.5 block text-[9px] font-medium uppercase tracking-wider text-white/25">Aspect Ratio</label>
+                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
                           {["9:16", "16:9", "1:1"].map((ratio) => (
-                            <button key={ratio} onClick={() => setAspectRatio(ratio)} className={`rounded-md py-1.5 text-[11px] font-medium transition-all ${aspectRatio === ratio ? "bg-white text-black shadow-sm" : "text-white/30 hover:text-white/50"}`}>{ratio}</button>
+                            <button key={ratio} onClick={() => setAspectRatio(ratio)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${aspectRatio === ratio ? "bg-white text-black shadow-sm" : "text-white/30 hover:text-white/50"}`}>{ratio}</button>
                           ))}
                         </div>
                       </div>
                       <div>
-                        <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-white/30">Voice</label>
-                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-1">
+                        <label className="mb-1.5 block text-[9px] font-medium uppercase tracking-wider text-white/25">Voice</label>
+                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
                           {["Natural", "Deep", "Soft"].map((v) => (
-                            <button key={v} onClick={() => setVoice(v)} className={`rounded-md py-1.5 text-[11px] font-medium transition-all ${voice === v ? "bg-white text-black shadow-sm" : "text-white/30 hover:text-white/50"}`}>{v}</button>
+                            <button key={v} onClick={() => setVoice(v)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${voice === v ? "bg-white text-black shadow-sm" : "text-white/30 hover:text-white/50"}`}>{v}</button>
                           ))}
                         </div>
                       </div>
                       <div>
-                        <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-white/30">Captions</label>
-                        <button onClick={() => setCaptions(!captions)} className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-[#0c0d12] px-3 py-2.5 text-[12px] transition-all hover:border-white/[0.12]">
-                          <span className="text-white/50">Auto captions</span>
-                          <span className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${captions ? "bg-white text-black" : "bg-white/[0.08] text-white/30"}`}>{captions ? "ON" : "OFF"}</span>
+                        <label className="mb-1.5 block text-[9px] font-medium uppercase tracking-wider text-white/25">Captions</label>
+                        <button onClick={() => setCaptions(!captions)} className="flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2 text-[11px] transition-all hover:border-white/[0.1]">
+                          <span className="text-white/40">Auto captions</span>
+                          <span className={`rounded px-2 py-0.5 text-[9px] font-bold transition-colors ${captions ? "bg-white text-black" : "bg-white/[0.06] text-white/25"}`}>{captions ? "ON" : "OFF"}</span>
                         </button>
                       </div>
                       <div>
-                        <label className="mb-2 block text-[11px] font-medium uppercase tracking-wider text-white/30">Background Music</label>
-                        <div className="grid grid-cols-2 gap-1 rounded-lg bg-[#0c0d12] p-1">
+                        <label className="mb-1.5 block text-[9px] font-medium uppercase tracking-wider text-white/25">Background Music</label>
+                        <div className="grid grid-cols-2 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
                           {["None", "Ambient", "Cinematic", "Emotional"].map((m) => (
-                            <button key={m} onClick={() => setMusic(m)} className={`rounded-md py-1.5 text-[11px] font-medium transition-all ${music === m ? "bg-white text-black shadow-sm" : "text-white/30 hover:text-white/50"}`}>{m}</button>
+                            <button key={m} onClick={() => setMusic(m)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${music === m ? "bg-white text-black shadow-sm" : "text-white/30 hover:text-white/50"}`}>{m}</button>
                           ))}
                         </div>
                       </div>
@@ -988,63 +1037,35 @@ export default function Home() {
                   </div>
 
                   {/* Render Panel */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <span className="text-[11px] font-medium uppercase tracking-wider text-white/30">Render</span>
-                      <span className="text-[12px] text-white/40">{totalVideosGenerated}/{result.scenes.length} videos</span>
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">Final Video</span>
+                      <span className="text-[11px] text-white/35">{totalVideosGenerated} / {result.scenes.length} videos ready</span>
                     </div>
-                    <div className="mb-4 h-1 overflow-hidden rounded-full bg-white/[0.06]">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${renderProgress === 100 ? "bg-emerald-400" : rendering ? "bg-blue-400" : "bg-white/40"}`}
-                        style={{ width: `${rendering || finalVideo ? (renderProgress || (totalVideosGenerated / result.scenes.length) * 100) : (totalVideosGenerated / result.scenes.length) * 100}%` }}
-                      />
-                    </div>
-                    <div className="mb-3 flex items-center justify-between text-[11px] text-white/25">
-                      <span>Duration: {duration}</span>
-                      <span>{totalImagesGenerated} image{totalImagesGenerated !== 1 ? "s" : ""} ready</span>
+                    <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                      <div className={`h-full rounded-full transition-all duration-500 ${renderProgress === 100 ? 'bg-emerald-400' : rendering ? 'bg-blue-400' : 'bg-white/30'}`} style={{ width: `${rendering || finalVideo ? (renderProgress || (totalVideosGenerated / result.scenes.length) * 100) : (totalVideosGenerated / result.scenes.length) * 100}%` }} />
                     </div>
 
                     {rendering && renderStage && (
                       <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500/10 px-3 py-2">
                         <Icon.Spinner className="h-3 w-3 animate-spin text-blue-400" />
-                        <span className="text-[11px] font-medium text-blue-400">{renderStage}</span>
+                        <span className="text-[10px] font-medium text-blue-400">{renderStage}</span>
                       </div>
                     )}
 
                     {finalVideo && !rendering && (
                       <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
                         <Icon.Check className="h-3 w-3 text-emerald-400" />
-                        <span className="text-[11px] font-medium text-emerald-400">Final video ready</span>
+                        <span className="text-[10px] font-medium text-emerald-400">Final video ready</span>
                       </div>
                     )}
 
-                    <button
-                      onClick={finalVideo ? exportVideo : startRender}
-                      disabled={rendering || (!finalVideo && totalVideosGenerated < result.scenes.length)}
-                      className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-3 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-                    >
-                      {rendering ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Icon.Spinner className="h-4 w-4" />Rendering... {renderProgress}%
-                        </span>
-                      ) : finalVideo ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Icon.Download />Export Video
-                        </span>
-                      ) : (
-                        "Render Final Video"
-                      )}
+                    <button onClick={finalVideo ? exportVideo : startRender} disabled={rendering || (!finalVideo && totalVideosGenerated < result.scenes.length)} className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-2.5 text-[12px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                      {rendering ? (<span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-3.5 w-3.5" />Rendering... {renderProgress}%</span>) : finalVideo ? (<span className="flex items-center justify-center gap-2"><Icon.Download />Export Video</span>) : "Render Final Video"}
                     </button>
 
-                    <p className="mt-2.5 text-center text-[11px] text-white/20">
-                      {totalVideosGenerated === 0
-                        ? "Generate videos for all scenes to enable rendering."
-                        : totalVideosGenerated < result.scenes.length
-                          ? `${result.scenes.length - totalVideosGenerated} scene${result.scenes.length - totalVideosGenerated !== 1 ? "s" : ""} need${result.scenes.length - totalVideosGenerated === 1 ? "s" : ""} video generation.`
-                          : finalVideo
-                            ? "Click to download your final video."
-                            : "All scenes ready. Click to render."
-                      }
+                    <p className="mt-2 text-center text-[10px] text-white/20">
+                      {totalVideosGenerated === 0 ? "Generate videos for all 5 scenes to render the final video." : totalVideosGenerated < result.scenes.length ? `${result.scenes.length - totalVideosGenerated} scene${result.scenes.length - totalVideosGenerated !== 1 ? 's' : ''} need${result.scenes.length - totalVideosGenerated === 1 ? 's' : ''} video generation.` : finalVideo ? 'Click to download your final video.' : 'All scenes are ready. Your final video can now be rendered.'}
                     </p>
                   </div>
                 </>)}
@@ -1084,37 +1105,39 @@ export default function Home() {
             )}
 
             {/* ===== TIMELINE ===== */}
-            <div id="timeline" className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <div className="text-[13px] font-medium text-white/60">Timeline</div>
-                  <div className="mt-0.5 text-[11px] text-white/25">Arrange your scenes.</div>
-                </div>
-                <div className="text-[12px] text-white/30">{duration}</div>
+            <div id="timeline" className="mt-6 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-white/30">Timeline</div>
+                <div className="text-[10px] text-white/25">{duration}</div>
               </div>
-              <div className="relative mb-3 h-px w-full bg-white/[0.06]">
+              <div className="relative mb-2.5 h-px w-full bg-white/[0.06]">
                 <div className="absolute left-0 top-1/2 h-2 w-2 -translate-x-1 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                <div className="absolute left-0 top-1/2 h-px w-1/5 -translate-y-1/2 bg-emerald-400/40" />
+                <div className="absolute left-0 top-1/2 h-px bg-emerald-400/40" style={{ width: `${(activeScene / result.scenes.length) * 100}%` }} />
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-5">
-                {result.scenes.map((scene) => (
-                  <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                    className={`flex-shrink-0 rounded-xl border p-3 text-left transition-all duration-150 sm:flex-shrink ${activeScene === scene.id ? "border-white/[0.2] bg-white/[0.08] shadow-[0_0_20px_-8px_rgba(255,255,255,0.08)]" : "border-white/[0.06] bg-[#0c0d12] hover:bg-white/[0.04]"}`}>
-                    <div className="relative mb-2 flex h-12 items-center justify-center overflow-hidden rounded-lg bg-white/[0.04]">
-                      {sceneImages[scene.id] ? (
-                        <img src={sceneImages[scene.id]} alt={scene.title} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-[10px] font-medium text-white/20">Scene {scene.id}</span>
-                      )}
-                      {sceneVideos[scene.id] && (
-                        <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded bg-blue-500/80">
-                          <svg width="8" height="8" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                        </div>
-                      )}
-                    </div>
-                    <div className="truncate text-[11px] font-medium text-white/60">{scene.title}</div>
-                  </button>
-                ))}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-5">
+                {result.scenes.map((scene) => {
+                  const hasVideo = !!sceneVideos[scene.id];
+                  const hasImage = !!sceneImages[scene.id];
+                  return (
+                    <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                      className={`flex-shrink-0 rounded-lg border p-2 text-left transition-all duration-150 sm:flex-shrink ${activeScene === scene.id ? "border-white/[0.15] bg-white/[0.06]" : "border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03]"}`}>
+                      <div className="relative mb-1.5 flex h-10 items-center justify-center overflow-hidden rounded-md bg-white/[0.03]">
+                        {hasImage ? (
+                          <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-[9px] font-bold text-white/15">{scene.id}</span>
+                        )}
+                        {hasVideo && (
+                          <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-500/90">
+                            <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="truncate text-[9px] font-medium text-white/40">{scene.title}</div>
+                      {hasVideo && <div className="mt-0.5 text-[8px] font-bold text-emerald-400/60">VIDEO READY</div>}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -1169,6 +1192,14 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-[#111218] px-4 py-2.5 shadow-2xl">
+          <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="text-[12px] font-medium text-white/70">{toast}</span>
+        </div>
+      )}
     </main>
   );
 }
