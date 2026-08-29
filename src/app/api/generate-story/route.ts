@@ -57,79 +57,79 @@ IMPORTANT CHARACTER RULES:
       }
     }
 
-    const prompt = `
-You are the AI story engine for PAT Orbit Studio.
+    const prompt = `You are a professional cinematic story engine for PAT Orbit Studio, an AI video creation tool. You write short visual stories optimized for video production.
 
-Create a short video story based on this idea:
-
+USER IDEA:
 ${story}
 
-Settings:
-- Content type: ${contentType}
+SETTINGS:
 - Language: ${language}
 - Visual style: ${style}
-- Duration: ${duration}
+- Target duration: ${duration}
 ${characterContext}
 
-Create exactly 5 scenes.
+YOUR TASK:
+Create exactly 5 cinematic scenes that form a complete, emotionally engaging story.
 
-For every scene provide:
-- id
-- short scene title
-- natural narration suitable for video voice-over
-- detailed visual prompt for an AI image/video generator
+SCENE STRUCTURE (adapt naturally to genre and tone):
+Scene 1 - HOOK: Immediately establish the protagonist and world. Create curiosity with a compelling opening image or moment. Drop the viewer into the story with no unnecessary exposition.
+Scene 2 - DEVELOPMENT: Introduce a meaningful problem, discovery, or escalation. Build tension or curiosity. Something changes.
+Scene 3 - TURNING POINT: The most important event or revelation. Should visually contrast with previous scenes. The story shifts direction.
+Scene 4 - CLIMAX: Highest emotional or action tension. The protagonist faces the core challenge. This is the peak moment.
+Scene 5 - RESOLUTION: Pay off the story. End with a memorable final image or emotional beat. Leave the viewer with a feeling.
 
-Rules:
-- Narration must be in ${language}.
-- If language is Hindi, use Devanagari script.
-- Visual prompts MUST be in English.
-- Keep characters visually consistent across scenes.
-- Create original characters and visuals.
-- Do not copy real actors or existing movie scenes.
-- Make the story engaging for short-form video.
-- Do not use markdown.
-- Do not use code fences.
-- Return ONLY valid JSON.
-- Escape quotation marks inside JSON strings.
+VISUAL PROMPT QUALITY (critical for AI image/video generation):
+Every visual prompt MUST include these elements when applicable:
+- SUBJECT: Who or what is in the frame, described in detail (clothing, expression, pose)
+- ENVIRONMENT: The setting - specific location, time of day, atmosphere
+- ACTION: What is happening in the moment
+- LIGHTING: Quality and direction of light (golden hour, neon glow, moonlight, dramatic shadows)
+- COMPOSITION: Camera angle and framing (close-up, wide shot, low angle, over-the-shoulder)
 
-Return exactly this structure:
+Example of a GOOD visual prompt:
+"Close-up of a 12-year-old boy with messy brown hair and a blue jacket, pushing open a heavy wooden door in a dark abandoned hallway. Warm golden light spills through the crack, illuminating dust particles. His face shows wonder mixed with fear. Cinematic composition, shallow depth of field, atmospheric lighting."
+
+Example of a BAD visual prompt:
+"A boy opening a door."
+
+CONTINUITY RULES:
+- Each scene must flow naturally from the previous one.
+- Maintain consistent character appearances across all scenes.
+- Vary the visual composition between scenes (do not repeat the same camera angle).
+- Each scene should have a distinct emotional beat that progresses the story.
+- Build to a climax in scene 4, then resolve in scene 5.
+- If the user's idea suggests a different structure, adapt naturally.
+
+NARRATION RULES:
+- Write narration in ${language}.${language === 'Hindi' ? ' Use Devanagari script.' : ''}
+- Narration should be natural spoken language suitable for voice-over.
+- Keep each scene narration between 2-4 sentences.
+- Make the narration cinematic - describe what the viewer sees and feels.
+- Avoid exposition dumps. Show, do not tell.
+
+OUTPUT FORMAT:
+Return ONLY valid JSON. No markdown. No code fences. Escape quotes inside strings.
 
 {
-  "title": "Short title",
+  "title": "Short compelling title",
   "scenes": [
     {
       "id": 1,
-      "title": "Scene title",
-      "narration": "Narration",
-      "visual": "English visual prompt"
-    },
-    {
-      "id": 2,
-      "title": "Scene title",
-      "narration": "Narration",
-      "visual": "English visual prompt"
-    },
-    {
-      "id": 3,
-      "title": "Scene title",
-      "narration": "Narration",
-      "visual": "English visual prompt"
-    },
-    {
-      "id": 4,
-      "title": "Scene title",
-      "narration": "Narration",
-      "visual": "English visual prompt"
-    },
-    {
-      "id": 5,
-      "title": "Scene title",
-      "narration": "Narration",
-      "visual": "English visual prompt"
+      "title": "Scene title (2-4 words)",
+      "narration": "Cinematic narration",
+      "visual": "Detailed visual prompt in English with subject, environment, action, lighting, and composition",
+      "beat": "Emotional beat (e.g., Curiosity, Tension, Discovery, Fear, Hope)",
+      "sceneDuration": "Approximate duration in seconds (e.g., 10, 12, 15)"
     }
   ]
 }
-`;
+
+CRITICAL:
+- Exactly 5 scenes.
+- Each visual prompt must be detailed and cinematic.
+- Each scene must connect to the previous and next scene.
+- The story should be engaging for short-form video.
+- Do NOT use markdown or code fences in the response.`;
 
     let response;
 
@@ -251,6 +251,16 @@ if (!response?.text) {
     if (result.scenes.length !== 5) {
       throw new Error("AI did not generate exactly 5 scenes.");
     }
+
+    // Ensure each scene has required fields and add defaults for new fields
+    result.scenes = result.scenes.map((scene: Record<string, unknown>, i: number) => ({
+      id: typeof scene.id === 'number' ? scene.id : i + 1,
+      title: typeof scene.title === 'string' ? scene.title : `Scene ${i + 1}`,
+      narration: typeof scene.narration === 'string' ? scene.narration : '',
+      visual: typeof scene.visual === 'string' ? scene.visual : '',
+      beat: typeof scene.beat === 'string' ? scene.beat : '',
+      sceneDuration: typeof scene.sceneDuration === 'string' ? scene.sceneDuration : '10',
+    }));
 
     return NextResponse.json(result);
   } catch (error) {

@@ -11,6 +11,8 @@ type Scene = {
   title: string;
   narration: string;
   visual: string;
+  beat?: string;
+  sceneDuration?: string;
 };
 
 type StoryResult = {
@@ -491,6 +493,7 @@ export default function Home() {
           characters: sceneChars.length > 0 ? sceneChars : undefined,
           sceneTitle: scene.title,
           style,
+          sceneBeat: scene.beat,
         }),
         signal: controller.signal,
       });
@@ -1195,6 +1198,7 @@ export default function Home() {
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-[12px] font-medium text-white/80">{scene.title}</div>
+                              {scene.beat && <div className="mt-0.5 text-[9px] text-violet-400/50 truncate">{scene.beat}</div>}
                               <div className="mt-1 flex items-center gap-1">
                                 <span className={`inline-block rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${getStatusColor(scene.id)}`}>{getStatusLabel(scene.id)}</span>
                               </div>
@@ -1228,8 +1232,14 @@ export default function Home() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-[12px] font-bold uppercase tracking-wider text-white/70">Scene {String(activeScene).padStart(2, "0")}</span>
-                      <span className="text-[11px] text-white/45">&middot;</span>
-                      <span className="text-[11px] text-white/55">{result.scenes.length} scenes</span>
+                      {currentScene?.beat && (<>
+                        <span className="text-[11px] text-white/45">&middot;</span>
+                        <span className="text-[11px] text-violet-400/60">{currentScene.beat}</span>
+                      </>)}
+                      {currentScene?.sceneDuration && (<>
+                        <span className="text-[11px] text-white/45">&middot;</span>
+                        <span className="text-[11px] text-blue-400/50">~{currentScene.sceneDuration}s</span>
+                      </>)}
                     </div>
                     <div className="flex items-center gap-1.5">
                       {currentScene && (
@@ -1427,6 +1437,25 @@ export default function Home() {
                     <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
                       <label className="mb-1.5 block text-[12px] font-medium text-white/80">Scene Title</label>
                       <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition-all focus:border-white/[0.20]" />
+                      {/* Scene metadata */}
+                      <div className="mt-2.5 flex items-center gap-3">
+                        {currentScene.beat && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-violet-400/60" />
+                            <span className="text-[10px] font-medium text-violet-400/70">{currentScene.beat}</span>
+                          </div>
+                        )}
+                        {currentScene.sceneDuration && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-blue-400/60" />
+                            <span className="text-[10px] font-medium text-blue-400/70">~{currentScene.sceneDuration}s</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
+                          <span className="text-[10px] font-medium text-emerald-400/70">Scene {currentScene.id} of {result.scenes.length}</span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Narration */}
@@ -1578,6 +1607,7 @@ export default function Home() {
                                   });
                                   fullPrompt = `Characters: ${charDesc.join('; ')}\n\nScene: ${fullPrompt}`;
                                 }
+                                if (currentScene.beat) fullPrompt += `\n\nEmotional tone: ${currentScene.beat}.`;
                                 if (style) fullPrompt += `\n\nStyle: ${style}. Cinematic, high quality.`;
                                 else fullPrompt += '\n\nCinematic, high quality.';
                                 return fullPrompt;

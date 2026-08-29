@@ -15,11 +15,12 @@ type CharacterInfo = {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { prompt, characters, sceneTitle, style } = body as {
+    const { prompt, characters, sceneTitle, style, sceneBeat } = body as {
       prompt?: string;
       characters?: CharacterInfo[];
       sceneTitle?: string;
       style?: string;
+      sceneBeat?: string;
     };
 
     if (!prompt || !prompt.trim()) {
@@ -48,10 +49,14 @@ export async function POST(request: Request) {
       }
     }
 
+    if (sceneBeat && sceneBeat.trim()) {
+      enhancedPrompt += `\n\nEmotional tone: ${sceneBeat.trim()}.`;
+    }
+
     if (style && style.trim()) {
-      enhancedPrompt += `\n\nVisual style: ${style.trim()}. Cinematic composition, high quality, detailed.`;
+      enhancedPrompt += `\n\nVisual style: ${style.trim()}. Cinematic composition, high quality, detailed, professional photography.`;
     } else {
-      enhancedPrompt += `\n\nCinematic composition, high quality, detailed.`;
+      enhancedPrompt += `\n\nCinematic composition, high quality, detailed, professional photography.`;
     }
 
     const response = await ai.models.generateContent({
