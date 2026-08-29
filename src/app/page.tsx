@@ -1059,20 +1059,28 @@ export default function Home() {
 
                 {/* Loading stages */}
                 {loading && (
-                  <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0a0b0f] p-3">
-                    <div className="space-y-1.5">
+                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-[#0a0b0f] p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Icon.Spinner className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+                      <span className="text-[11px] font-semibold text-white/70">Creating your story...</span>
+                    </div>
+                    <div className="space-y-2">
                       {loadingSteps.map((step, i) => (
-                        <div key={i} className="flex items-center gap-2">
+                        <div key={i} className="flex items-center gap-2.5">
                           {step.done ? (
-                            <span className="flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
-                              <Icon.Check className="h-2 w-2 text-emerald-400" />
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                              <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />
+                            </span>
+                          ) : i === loadingStep + 1 ? (
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                              <Icon.Spinner className="h-3 w-3 animate-spin text-emerald-400/60" />
                             </span>
                           ) : (
-                            <span className="flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded-full bg-white/[0.04]">
-                              <span className="h-0.5 w-0.5 rounded-full bg-white/20" />
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-white/[0.08]">
+                              <span className="h-1 w-1 rounded-full bg-white/[0.15]" />
                             </span>
                           )}
-                          <span className={`text-[10px] ${step.done ? "text-white/35" : "text-white/55"}`}>{step.label}</span>
+                          <span className={`text-[11px] ${step.done ? "text-white/30" : i === loadingStep + 1 ? "text-white/60" : "text-white/40"}`}>{step.label}</span>
                         </div>
                       ))}
                     </div>
@@ -1275,8 +1283,9 @@ export default function Home() {
                                 </div>
                               )}
                               {isGenerating && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                  <Icon.Spinner className="h-3 w-3 animate-spin text-white" />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 backdrop-blur-[1px]">
+                                  <Icon.Spinner className="h-3 w-3 animate-spin text-white/80" />
+                                  <span className="text-[7px] font-bold uppercase text-white/60">{sceneStatus[scene.id] === 'image' ? 'IMG' : 'VID'}</span>
                                 </div>
                               )}
                             </div>
@@ -1360,10 +1369,10 @@ export default function Home() {
                     {currentScene && sceneStatus[currentScene.id] === "image" ? (
                       <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
-                          <Icon.Spinner className="h-7 w-7 text-amber-400" />
+                          <Icon.Image className="h-7 w-7 text-amber-400 animate-pulse" />
                         </div>
-                        <span className="text-[14px] font-semibold text-white/70">Creating cinematic scene...</span>
-                        <span className="mt-1.5 text-[11px] text-white/40">Building visual composition for Scene {String(activeScene).padStart(2, '0')}</span>
+                        <span className="text-[14px] font-semibold text-white/70">Creating visual...</span>
+                        <span className="mt-1.5 text-[11px] text-white/40">AI is composing the image for Scene {String(activeScene).padStart(2, '0')}</span>
                         {/* Skeleton grid effect */}
                         <div className="mt-5 flex gap-1.5">
                           {[0,1,2,3,4].map(n => (
@@ -1374,10 +1383,10 @@ export default function Home() {
                     ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
                       <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
-                          <Icon.Spinner className="h-7 w-7 text-violet-400" />
+                          <Icon.Video className="h-7 w-7 text-violet-400 animate-pulse" />
                         </div>
-                        <span className="text-[14px] font-semibold text-white/70">Creating cinematic motion...</span>
-                        <span className="mt-1.5 text-[11px] text-white/40">Turning your visual into a moving scene</span>
+                        <span className="text-[14px] font-semibold text-white/70">Creating motion...</span>
+                        <span className="mt-1.5 text-[11px] text-white/40">Scene {String(activeScene).padStart(2, '0')} is being animated. This may take a minute.</span>
                         {/* Image-to-video workflow indicator */}
                         <div className="mt-5 flex items-center gap-2">
                           <div className="flex h-8 w-10 items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/[0.06]">
@@ -1419,10 +1428,10 @@ export default function Home() {
                     ) : (
                       <div className="flex aspect-video flex-col items-center justify-center" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
-                          <Icon.Image className="text-white/45" />
+                          <Icon.Image className="h-7 w-7 text-white/30" />
                         </div>
-                        <span className="text-[14px] font-medium text-white/65">Your scene isn't visualized yet</span>
-                        <span className="mt-1.5 max-w-xs text-center text-[12px] leading-5 text-white/40">Generate an image to create the visual for this scene, then create cinematic video from it.</span>
+                        <span className="text-[14px] font-semibold text-white/55">Scene {String(activeScene).padStart(2, '0')} is ready to visualize</span>
+                        <span className="mt-1.5 max-w-xs text-center text-[12px] leading-5 text-white/40">Generate an image to bring this scene to life.</span>
                         {/* Workflow pipeline visual */}
                         <div className="mt-6 flex items-center gap-2">
                           {['Scene', 'Image', 'Video'].map((step, i) => (
@@ -1446,7 +1455,7 @@ export default function Home() {
                       <div className="flex items-center gap-2">
                         <button onClick={() => startImageGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "image" || sceneStatus[currentScene.id] === "video"}
                           className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                          {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneImages[currentScene.id] ? (<>Regenerate Image</>) : (<>Generate Image</>)}
+                          {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating visual...</>) : sceneImages[currentScene.id] ? (<>Regenerate Image</>) : (<>Generate Image</>)}
                         </button>
                         {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && sceneStatus[currentScene.id] !== 'video' && (
                           <span className="flex items-center gap-1 text-[10px] text-emerald-400/60"><Icon.Check className="h-3 w-3" />Ready</span>
@@ -1458,7 +1467,7 @@ export default function Home() {
                         <div className="flex items-center gap-2">
                           <button onClick={() => startVideoGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "video" || sceneStatus[currentScene.id] === "image"}
                             className="flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                            {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating cinematic motion...</>) : sceneVideos[currentScene.id] ? "Regenerate Video" : "Generate Video"}
+                            {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating motion...</>) : sceneVideos[currentScene.id] ? "Regenerate Video" : "Generate Video"}
                           </button>
                           {sceneVideos[currentScene.id] && (
                             <span className="flex items-center gap-1 text-[10px] text-blue-400/60"><Icon.Check className="h-3 w-3" />Ready</span>
@@ -1556,14 +1565,18 @@ export default function Home() {
                       <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3">
                         <div className="mb-2 flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
-                            <Icon.Mic className="h-3 w-3 text-white/50" />
+                            {voiceStatus[currentScene.id] === 'generating' ? (
+                              <Icon.Spinner className="h-3 w-3 animate-spin text-amber-400" />
+                            ) : (
+                              <Icon.Mic className="h-3 w-3 text-white/50" />
+                            )}
                             <span className="text-[11px] font-medium text-white/70">Voice Narration</span>
                           </div>
                           {voiceStatus[currentScene.id] === 'ready' && (
                             <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400/70">READY</span>
                           )}
                           {voiceStatus[currentScene.id] === 'generating' && (
-                            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold text-amber-400/70">GENERATING</span>
+                            <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold text-amber-400/70"><Icon.Spinner className="h-2 w-2 animate-spin" />GENERATING</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -1801,23 +1814,39 @@ export default function Home() {
 
                       {/* Ready indicator */}
                       {renderReady && !rendering && !finalVideo && (
-                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2">
-                          <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
-                          <span className="text-[11px] font-semibold text-emerald-400/90">Ready to render</span>
+                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
+                          <Icon.Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                          <div>
+                            <span className="text-[11px] font-semibold text-emerald-400/90">Ready to render</span>
+                            <p className="text-[10px] text-white/40">All scene videos are generated</p>
+                          </div>
                         </div>
                       )}
 
                       {rendering && renderStage && (
-                        <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500/10 px-3 py-2">
-                          <Icon.Spinner className="h-3 w-3 animate-spin text-blue-400" />
-                          <span className="text-[11px] font-medium text-blue-400">{renderStage}</span>
+                        <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <Icon.Spinner className="h-3 w-3 animate-spin text-blue-400" />
+                            <span className="text-[11px] font-medium text-blue-400">{renderStage}</span>
+                          </div>
+                          {renderProgress > 0 && renderProgress < 100 && (
+                            <div className="mt-2">
+                              <div className="h-1 overflow-hidden rounded-full bg-blue-500/10">
+                                <div className="h-full rounded-full bg-blue-400 transition-all duration-500" style={{ width: `${renderProgress}%` }} />
+                              </div>
+                              <span className="mt-1 block text-[9px] text-white/35">{renderProgress}% complete</span>
+                            </div>
+                          )}
                         </div>
                       )}
 
                       {finalVideo && !rendering && (
-                        <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
-                          <Icon.Check className="h-3 w-3 text-emerald-400" />
-                          <span className="text-[11px] font-medium text-emerald-400">Final video ready</span>
+                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
+                          <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
+                          <div>
+                            <span className="text-[11px] font-semibold text-emerald-400/90">Final video ready</span>
+                            <p className="text-[10px] text-white/40">Export your video as MP4</p>
+                          </div>
                         </div>
                       )}
 
@@ -1831,8 +1860,8 @@ export default function Home() {
                         ) : "Render Final Video"}
                       </button>
 
-                      <p className="mt-2 text-center text-[11px] text-white/50">
-                        {!renderReady ? `Generate videos for all ${result.scenes.length} scenes to render.` : finalVideo ? 'Export your final video as MP4.' : 'All scenes ready. Render your final video.'}
+                      <p className="mt-2 text-center text-[11px] text-white/40">
+                        {!renderReady ? `${result.scenes.length - totalVideosGenerated} scene${result.scenes.length - totalVideosGenerated === 1 ? '' : 's'} need${result.scenes.length - totalVideosGenerated === 1 ? 's' : ''} video generation before rendering.` : finalVideo ? 'Download your final MP4 video.' : 'Your video is ready to export.'}
                       </p>
                     </div>
                   </>)}
