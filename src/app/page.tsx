@@ -301,6 +301,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     setResult(null);
+    setCurrentProjectId(null);
     setSaved(false);
     try {
       const response = await fetch("/api/generate-story", {
@@ -517,6 +518,9 @@ export default function Home() {
     setSceneStatus({});
     setVoiceStatus({});
     setVoiceAudios({});
+    setRendering(false);
+    setRenderStage('');
+    setRenderProgress(0);
     setActiveScene(1);
     setCurrentProjectId(project.id);
     setSaved(true);
@@ -925,7 +929,7 @@ export default function Home() {
             {!result ? (
               <span className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-white/70">Create</span>
             ) : (
-              <button onClick={() => setResult(null)} className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/70">Create</button>
+              <button onClick={() => { setResult(null); setCurrentProjectId(null); }} className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/70">Create</button>
             )}
             <button onClick={() => document.getElementById("projects")?.scrollIntoView({ behavior: "smooth" })} className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/70">Projects</button>
             {result && (
@@ -956,7 +960,7 @@ export default function Home() {
               {settingsOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/[0.08] bg-[#111218] p-1.5 shadow-2xl">
                   <div className="px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-white/50">Settings</div>
-                  <button onClick={() => setAspectRatio("9:16")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${aspectRatio === "9:16" ? "text-white/90" : "text-white/50"}`}>Aspect ratio: {aspectRatio}</button>
+                  <button onClick={() => setAspectRatio(aspectRatio === '9:16' ? '16:9' : aspectRatio === '16:9' ? '1:1' : '9:16')} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${aspectRatio !== '9:16' ? 'text-white/90' : 'text-white/50'}`}>Aspect ratio: {aspectRatio}</button>
                   <button onClick={() => setVoice(voice === "Natural" ? "Deep" : voice === "Deep" ? "Soft" : "Natural")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${voice !== "Natural" ? "text-white/90" : "text-white/50"}`}>Voice: {voice}</button>
                   <button onClick={() => setCaptions(!captions)} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${captions ? "text-white/90" : "text-white/50"}`}>Captions: {captions ? "ON" : "OFF"}</button>
                   <button onClick={() => setMusic(music === "None" ? "Ambient" : music === "Ambient" ? "Cinematic" : music === "Cinematic" ? "Emotional" : "None")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${music !== "None" ? "text-white/90" : "text-white/50"}`}>Music: {music}</button>
@@ -976,7 +980,7 @@ export default function Home() {
               {!result ? (
                 <span className="rounded-lg bg-white/[0.06] px-3 py-2.5 text-[13px] font-medium text-white/80">Create</span>
               ) : (
-                <button onClick={() => { setResult(null); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Create</button>
+                <button onClick={() => { setResult(null); setCurrentProjectId(null); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Create</button>
               )}
               <button onClick={() => { document.getElementById("projects")?.scrollIntoView({ behavior: "smooth" }); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Projects</button>
               {result && (
@@ -1187,7 +1191,7 @@ export default function Home() {
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="mb-2 flex items-center gap-1.5 text-[11px] text-white/50">
-                      <button onClick={() => setResult(null)} className="transition-colors hover:text-white/70">PAT Orbit Studio</button>
+                      <button onClick={() => { setResult(null); setCurrentProjectId(null); }} className="transition-colors hover:text-white/70">PAT Orbit Studio</button>
                       <span className="text-white/30">/</span>
                       <span className="text-white/70 truncate max-w-[180px]">{projectName}</span>
                     </div>
