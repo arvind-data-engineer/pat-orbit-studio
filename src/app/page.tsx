@@ -139,6 +139,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState<"all" | "completed" | "in-progress">("all");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   /* Close settings dropdown on outside click */
   useEffect(() => {
@@ -173,6 +175,38 @@ export default function Home() {
     }
     return () => timers.forEach(clearTimeout);
   }, [loading]);
+
+  /* Keyboard shortcuts */
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+
+      /* Escape: close modals/menus */
+      if (e.key === 'Escape') {
+        if (mobileNavOpen) { setMobileNavOpen(false); return; }
+        if (settingsOpen) { setSettingsOpen(false); return; }
+        if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+      }
+
+      /* Don't trigger scene navigation while typing */
+      if (isInput) return;
+
+      /* Arrow keys: scene navigation */
+      if (result) {
+        if (e.key === 'ArrowLeft' && activeScene > 1) { e.preventDefault(); setActiveScene(activeScene - 1); }
+        if (e.key === 'ArrowRight' && activeScene < result.scenes.length) { e.preventDefault(); setActiveScene(activeScene + 1); }
+      }
+
+      /* Ctrl/Cmd + S: save */
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (result) saveCurrentProject();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId]);
 
   function saveProjects(nextProjects: Project[]) {
     setProjects(nextProjects);
@@ -221,6 +255,15 @@ export default function Home() {
     setSaved(false);
   }
 
+  /* Track unsaved changes */
+  useEffect(() => {
+    if (result && !saved) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [result, projectName, story, language, style, duration, sceneImages]);
+
   function saveCurrentProject() {
     if (!result) return;
     const project: Project = {
@@ -232,6 +275,7 @@ export default function Home() {
     };
     saveProjects([project, ...projects]);
     setSaved(true);
+    setHasUnsavedChanges(false);
     setToast("Project saved");
     setTimeout(() => setToast(null), 2500);
   }
@@ -435,10 +479,11 @@ export default function Home() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#08090c] text-white">
+    <main className="min-h-screen bg-[#08090c] text-white overflow-x-hidden">
       {/* ========== HEADER ========== */}
       <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#08090c]/80 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 sm:px-6">
+          {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-white to-white/70 text-[11px] font-black text-black">
               P
@@ -449,6 +494,8 @@ export default function Home() {
               <span className="text-[11px] text-white/50">Studio</span>
             </div>
           </div>
+
+          {/* Desktop nav */}
           <nav className="hidden items-center gap-0.5 md:flex">
             {!result ? (
               <span className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-white/70">Create</span>
@@ -460,20 +507,25 @@ export default function Home() {
               <button onClick={() => document.getElementById("timeline")?.scrollIntoView({ behavior: "smooth" })} className="rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/70">Timeline</button>
             )}
           </nav>
+
+          {/* Right actions */}
           <div className="flex items-center gap-1.5">
             {result && (
               <>
-                <button onClick={saveCurrentProject} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white/70">
+                {hasUnsavedChanges && (
+                  <span className="hidden text-[10px] font-medium text-amber-400/70 sm:block">Unsaved</span>
+                )}
+                <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${saved && !hasUnsavedChanges ? 'text-emerald-400/70' : 'text-white/65 hover:bg-white/[0.05] hover:text-white/80'}`}>
                   <Icon.Folder className="text-white/55" />
-                  {saved ? "Saved" : "Save"}
+                  {saved && !hasUnsavedChanges ? "Saved" : "Save"}
                 </button>
-                <button onClick={finalVideo ? exportVideo : undefined} className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white/80">
+                <button onClick={finalVideo ? exportVideo : undefined} className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white/80">
                   <Icon.Download className="text-white/65" />
                   Export
                 </button>
               </>
             )}
-            <div ref={settingsRef} className="relative">
+            <div ref={settingsRef} className="relative hidden sm:block">
               <button onClick={() => setSettingsOpen(!settingsOpen)} aria-label="Settings" className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white/60">
                 <Icon.Settings />
               </button>
@@ -487,8 +539,40 @@ export default function Home() {
                 </div>
               )}
             </div>
+
+            {/* Mobile menu button */}
+            <button onClick={() => setMobileNavOpen(!mobileNavOpen)} aria-label="Menu" className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/65 transition-colors md:hidden">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+            </button>
           </div>
         </div>
+
+        {/* Mobile nav panel */}
+        {mobileNavOpen && (
+          <div className="border-t border-white/[0.06] bg-[#0c0d12] px-4 py-3 md:hidden">
+            <div className="flex flex-col gap-1">
+              {!result ? (
+                <span className="rounded-lg bg-white/[0.06] px-3 py-2.5 text-[13px] font-medium text-white/80">Create</span>
+              ) : (
+                <button onClick={() => { setResult(null); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Create</button>
+              )}
+              <button onClick={() => { document.getElementById("projects")?.scrollIntoView({ behavior: "smooth" }); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Projects</button>
+              {result && (
+                <button onClick={() => { document.getElementById("timeline")?.scrollIntoView({ behavior: "smooth" }); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Timeline</button>
+              )}
+              {result && (
+                <button onClick={() => { finalVideo && exportVideo(); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Export</button>
+              )}
+              <div className="my-1 border-t border-white/[0.06]" />
+              <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-white/40">Settings</div>
+              <div className="grid grid-cols-2 gap-1 px-1">
+                {["9:16", "16:9", "1:1"].map((r) => (
+                  <button key={r} onClick={() => setAspectRatio(r)} className={`rounded-md py-1.5 text-[11px] font-medium transition-all ${aspectRatio === r ? "bg-white text-black" : "text-white/50"}`}>{r}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <section className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 sm:py-12">
@@ -784,15 +868,25 @@ export default function Home() {
             <div className="mb-4">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <button onClick={() => setResult(null)} className="mb-2 flex items-center gap-1.5 text-[11px] text-white/55 transition-colors hover:text-white/60">
-                    <Icon.ArrowLeft /> PAT Orbit Studio / Back
-                  </button>
-                  <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl" />
-                  <p className="mt-1 text-[13px] text-white/65">{result.scenes.length} scenes &middot; {language} &middot; {style} &middot; {duration}</p>
+                  {/* Breadcrumb */}
+                  <div className="mb-2 flex items-center gap-1.5 text-[11px] text-white/50">
+                    <button onClick={() => setResult(null)} className="transition-colors hover:text-white/70">PAT Orbit Studio</button>
+                    <span className="text-white/30">/</span>
+                    <button onClick={() => { setResult(null); setTimeout(() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' }), 100); }} className="transition-colors hover:text-white/70">Projects</button>
+                    <span className="text-white/30">/</span>
+                    <span className="text-white/70 truncate max-w-[180px]">{projectName}</span>
+                  </div>
+                  {/* Title */}
+                  <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl text-white" />
+                  {/* Editing status */}
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">Editing project</span>
+                    {saved && !hasUnsavedChanges && <span className="text-[11px] text-white/40">Last saved just now</span>}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={saveCurrentProject} className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[12px] font-medium text-white/50 transition-all hover:bg-white/[0.08] hover:text-white/70 active:scale-[0.98]">
-                    <Icon.Folder className="text-white/55" />{saved ? "Saved" : "Save"}
+                  <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-all active:scale-[0.98] ${hasUnsavedChanges ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25' : saved && !hasUnsavedChanges ? 'border border-white/[0.08] bg-white/[0.04] text-emerald-400/70' : 'border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white/80'}`}>
+                    <Icon.Folder className="text-white/55" />{saved && !hasUnsavedChanges ? "Saved" : "Save"}
                   </button>
                   <button onClick={finalVideo ? exportVideo : undefined} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98]">
                     <Icon.Download className="text-black/60" />Export
