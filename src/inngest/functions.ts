@@ -48,9 +48,27 @@ export const generateVideoJob = inngest.createFunction(
       if (match) config.durationSeconds = Math.min(parseInt(match[1], 10), 8);
     }
 
+    // Build enhanced prompt with character consistency
+    let videoPrompt = (job.prompt || "").trim();
+    if (job.characters && job.characters.length > 0) {
+      const sceneChars = job.characters.filter((c) => c.name?.trim());
+      if (sceneChars.length > 0) {
+        const charDesc = sceneChars.map((c) => {
+          const parts = [c.name];
+          if (c.appearance?.trim()) parts.push(`Appearance: ${c.appearance.trim()}`);
+          if (c.role?.trim()) parts.push(`Role: ${c.role.trim()}`);
+          return parts.join(' - ');
+        });
+        videoPrompt = `Characters: ${charDesc.join('; ')}.\n\nScene: ${videoPrompt}`;
+      }
+    }
+    if (job.sceneTitle) {
+      videoPrompt = `Title: ${job.sceneTitle}. ${videoPrompt}`;
+    }
+
     const params: Record<string, unknown> = {
       model: "veo-2.0-generate-001",
-      prompt: (job.prompt || "").trim(),
+      prompt: videoPrompt,
       config,
     };
 

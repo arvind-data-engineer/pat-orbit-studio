@@ -15,13 +15,46 @@ export async function POST(request: Request) {
       contentType = "Story",
       style = "Cartoon",
       duration = "60 sec",
-    } = body;
+      characters = [],
+    } = body as {
+      story?: string;
+      language?: string;
+      contentType?: string;
+      style?: string;
+      duration?: string;
+      characters?: Array<{ name: string; description?: string; appearance?: string; role?: string }>;
+    };
 
     if (!story || !story.trim()) {
       return NextResponse.json(
         { error: "Please provide a story idea." },
         { status: 400 }
       );
+    }
+
+    // Build character context for the story
+    let characterContext = '';
+    if (Array.isArray(characters) && characters.length > 0) {
+      const definedChars = characters.filter((c) => c.name?.trim());
+      if (definedChars.length > 0) {
+        characterContext = `
+
+DEFINED CHARACTERS (use these consistently throughout the story):
+${definedChars.map((c) => {
+  const parts = [`- ${c.name}`];
+  if (c.role?.trim()) parts.push(`  Role: ${c.role.trim()}`);
+  if (c.appearance?.trim()) parts.push(`  Appearance: ${c.appearance.trim()}`);
+  if (c.description?.trim()) parts.push(`  Description: ${c.description.trim()}`);
+  return parts.join('\n');
+}).join('\n')}
+
+IMPORTANT CHARACTER RULES:
+- Use the defined character names exactly as given.
+- Describe characters consistently using their defined appearance in visual prompts.
+- Do not rename or change character appearances.
+- Not every character must appear in every scene - use them naturally where they fit.
+- If a character is referenced in a scene, include their defined appearance in the visual prompt for that scene.`;
+      }
     }
 
     const prompt = `
@@ -36,6 +69,7 @@ Settings:
 - Language: ${language}
 - Visual style: ${style}
 - Duration: ${duration}
+${characterContext}
 
 Create exactly 5 scenes.
 
@@ -49,7 +83,7 @@ Rules:
 - Narration must be in ${language}.
 - If language is Hindi, use Devanagari script.
 - Visual prompts MUST be in English.
-- Keep characters visually consistent.
+- Keep characters visually consistent across scenes.
 - Create original characters and visuals.
 - Do not copy real actors or existing movie scenes.
 - Make the story engaging for short-form video.

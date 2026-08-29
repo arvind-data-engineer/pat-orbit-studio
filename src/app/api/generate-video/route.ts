@@ -10,7 +10,14 @@ export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
-    const { prompt, image, duration, aspectRatio } = await request.json();
+    const { prompt, image, duration, aspectRatio, characters, sceneTitle } = await request.json() as {
+      prompt?: string;
+      image?: string;
+      duration?: string;
+      aspectRatio?: string;
+      characters?: Array<{ name: string; description?: string; appearance?: string; role?: string }>;
+      sceneTitle?: string;
+    };
 
     if (!prompt || !prompt.trim()) {
       return NextResponse.json(
@@ -34,9 +41,27 @@ export async function POST(request: Request) {
       }
     }
 
+    // Build enhanced prompt with character consistency
+    let videoPrompt = prompt.trim();
+    if (Array.isArray(characters) && characters.length > 0) {
+      const sceneChars = characters.filter((c) => c.name?.trim());
+      if (sceneChars.length > 0) {
+        const charDesc = sceneChars.map((c) => {
+          const parts = [c.name];
+          if (c.appearance?.trim()) parts.push(`Appearance: ${c.appearance.trim()}`);
+          if (c.role?.trim()) parts.push(`Role: ${c.role.trim()}`);
+          return parts.join(' - ');
+        });
+        videoPrompt = `Characters: ${charDesc.join('; ')}.\n\nScene: ${videoPrompt}`;
+      }
+    }
+    if (sceneTitle) {
+      videoPrompt = `Title: ${sceneTitle}. ${videoPrompt}`;
+    }
+
     const params: Record<string, unknown> = {
       model: "veo-2.0-generate-001",
-      prompt: prompt.trim(),
+      prompt: videoPrompt,
       config,
     };
 

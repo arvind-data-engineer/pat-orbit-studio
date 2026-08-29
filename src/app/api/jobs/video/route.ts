@@ -12,7 +12,7 @@ import { createJob, getJob, type JobData } from "@/lib/jobs";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { prompt, image, duration, aspectRatio, sceneId } = body;
+    const { prompt, image, duration, aspectRatio, sceneId, characters, sceneTitle } = body;
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json(
@@ -47,6 +47,8 @@ export async function POST(request: Request) {
       image: image || undefined,
       duration: duration || undefined,
       aspectRatio: aspectRatio || undefined,
+      characters: Array.isArray(characters) ? characters : undefined,
+      sceneTitle: typeof sceneTitle === 'string' ? sceneTitle : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

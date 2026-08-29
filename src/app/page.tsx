@@ -296,7 +296,7 @@ export default function Home() {
       const response = await fetch("/api/generate-story", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ story, language, style, duration, contentType: "Story" }),
+        body: JSON.stringify({ story, language, style, duration, contentType: "Story", characters: characters.length > 0 ? characters : undefined }),
         signal: controller.signal,
       });
       const data = await response.json();
@@ -520,11 +520,19 @@ export default function Home() {
     setError("");
 
     try {
+      // Build character data for this scene
+      const sceneCharIndices = sceneCharacters[sceneId] || [];
+      const sceneChars = sceneCharIndices
+        .map((idx) => characters[idx])
+        .filter((c): c is Character => !!c && !!c.name?.trim());
+
       const body: Record<string, unknown> = {
         prompt: scene.visual,
         duration,
         aspectRatio,
         sceneId,
+        sceneTitle: scene.title,
+        characters: sceneChars.length > 0 ? sceneChars : undefined,
       };
       if (sceneImages[sceneId]) body.image = sceneImages[sceneId];
 

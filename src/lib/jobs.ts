@@ -39,6 +39,9 @@ export interface JobData {
   image?: string;
   duration?: string;
   aspectRatio?: string;
+  /** Character consistency */
+  characters?: Array<{ name: string; description?: string; appearance?: string; role?: string }>;
+  sceneTitle?: string;
   createdAt: string;
   updatedAt: string;
   error?: string;
