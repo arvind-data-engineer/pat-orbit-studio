@@ -116,10 +116,25 @@ const Icon = {
   ),
   X: (p: { className?: string }) => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-  ),
-  Copy2: (p: { className?: string }) => (
+  ),  Copy2: (p: { className?: string }) => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
   ),
+  Globe: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+  ),
+  Clock: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+  ),
+  Square: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></svg>
+  ),
+  Zap: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+  ),
+  Subtitles: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="14" x2="23" y2="14" /></svg>
+  ),
+
 };
 
 const TEMPLATES = [
@@ -1000,168 +1015,290 @@ export default function Home() {
         {!result ? (
           <>
             {/* ===== CREATE SCREEN ===== */}
-            <div className="mx-auto max-w-3xl">
-              {/* Hero - minimal */}
-              <div className="relative mb-5 text-center">
-                <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                  <div className="absolute left-1/2 top-0 h-[200px] w-[300px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.04] to-transparent blur-3xl" />
-                </div>
-                <h1 className="text-[28px] font-bold tracking-tight leading-tight sm:text-[34px] text-white">
-                  Create your next video
-                </h1>
-                <p className="mt-2 text-[13px] text-white/50">
-                  One idea. Full cinematic production. Story, scenes, visuals, voice and final video.
-                </p>
+            <div className="relative">
+              {/* Background glow */}
+              <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                <div className="absolute left-1/2 top-0 h-[300px] w-[500px] -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-500/[0.03] to-transparent blur-3xl" />
               </div>
 
+              {/* Hero */}
+              <div className="mb-8 text-center">
+                <h1 className="text-[32px] font-bold tracking-tight leading-tight sm:text-[40px] text-white">
+                  Create your next <span className="italic text-white/80">video</span>
+                </h1>
+                <p className="mt-2 text-[14px] text-white/45">One idea. Full cinematic production.</p>
+                <p className="text-[12px] text-white/30">Story, scenes, visuals, voice and final video.</p>
+              </div>
 
+              {/* Two-column layout */}
+              <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1fr_300px]">
+                {/* LEFT COLUMN - Main creation card */}
+                <div className="space-y-5">
+                  {/* Main creation card */}
+                  <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-5 shadow-[0_0_60px_-15px_rgba(255,255,255,0.03)] sm:p-6">
+                    {/* Section 1: What do you want to create? */}
+                    <div className="mb-4">
+                      <div className="mb-3 flex items-center gap-2.5">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-400">1</div>
+                        <h2 className="text-[13px] font-semibold text-white/85">What do you want to create?</h2>
+                        <span className="ml-auto rounded-md bg-emerald-500/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-400/70">AI POWERED</span>
+                      </div>
 
-              {/* Main creation card */}
-              <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-5 shadow-[0_0_60px_-15px_rgba(255,255,255,0.03)] sm:p-6">
-                {/* Card header */}
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <Icon.Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-[14px] font-semibold text-white/90">What do you want to create?</h2>
-                    </div>
-                  </div>
-                  <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-emerald-400/70">AI Powered</span>
-                </div>
-
-                {/* Textarea - the main focus */}
-                <div className="relative group">
-                  <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-emerald-500/[0.08] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
-                  <textarea
-                    value={story}
-                    onChange={(e) => { setStory(e.target.value); setError(""); }}
-                    placeholder="Describe your video idea..."
-                    rows={5}
-                    className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[15px] leading-7 text-white outline-none transition-all placeholder:text-white/30 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
-                  />
-                  <div className="absolute bottom-2.5 right-3 flex items-center gap-2">
-                    <span className="text-[10px] text-white/25 tabular-nums">{story.length}</span>
-                  </div>
-                </div>
-
-                {/* Characters + Generate row */}
-                <div className="mt-3 flex items-center justify-between">
-                  <button onClick={() => setShowCharacters(true)} className="flex items-center gap-1.5 text-[11px] text-white/35 transition-colors hover:text-white/55">
-                    <Icon.User className="h-3 w-3" />
-                    Characters
-                  </button>
-                  <button onClick={generateStory} disabled={!story.trim() || loading} className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-6 py-2.5 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
-                    {loading ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating...</>) : (<><Icon.Sparkles className="h-3.5 w-3.5" />Create Video</>)}
-                  </button>
-                </div>
-
-                {/* Loading stages */}
-                {loading && (
-                  <div className="mt-3 rounded-xl border border-white/[0.06] bg-[#0a0b0f] p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <Icon.Spinner className="h-3.5 w-3.5 animate-spin text-emerald-400" />
-                      <span className="text-[11px] font-semibold text-white/70">Creating your story...</span>
-                    </div>
-                    <div className="space-y-2">
-                      {loadingSteps.map((step, i) => (
-                        <div key={i} className="flex items-center gap-2.5">
-                          {step.done ? (
-                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
-                              <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />
-                            </span>
-                          ) : i === loadingStep + 1 ? (
-                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
-                              <Icon.Spinner className="h-3 w-3 animate-spin text-emerald-400/60" />
-                            </span>
-                          ) : (
-                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-white/[0.08]">
-                              <span className="h-1 w-1 rounded-full bg-white/[0.15]" />
-                            </span>
-                          )}
-                          <span className={`text-[11px] ${step.done ? "text-white/30" : i === loadingStep + 1 ? "text-white/60" : "text-white/40"}`}>{step.label}</span>
+                      <div className="relative group">
+                        <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-emerald-500/[0.06] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
+                        <textarea
+                          value={story}
+                          onChange={(e) => { setStory(e.target.value); setError(""); }}
+                          placeholder="Describe your video idea..."
+                          rows={4}
+                          maxLength={1500}
+                          className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[14px] leading-6 text-white outline-none transition-all placeholder:text-white/25 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
+                        />
+                        <div className="absolute bottom-2.5 right-3 flex items-center gap-3">
+                          <span className="text-[10px] text-white/20 tabular-nums">{story.length} / 1500</span>
                         </div>
+                      </div>
+
+                      <p className="mt-2 text-[11px] text-white/30">
+                        Example: A young boy discovers a mysterious portal beneath his school and enters a glowing world.
+                      </p>
+
+                      {/* Idea chips */}
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                        <Icon.Lightbulb className="h-3 w-3 text-white/25" />
+                        <span className="text-[10px] text-white/30">Try an idea:</span>
+                        {["Magical adventure", "Detective mystery", "Robot becomes human", "Time travel story"].map((idea) => (
+                          <button key={idea} onClick={() => { setStory(idea); setError(""); }} className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-[10px] text-white/40 transition-all hover:border-emerald-500/20 hover:bg-emerald-500/[0.05] hover:text-white/60">
+                            {idea}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Characters link */}
+                      <div className="mt-3 flex items-center gap-2 border-t border-white/[0.04] pt-3">
+                        <Icon.User className="h-3 w-3 text-white/30" />
+                        <span className="text-[11px] text-white/35">Characters</span>
+                        <span className="text-[11px] text-white/25">Add characters to keep appearance consistent across scenes.</span>
+                        <button onClick={() => setShowCharacters(true)} className="ml-auto rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-white/55 transition-all hover:bg-white/[0.08] hover:text-white/75">
+                          Manage Characters
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Set your production */}
+                    <div>
+                      <div className="mb-3 flex items-center gap-2.5">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-400">2</div>
+                        <h2 className="text-[13px] font-semibold text-white/85">Set your production</h2>
+                      </div>
+
+                      {/* Settings grid */}
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                        {/* Language */}
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <Icon.Globe className="h-2.5 w-2.5" />Language
+                          </label>
+                          <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
+                            <option>Hindi</option><option>Hinglish</option><option>English</option>
+                          </select>
+                        </div>
+                        {/* Style */}
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <Icon.Image className="h-2.5 w-2.5" />Style
+                          </label>
+                          <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
+                            <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
+                          </select>
+                        </div>
+                        {/* Duration */}
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <Icon.Clock className="h-2.5 w-2.5" />Duration
+                          </label>
+                          <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
+                            <option>30s</option><option>60s</option><option>90s</option>
+                          </select>
+                        </div>
+                        {/* Aspect Ratio */}
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <Icon.Square className="h-2.5 w-2.5" />Aspect Ratio
+                          </label>
+                          <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
+                            <option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option>
+                          </select>
+                          <span className="mt-0.5 block text-[8px] text-white/20">{aspectRatio === "9:16" ? "Shorts / Reels" : aspectRatio === "16:9" ? "YouTube / Film" : "Social / Square"}</span>
+                        </div>
+                        {/* Voice */}
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <Icon.Mic className="h-2.5 w-2.5" />Voice
+                          </label>
+                          <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
+                            <option>Natural</option><option>Deep</option><option>Soft</option>
+                          </select>
+                        </div>
+                        {/* Captions + Music combined */}
+                        <div>
+                          <label className="mb-1 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-white/35">
+                            <Icon.Music className="h-2.5 w-2.5" />Music
+                          </label>
+                          <select value={music} onChange={(e) => setMusic(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[11px] font-medium text-white/70 outline-none transition-all focus:border-white/[0.15]">
+                            <option>None</option><option>Ambient</option><option>Cinematic</option><option>Emotional</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Captions toggle row */}
+                      <div className="mt-3 flex items-center gap-3">
+                        <button onClick={() => setCaptions(!captions)} className="flex items-center gap-1.5 text-[11px] text-white/40 transition-colors hover:text-white/55">
+                          <span className={`h-3 w-3 rounded border transition-colors ${captions ? 'border-emerald-500/40 bg-emerald-500/15' : 'border-white/15'}`}>{captions && <Icon.Check className="h-2 w-2 text-emerald-400 m-px" />}</span>
+                          <span>Captions</span>
+                          <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/40'}`}>{captions ? 'ON' : 'OFF'}</span>
+                        </button>
+                        <span className="text-[10px] text-white/20">|</span>
+                        <span className="text-[10px] text-white/25">{MUSIC_DESCRIPTIONS[music]}</span>
+                      </div>
+
+                      {/* Create Video button */}
+                      <button onClick={generateStory} disabled={!story.trim() || loading} className="mt-4 w-full rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-3.5 text-[14px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.4)] transition-all hover:shadow-[0_8px_30px_-4px_rgba(139,92,246,0.5)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                        {loading ? (<span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-4 w-4 animate-spin" />Creating...</span>) : (<span className="flex items-center justify-center gap-2"><Icon.Sparkles className="h-4 w-4" />Create Video</span>)}
+                      </button>
+
+                      <p className="mt-2 text-center text-[10px] text-white/25">AI will create 5 scenes with narration and visual prompts.</p>
+                    </div>
+
+                    {/* Loading stages */}
+                    {loading && (
+                      <div className="mt-4 rounded-xl border border-white/[0.06] bg-[#0a0b0f] p-4">
+                        <div className="mb-3 flex items-center gap-2">
+                          <Icon.Spinner className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+                          <span className="text-[11px] font-semibold text-white/70">Creating your story...</span>
+                        </div>
+                        <div className="space-y-2">
+                          {loadingSteps.map((step, i) => (
+                            <div key={i} className="flex items-center gap-2.5">
+                              {step.done ? (
+                                <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                                  <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />
+                                </span>
+                              ) : i === loadingStep + 1 ? (
+                                <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                                  <Icon.Spinner className="h-3 w-3 animate-spin text-emerald-400/60" />
+                                </span>
+                              ) : (
+                                <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-white/[0.08]">
+                                  <span className="h-1 w-1 rounded-full bg-white/[0.15]" />
+                                </span>
+                              )}
+                              <span className={`text-[11px] ${step.done ? "text-white/30" : i === loadingStep + 1 ? "text-white/60" : "text-white/40"}`}>{step.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error */}
+                    {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2 text-[12px] text-red-300/90">{error}</div>}
+                  </div>
+
+                  {/* Quick Start Cards */}
+                  <div>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Icon.Zap className="h-3 w-3 text-white/30" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">Quick Start</span>
+                      <span className="text-[10px] text-white/25">Pick a template and we'll set everything up for you.</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {TEMPLATES.map((t) => (
+                        <button key={t.label} onClick={() => {
+                          setStory(t.text);
+                          setStyle(t.style);
+                          setDuration(t.duration);
+                          setAspectRatio(t.aspectRatio);
+                          setError("");
+                        }} className="group overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] text-left transition-all hover:border-emerald-500/20 hover:bg-emerald-500/[0.03] hover:-translate-y-0.5">
+                          {/* Colored top strip */}
+                          <div className="h-1 w-full bg-gradient-to-r from-emerald-500/20 via-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="p-3">
+                            <div className="flex items-start gap-2.5">
+                              <span className="text-[16px] leading-none">{t.icon}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[12px] font-semibold text-white/75 group-hover:text-white/90 transition-colors">{t.label}</div>
+                                <div className="mt-0.5 text-[10px] text-white/35 group-hover:text-white/50 transition-colors leading-snug">{t.desc}</div>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center gap-1.5 text-[8px] text-white/25">
+                              <span className="rounded bg-white/[0.05] px-1.5 py-0.5">{t.style}</span>
+                              <span className="rounded bg-white/[0.05] px-1.5 py-0.5">{t.duration}</span>
+                              <span className="rounded bg-white/[0.05] px-1.5 py-0.5">{t.aspectRatio}</span>
+                            </div>
+                          </div>
+                        </button>
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Error */}
-                {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2 text-[12px] text-red-300/90">{error}</div>}
+                {/* RIGHT COLUMN - Sidebar */}
+                <div className="hidden lg:block">
+                  <div className="sticky top-24 space-y-5">
+                    {/* How it works */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                      <h3 className="mb-4 text-[13px] font-semibold text-white/80">How it works</h3>
+                      <div className="space-y-4">
+                        {[
+                          { step: "1", title: "Idea to Story", desc: "AI transforms your idea into a complete 5-scene story.", color: "emerald" },
+                          { step: "2", title: "Visual Creation", desc: "Unique visuals are generated for each scene.", color: "blue" },
+                          { step: "3", title: "Motion Generation", desc: "Cinematic videos bring your visuals to life.", color: "violet" },
+                          { step: "4", title: "Voice & Music", desc: "Natural voiceover, background music and captions.", color: "amber" },
+                          { step: "5", title: "Final Video", desc: "Everything combined into one final cinematic video.", color: "emerald" },
+                        ].map((item) => (                            <div key={item.step} className="flex gap-3">
+                            <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${item.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-400' : item.color === 'blue' ? 'bg-blue-500/10 text-blue-400' : item.color === 'violet' ? 'bg-violet-500/10 text-violet-400' : 'bg-amber-500/10 text-amber-400'} text-[10px] font-bold`}>{item.step}</div>
+                            <div>
+                              <div className="text-[12px] font-semibold text-white/75">{item.title}</div>
+                              <div className="mt-0.5 text-[11px] text-white/40 leading-relaxed">{item.desc}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-                {/* Settings - compact row */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/[0.04] pt-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Lang</span>
-                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
-                      <option>Hindi</option><option>Hinglish</option><option>English</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Style</span>
-                    <select value={style} onChange={(e) => setStyle(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
-                      <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Duration</span>
-                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
-                      <option>30s</option><option>60s</option><option>90s</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Format</span>
-                    <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
-                      <option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option>
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Voice</span>
-                    <select value={voice} onChange={(e) => setVoice(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
-                      <option>Natural</option><option>Deep</option><option>Soft</option>
-                    </select>
-                  </div>
-                  <button onClick={() => setCaptions(!captions)} className="flex items-center gap-1 text-[11px] text-white/40 transition-colors hover:text-white/55">
-                    <span className={`h-2.5 w-2.5 rounded border ${captions ? 'border-emerald-500/40 bg-emerald-500/15' : 'border-white/15'}`}>{captions && <Icon.Check className="h-2 w-2 text-emerald-400 m-px" />}</span>
-                    CC
-                  </button>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Music</span>
-                    <select value={music} onChange={(e) => setMusic(e.target.value)} className="rounded border border-white/[0.06] bg-[#0a0b0f] px-1.5 py-0.5 text-[11px] font-medium text-white/65 outline-none">
-                      <option>None</option><option>Ambient</option><option>Cinematic</option><option>Emotional</option>
-                    </select>
+                    {/* From idea to video */}
+                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+                      <h3 className="mb-1 text-[13px] font-semibold text-white/80">From idea to cinematic video</h3>
+                      <p className="mb-4 text-[11px] text-white/35">Everything you need, in one place.</p>
+                      {/* Preview mockup */}
+                      <div className="relative aspect-video overflow-hidden rounded-xl border border-white/[0.06] bg-[#0c0d12]">
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-900/20 to-blue-900/20">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.10]">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-center gap-3">
+                        {[
+                          { label: "AI Visuals", icon: <Icon.Image className="h-2.5 w-2.5" /> },
+                          { label: "Voiceover", icon: <Icon.Mic className="h-2.5 w-2.5" /> },
+                          { label: "Music", icon: <Icon.Music className="h-2.5 w-2.5" /> },
+                          { label: "Captions", icon: <Icon.Subtitles className="h-2.5 w-2.5" /> },
+                        ].map((f) => (
+                          <div key={f.label} className="flex items-center gap-1 text-[9px] text-white/35">
+                            {f.icon}
+                            {f.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Quick Start Cards */}
-              <div className="mt-5">
-                <div className="mb-2.5 flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Quick start</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {TEMPLATES.map((t) => (
-                    <button key={t.label} onClick={() => {
-                      setStory(t.text);
-                      setStyle(t.style);
-                      setDuration(t.duration);
-                      setAspectRatio(t.aspectRatio);
-                      setError("");
-                    }} className="group flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3 text-left transition-all hover:border-emerald-500/20 hover:bg-emerald-500/[0.03] hover:-translate-y-0.5">
-                      <span className="mt-0.5 text-[18px] leading-none opacity-70 group-hover:opacity-100 transition-opacity">{t.icon}</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[12px] font-semibold text-white/75 group-hover:text-white/90 transition-colors">{t.label}</div>
-                        <div className="mt-0.5 text-[10px] text-white/35 group-hover:text-white/50 transition-colors leading-snug">{t.desc}</div>
-                        <div className="mt-1.5 flex items-center gap-1.5 text-[8px] text-white/25">
-                          <span className="rounded bg-white/[0.05] px-1 py-0.5">{t.style}</span>
-                          <span className="rounded bg-white/[0.05] px-1 py-0.5">{t.duration}</span>
-                          <span className="rounded bg-white/[0.05] px-1 py-0.5">{t.aspectRatio}</span>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              {/* Tip bar */}
+              <div className="mx-auto mt-6 max-w-6xl rounded-xl border border-white/[0.04] bg-white/[0.015] px-4 py-2.5 text-center">
+                <span className="text-[11px] text-white/30">Tip: The more details you give, the better the story and visuals will be.</span>
               </div>
             </div>
           </>
