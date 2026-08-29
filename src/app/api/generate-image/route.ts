@@ -5,9 +5,22 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+type CharacterInfo = {
+  name: string;
+  description?: string;
+  appearance?: string;
+  role?: string;
+};
+
 export async function POST(request: Request) {
   try {
-    const { prompt } = await request.json();
+    const body = await request.json();
+    const { prompt, characters, sceneTitle, style } = body as {
+      prompt?: string;
+      characters?: CharacterInfo[];
+      sceneTitle?: string;
+      style?: string;
+    };
 
     if (!prompt || !prompt.trim()) {
       return NextResponse.json(
@@ -16,9 +29,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // Build enhanced prompt with character consistency
+    let enhancedPrompt = prompt.trim();
+
+    if (characters && characters.length > 0) {
+      const characterDescriptions = characters
+        .filter((c) => c.name?.trim())
+        .map((c) => {
+          const parts = [c.name];
+          if (c.appearance?.trim()) parts.push(`Appearance: ${c.appearance.trim()}`);
+          if (c.role?.trim()) parts.push(`Role: ${c.role.trim()}`);
+          if (c.description?.trim()) parts.push(`Description: ${c.description.trim()}`);
+          return parts.join(" - ");
+        });
+
+      if (characterDescriptions.length > 0) {
+        enhancedPrompt = `Generate a cinematic image for the scene "${sceneTitle || "Scene"}".\n\nCharacters present in this scene:\n${characterDescriptions.map((d) => `- ${d}`).join("\n")}\n\nScene description: ${enhancedPrompt}`;
+      }
+    }
+
+    if (style && style.trim()) {
+      enhancedPrompt += `\n\nVisual style: ${style.trim()}. Cinematic composition, high quality, detailed.`;
+    } else {
+      enhancedPrompt += `\n\nCinematic composition, high quality, detailed.`;
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
-      contents: prompt,
+      contents: enhancedPrompt,
     });
 
     const parts = response.candidates?.[0]?.content?.parts ?? [];

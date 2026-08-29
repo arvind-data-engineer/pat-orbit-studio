@@ -38,6 +38,7 @@ type Project = {
   sceneVideos?: Record<number, string>;
   finalVideoUrl?: string | null;
   characters?: Character[];
+  sceneCharacters?: Record<number, number[]>;
 };
 
 /* ------------------------------------------------------------------ */
@@ -165,6 +166,8 @@ export default function Home() {
   /* Character consistency */
   const [characters, setCharacters] = useState<Character[]>([]);
   const [showCharacters, setShowCharacters] = useState(false);
+  const [sceneCharacters, setSceneCharacters] = useState<Record<number, number[]>>({});
+  const [expandedPrompts, setExpandedPrompts] = useState(false);
 
   /* Render state */
   const [finalVideo, setFinalVideo] = useState<string | null>(null);
@@ -307,6 +310,49 @@ export default function Home() {
       setVoiceStatus({});
       setVoiceAudios({});
       setActiveScene(1);
+      setSceneCharacters({});
+
+      /* Auto-detect characters from generated story */
+      try {
+        const allText = [
+          data.title || '',
+          ...data.scenes.map((s: Scene) => `${s.title} ${s.narration} ${s.visual}`),
+        ].join(' ');
+        const detectedNames = new Set<string>();
+        const nameRegex = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g;
+        let match;
+        while ((match = nameRegex.exec(allText)) !== null) {
+          const name = match[1];
+          // Filter out common English words that aren't names
+          const stopwords = ['The', 'This', 'When', 'Then', 'Scene', 'Inside', 'Through', 'Beyond', 'Under', 'Over', 'Before', 'After', 'While', 'Where', 'What', 'How', 'Every', 'Each', 'Some', 'From', 'With', 'Into', 'About', 'Between', 'Around', 'Behind', 'Near', 'Across', 'Along', 'Toward', 'Until', 'Since', 'During', 'Without', 'Within', 'Against', 'Along', 'Among', 'There', 'Here', 'Their', 'These', 'Those', 'Another', 'Suddenly', 'Finally', 'Together', 'Discover', 'Reveals', 'Creates', 'Appears', 'Turns', 'Begins', 'Looks', 'Finds', 'Enters', 'Walks', 'Sees', 'Takes', 'Makes', 'Says', 'Calls', 'Moves', 'Races', 'Grows', 'Starts', 'Lands', 'Stops', 'Waits', 'Goes', 'Runs', 'Faces', 'Holds', 'Keeps', 'Lets', 'Puts', 'Sets', 'Rises', 'Falls', 'Heard', 'Felt', 'Saw', 'Knew', 'Woke', 'Pat', 'Orbit', 'Studio', 'NARRATION', 'VISUAL', 'TITLE'];
+          if (!stopwords.includes(name) && name.length > 1 && !detectedNames.has(name)) {
+            detectedNames.add(name);
+          }
+        }
+        if (detectedNames.size > 0) {
+          const autoChars: Character[] = Array.from(detectedNames).slice(0, 6).map((name) => ({
+            name,
+            description: '',
+            appearance: '',
+            role: '',
+          }));
+          setCharacters(autoChars);
+          // Auto-assign characters to scenes
+          const autoSceneChars: Record<number, number[]> = {};
+          for (const scene of data.scenes) {
+            const sceneText = `${scene.title} ${scene.narration} ${scene.visual}`;
+            const assignedIndices: number[] = [];
+            autoChars.forEach((char, idx) => {
+              if (sceneText.toLowerCase().includes(char.name.toLowerCase())) {
+                assignedIndices.push(idx);
+              }
+            });
+            if (assignedIndices.length > 0) autoSceneChars[scene.id] = assignedIndices;
+          }
+          setSceneCharacters(autoSceneChars);
+        }
+      } catch { /* Character detection is best-effort */ }
+
       /* Auto-scroll to workspace */
       setTimeout(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
     } catch (err) {
@@ -338,7 +384,7 @@ export default function Home() {
     } else {
       setHasUnsavedChanges(false);
     }
-  }, [result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo, characters]);
+  }, [result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo, characters, sceneCharacters]);
 
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -366,6 +412,7 @@ export default function Home() {
       sceneVideos: { ...sceneVideos },
       finalVideoUrl: finalVideo,
       characters: characters.length > 0 ? [...characters] : undefined,
+      sceneCharacters: Object.keys(sceneCharacters).length > 0 ? { ...sceneCharacters } : undefined,
     };
     saveProjects([project, ...projects]);
     setSaved(true);
@@ -385,6 +432,7 @@ export default function Home() {
     setSceneVideos(project.sceneVideos && typeof project.sceneVideos === 'object' ? project.sceneVideos : {});
     setFinalVideo(typeof project.finalVideoUrl === 'string' ? project.finalVideoUrl : null);
     setCharacters(Array.isArray(project.characters) ? project.characters : []);
+    setSceneCharacters(project.sceneCharacters && typeof project.sceneCharacters === 'object' ? project.sceneCharacters : {});
     setSceneStatus({});
     setVoiceStatus({});
     setVoiceAudios({});
@@ -429,10 +477,21 @@ export default function Home() {
     setSceneStatus((c) => ({ ...c, [sceneId]: "image" }));
     setError("");
     try {
+      // Build character data for this scene
+      const sceneCharIndices = sceneCharacters[sceneId] || [];
+      const sceneChars = sceneCharIndices
+        .map((idx) => characters[idx])
+        .filter((c): c is Character => !!c && !!c.name?.trim());
+
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: scene.visual }),
+        body: JSON.stringify({
+          prompt: scene.visual,
+          characters: sceneChars.length > 0 ? sceneChars : undefined,
+          sceneTitle: scene.title,
+          style,
+        }),
         signal: controller.signal,
       });
       const data = await response.json();
@@ -1278,31 +1337,109 @@ export default function Home() {
                       <textarea value={currentScene.visual} onChange={(e) => updateScene(currentScene.id, "visual", e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/75 outline-none transition-all focus:border-white/[0.20]" />
                     </div>
 
-                    {/* Characters */}
+                    {/* Characters - Per Scene Selection */}
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Icon.User className="text-white/60" />
-                          <span className="text-[12px] font-semibold text-white/80">Characters</span>
+                          <span className="text-[12px] font-semibold text-white/80">Characters in this scene</span>
                         </div>
                         <button onClick={() => setShowCharacters(!showCharacters)} className="text-[10px] text-white/45 hover:text-white/65 transition-colors">
                           {showCharacters ? "Hide" : "Edit"}
                         </button>
                       </div>
                       {characters.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {characters.map((c, i) => (
-                            <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-2.5 py-1.5 text-[11px]">
-                              <span className="font-medium text-white/70">{c.name}</span>
-                              <span className="text-white/40">-</span>
-                              <span className="truncate text-white/50">{c.appearance || c.description}</span>
-                            </div>
-                          ))}
+                        <div className="space-y-1">
+                          {characters.map((c, i) => {
+                            if (!c.name?.trim()) return null;
+                            const isSelected = (sceneCharacters[currentScene.id] || []).includes(i);
+                            return (
+                              <label key={i} className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[11px] cursor-pointer transition-all ${isSelected ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-white/[0.03] border border-transparent hover:bg-white/[0.05]'}`}>
+                                <input type="checkbox" checked={isSelected} onChange={() => {
+                                  const current = sceneCharacters[currentScene.id] || [];
+                                  const next = isSelected ? current.filter((idx) => idx !== i) : [...current, i];
+                                  setSceneCharacters((prev) => ({ ...prev, [currentScene.id]: next }));
+                                  setSaved(false);
+                                }} className="sr-only" />
+                                <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${isSelected ? 'border-emerald-500 bg-emerald-500/20' : 'border-white/20 bg-transparent'}`}>
+                                  {isSelected && <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-medium text-white/75">{c.name}</span>
+                                  {c.appearance && <span className="ml-1.5 text-white/40">{c.appearance}</span>}
+                                </div>
+                              </label>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <p className="text-[11px] text-white/45">Keep characters visually consistent across scenes.</p>
+                        <p className="text-[11px] text-white/45">Add characters to keep visuals consistent across scenes.</p>
                       )}
                     </div>
+
+                    {/* Character Consistency Summary */}
+                    {characters.length > 0 && result && (
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                        <div className="mb-2 text-[12px] font-semibold text-white/80">Character Consistency</div>
+                        <div className="space-y-1.5">
+                          {characters.filter((c) => c.name?.trim()).map((c, i) => {
+                            const realIdx = characters.indexOf(c);
+                            const usedInScenes = result.scenes.filter((s) => (sceneCharacters[s.id] || []).includes(realIdx));
+                            return (
+                              <div key={i} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-2.5 py-1.5">
+                                <div className="min-w-0">
+                                  <span className="text-[11px] font-medium text-white/70">{c.name}</span>
+                                  {c.role && <span className="ml-1.5 text-[10px] text-white/40">{c.role}</span>}
+                                </div>
+                                <span className={`text-[10px] font-medium ${usedInScenes.length > 0 ? 'text-emerald-400/70' : 'text-white/35'}`}>
+                                  {usedInScenes.length > 0 ? `Used in ${usedInScenes.length} scene${usedInScenes.length !== 1 ? 's' : ''}` : 'Not assigned'}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button onClick={() => setShowCharacters(true)} className="mt-2 text-[10px] text-white/40 hover:text-white/60 transition-colors">
+                          Edit characters
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Visual Prompt Transparency */}
+                    {currentScene && (
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                        <button onClick={() => setExpandedPrompts(!expandedPrompts)} className="flex w-full items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Icon.Wand className="h-3.5 w-3.5 text-white/50" />
+                            <span className="text-[12px] font-semibold text-white/80">AI Visual Prompt</span>
+                          </div>
+                          <span className="text-[10px] text-white/40">{expandedPrompts ? 'Hide' : 'Show full prompt'}</span>
+                        </button>
+                        {expandedPrompts && (
+                          <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3">
+                            <p className="text-[11px] leading-relaxed text-white/60 whitespace-pre-wrap break-words">
+                              {(() => {
+                                const sceneCharIndices = sceneCharacters[currentScene.id] || [];
+                                const sceneChars = sceneCharIndices.map((idx) => characters[idx]).filter((c): c is Character => !!c?.name?.trim());
+                                let fullPrompt = currentScene.visual.trim();
+                                if (sceneChars.length > 0) {
+                                  const charDesc = sceneChars.map((c) => {
+                                    const parts = [c.name];
+                                    if (c.appearance) parts.push(`Appearance: ${c.appearance}`);
+                                    if (c.role) parts.push(`Role: ${c.role}`);
+                                    if (c.description) parts.push(`Description: ${c.description}`);
+                                    return parts.join(' - ');
+                                  });
+                                  fullPrompt = `Characters: ${charDesc.join('; ')}\n\nScene: ${fullPrompt}`;
+                                }
+                                if (style) fullPrompt += `\n\nStyle: ${style}. Cinematic, high quality.`;
+                                else fullPrompt += '\n\nCinematic, high quality.';
+                                return fullPrompt;
+                              })()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Video Settings */}
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
@@ -1627,6 +1764,7 @@ export default function Home() {
                     </div>
                     <input value={c.appearance} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], appearance: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Appearance (e.g. brown hair, green eyes)" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
                     <input value={c.role} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], role: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Role in story" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
+                    <input value={c.description} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], description: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Additional description (optional)" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
                   </div>
                 ))}
               </div>
