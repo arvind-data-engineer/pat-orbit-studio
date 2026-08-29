@@ -91,10 +91,10 @@ const Icon = {
 };
 
 const EXAMPLE_PROMPTS = [
-  { label: "Boy discovers a mysterious door", text: "A young boy discovers a mysterious door hidden behind the walls of his grandfather's old house. Beyond the door lies a world of glowing plants, floating crystals, and ancient secrets waiting to be uncovered." },
-  { label: "A robot finds its lost creator", text: "In a quiet abandoned factory, a small robot powers on for the first time in decades. It begins a journey across a changing world to find the scientist who built it, discovering friendship and purpose along the way." },
-  { label: "Village protected by a magical tree", text: "High in the mountains, a tiny village thrives under the protection of an enormous ancient tree. When the tree begins to wither, a young villager must embark on a dangerous quest to restore its magic before it is too late." },
-  { label: "A detective solves a strange mystery", text: "A private detective receives an anonymous letter that predicts events before they happen. As the predictions grow darker, the detective must uncover who is behind them and why before the final prediction comes true." },
+  { label: "Mystery in an old house", text: "A young boy discovers a mysterious door hidden behind the walls of his grandfather's old house. Beyond the door lies a world of glowing plants, floating crystals, and ancient secrets waiting to be uncovered." },
+  { label: "Robot finds its creator", text: "In a quiet abandoned factory, a small robot powers on for the first time in decades. It begins a journey across a changing world to find the scientist who built it, discovering friendship and purpose along the way." },
+  { label: "Magical tree protects a village", text: "High in the mountains, a tiny village thrives under the protection of an enormous ancient tree. When the tree begins to wither, a young villager must embark on a dangerous quest to restore its magic before it is too late." },
+  { label: "Detective solves a strange mystery", text: "A private detective receives an anonymous letter that predicts events before they happen. As the predictions grow darker, the detective must uncover who is behind them and why before the final prediction comes true." },
 ];
 
 export default function Home() {
@@ -486,142 +486,132 @@ export default function Home() {
       <section className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 sm:py-12">
         {!result ? (
           <>
-            {/* ===== HERO (with animated background) ===== */}
-            <div className="relative mx-auto mb-6 max-w-3xl text-center">
+            {/* ===== HERO ===== */}
+            <div className="relative mx-auto mb-5 max-w-3xl text-center">
               {/* Animated background glow */}
               <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute left-1/2 top-0 h-[500px] w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.07] via-emerald-500/[0.02] to-transparent blur-3xl" />
-                <div className="absolute left-[30%] top-10 h-[300px] w-[300px] rounded-full bg-blue-500/[0.03] blur-3xl" />
-                <div className="absolute right-[30%] top-10 h-[300px] w-[300px] rounded-full bg-violet-500/[0.03] blur-3xl" />
-                {/* Faint grid texture */}
+                <div className="absolute left-1/2 top-0 h-[400px] w-[500px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent blur-3xl" />
+                <div className="absolute left-[30%] top-5 h-[250px] w-[250px] rounded-full bg-blue-500/[0.03] blur-3xl" />
+                <div className="absolute right-[30%] top-5 h-[250px] w-[250px] rounded-full bg-violet-500/[0.03] blur-3xl" />
                 <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
               </div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest text-white/40">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest text-white/40">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 AI Video Creator
               </div>
-              <h1 className="text-3xl font-bold tracking-tight leading-[1.1] sm:text-4xl lg:text-5xl">
-                Turn your idea into<br />
-                <span className="bg-gradient-to-r from-white via-white/80 to-white/40 bg-clip-text text-transparent">a video.</span>
+              <h1 className="text-3xl font-bold tracking-tight leading-[1.08] sm:text-4xl lg:text-5xl">
+                Turn an idea<br />
+                <span className="bg-gradient-to-r from-white via-white/80 to-white/40 bg-clip-text text-transparent">into a complete video.</span>
               </h1>
-              <p className="mx-auto mt-4 max-w-xl text-[14px] leading-7 text-white/35">
-                Generate stories, scenes, visuals, voice and video from one creative workspace.
+              <p className="mx-auto mt-3 max-w-lg text-[14px] leading-6 text-white/35">
+                Write one idea. PAT Orbit creates the story, scenes, visuals, voice and final video.
               </p>
             </div>
 
-            {/* ===== HOW IT WORKS STRIP ===== */}
-            <div className="mx-auto mb-8 max-w-3xl">
-              <div className="flex items-start justify-between gap-1 overflow-x-auto px-1 pb-1 sm:overflow-visible">
-                {[
-                  { icon: <Icon.Lightbulb className="h-4 w-4 text-amber-400/80" />, label: "Idea", desc: "Your concept" },
-                  { icon: <Icon.FileText className="h-4 w-4 text-blue-400/80" />, label: "Story", desc: "AI writes the narrative" },
-                  { icon: <Icon.Film className="h-4 w-4 text-emerald-400/80" />, label: "Scenes", desc: "5 cinematic scenes" },
-                  { icon: <Icon.Image className="h-4 w-4 text-violet-400/80" />, label: "Visuals", desc: "Generate visuals" },
-                  { icon: <Icon.Video className="h-4 w-4 text-rose-400/80" />, label: "Video", desc: "Render your final video" },
-                ].map((step, i) => (
-                  <div key={step.label} className="flex items-center gap-1 sm:gap-0">
-                    <div className="group flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.03] transition-colors group-hover:border-white/[0.15] group-hover:bg-white/[0.06]">
-                        {step.icon}
-                      </div>
-                      <div className="text-center">
-                        <div className="text-[11px] font-semibold text-white/60">{step.label}</div>
-                        <div className="hidden text-[9px] text-white/25 sm:block">{step.desc}</div>
-                      </div>
+            {/* ===== WORKFLOW TRANSFORMATION LINE ===== */}
+            <div className="mx-auto mb-8 flex max-w-2xl items-center justify-center gap-1 overflow-x-auto px-2 pb-1 sm:gap-0">
+              {[
+                { label: "YOUR IDEA", color: "text-amber-400/70" },
+                { label: "AI STORY", color: "text-blue-400/70" },
+                { label: "5 SCENES", color: "text-emerald-400/70" },
+                { label: "CINEMATIC VISUALS", color: "text-violet-400/70" },
+                { label: "FINAL VIDEO", color: "text-rose-400/70" },
+              ].map((step, i) => (
+                <div key={step.label} className="flex items-center">
+                  <span className={`whitespace-nowrap text-[9px] font-bold tracking-wider ${step.color} sm:text-[10px]`}>{step.label}</span>
+                  {i < 4 && (
+                    <div className="relative mx-1 h-px w-3 sm:w-5">
+                      <div className="absolute inset-0 bg-white/[0.08]" />
+                      <div className="absolute inset-y-0 left-0 w-1/2 bg-emerald-400/30 animate-[pulse_2.5s_ease-in-out_infinite]" />
                     </div>
-                    {i < 4 && (
-                      <div className="relative mb-6 h-px w-4 sm:w-6 lg:w-8">
-                        <div className="absolute inset-0 bg-white/[0.06]" />
-                        <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-emerald-500/30 to-emerald-400/10 animate-[pulse_3s_ease-in-out_infinite]" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              ))}
             </div>
 
-            {/* ===== DEMO PRODUCT PREVIEW ===== */}
-            <div className="mx-auto mb-10 max-w-5xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0b10] shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)]">
-              <div className="grid lg:grid-cols-[200px_1fr_240px]">
-                {/* Demo scene list */}
-                <div className="hidden border-r border-white/[0.06] bg-white/[0.01] p-4 lg:block">
-                  <div className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/25">Scenes</div>
-                  {["Old House", "Hidden Door", "Strange Room", "Magical Discovery", "New Life"].map((title, i) => (
-                    <div key={i} className={`mb-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors ${i === 0 ? "bg-white/[0.06] border border-white/[0.1]" : "border border-transparent"}`}>
-                      <span className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold ${i === 0 ? "bg-white text-black" : "bg-white/[0.06] text-white/30"}`}>{i + 1}</span>
-                      <span className={`truncate text-[11px] ${i === 0 ? "text-white/80" : "text-white/35"}`}>{title}</span>
-                    </div>
-                  ))}
-                </div>
-                {/* Demo preview */}
+            {/* ===== HERO PRODUCT DEMO ===== */}
+            <div className="mx-auto mb-10 max-w-4xl group/demo">
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0b10] shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)] transition-all duration-500 hover:shadow-[0_0_100px_-20px_rgba(255,255,255,0.06)] hover:border-white/[0.12]">
+                {/* Cinematic preview area */}
                 <div className="relative">
-                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
-                    <span className="rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-white/50 backdrop-blur-sm">SCENE 01</span>
-                    <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-medium text-emerald-400/70 backdrop-blur-sm">AI GENERATED</span>
+                  {/* Animated glow behind preview */}
+                  <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                    <div className="absolute left-1/2 top-1/2 h-48 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.08] via-blue-500/[0.04] to-transparent blur-3xl" />
                   </div>
+                  {/* Top badges */}
+                  <div className="absolute left-4 top-4 z-10 flex items-center gap-2">
+                    <span className="rounded-md bg-black/60 px-2 py-1 text-[9px] font-medium text-white/60 backdrop-blur-sm">Scene 03 / 05</span>
+                    <span className="rounded-md bg-emerald-500/20 px-2 py-1 text-[9px] font-bold text-emerald-400/80 backdrop-blur-sm">AI GENERATED</span>
+                  </div>
+                  {/* Stage labels */}
+                  <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5">
+                    {['Story', 'Scenes', 'Visuals', 'Video'].map((label, i) => (
+                      <span key={label} className={`rounded px-1.5 py-0.5 text-[8px] font-medium backdrop-blur-sm ${i === 2 ? 'bg-emerald-500/15 text-emerald-400/70' : i === 3 ? 'bg-blue-500/15 text-blue-400/70' : 'bg-white/[0.06] text-white/35'}`}>{label}</span>
+                    ))}
+                  </div>
+                  {/* Cinematic scene composition */}
                   <div className="relative flex aspect-video items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-b from-[#0d0f1a] via-[#0a1628] to-[#050810]" />
-                    <div className="absolute left-1/2 top-1/2 h-48 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-amber-500/15 via-orange-500/8 to-transparent blur-2xl" />
-                    <div className="absolute left-1/2 top-[40%] h-64 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-amber-400/10 via-transparent to-transparent blur-3xl" />
-                    <div className="relative z-10 flex h-36 w-20 flex-col items-center justify-end overflow-hidden rounded-t-full border border-amber-500/20 bg-gradient-to-b from-amber-500/10 to-transparent shadow-[0_0_60px_-10px_rgba(245,158,11,0.15)]">
-                      <div className="h-4 w-4 rounded-full bg-amber-400/30 blur-sm" />
+                    {/* Base gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#080c18] via-[#0a1425] to-[#060a14]" />
+                    {/* Atmospheric glows */}
+                    <div className="absolute left-1/2 top-1/2 h-56 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-blue-500/12 via-cyan-500/6 to-transparent blur-2xl" />
+                    <div className="absolute left-[40%] top-[35%] h-32 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400/10 blur-2xl" />
+                    {/* Cinematic doorway shape */}
+                    <div className="relative z-10 flex h-44 w-24 flex-col items-center justify-end overflow-hidden rounded-t-full border border-emerald-500/15 bg-gradient-to-b from-emerald-500/8 to-transparent shadow-[0_0_80px_-10px_rgba(16,185,129,0.12)]">
+                      <div className="h-6 w-6 rounded-full bg-emerald-400/20 blur-md" />
+                      <div className="h-3 w-3 -mt-8 rounded-full bg-white/10 blur-sm" />
                     </div>
-                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
-                    <div className="absolute z-20 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-all hover:scale-105 hover:bg-white/15 border border-white/10">
-                      <Icon.Play className="ml-0.5 text-white/80" />
-                    </div>
-                  </div>
-                </div>
-                {/* Demo scene info */}
-                <div className="hidden border-l border-white/[0.06] bg-white/[0.01] p-4 lg:block">
-                  <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-white/50">Old House</div>
-                  <p className="mb-4 text-[11px] leading-relaxed text-white/30">10-year-old Rohan explores his great-grandfather&apos;s abandoned house on the outskirts of the city.</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                      <span className="text-[10px] font-medium text-emerald-400/70">IMAGE READY</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                      <span className="text-[10px] font-medium text-blue-400/70">VIDEO READY</span>
+                    {/* Floor reflection */}
+                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+                    {/* Particles effect (CSS only) */}
+                    <div className="absolute left-[35%] top-[30%] h-1 w-1 rounded-full bg-white/20 animate-[pulse_4s_ease-in-out_infinite]" />
+                    <div className="absolute left-[55%] top-[25%] h-0.5 w-0.5 rounded-full bg-emerald-400/30 animate-[pulse_3s_ease-in-out_1s_infinite]" />
+                    <div className="absolute left-[45%] top-[40%] h-0.5 w-0.5 rounded-full bg-blue-400/25 animate-[pulse_5s_ease-in-out_2s_infinite]" />
+                    {/* Play button */}
+                    <div className="absolute z-20 flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-white/[0.08] backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-white/[0.12] border border-white/[0.12] shadow-[0_0_40px_-10px_rgba(255,255,255,0.1)]">
+                      <Icon.Play className="ml-1 h-6 w-6 text-white/80" />
                     </div>
                   </div>
-                  <div className="mt-5 space-y-1.5">
-                    <div className="text-[9px] font-medium uppercase tracking-wider text-white/20">Settings</div>
-                    <div className="text-[10px] text-white/25">9:16 &middot; Natural &middot; Cinematic</div>
+                </div>
+                {/* Demo timeline */}
+                <div className="border-t border-white/[0.06] bg-white/[0.015] px-5 py-3">
+                  <div className="mb-2 flex items-center justify-between text-[10px] text-white/20">
+                    <span>00:00</span>
+                    <span className="text-[10px] font-medium text-white/30">Timeline</span>
+                    <span>01:00</span>
                   </div>
-                </div>
-              </div>
-              {/* Demo timeline */}
-              <div className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-3">
-                <div className="mb-2 flex items-center justify-between text-[10px] text-white/20">
-                  <span>00:00</span>
-                  <span className="text-[10px] text-white/30">Timeline</span>
-                  <span>01:00</span>
-                </div>
-                <div className="relative h-px w-full bg-white/[0.06]">
-                  <div className="absolute left-0 top-1/2 h-2 w-2 -translate-x-1 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                  <div className="absolute left-0 top-1/2 h-px w-1/5 -translate-y-1/2 bg-emerald-400/40" />
-                </div>
-                <div className="mt-2 flex gap-1.5">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <div key={n} className={`flex-1 rounded-md border p-2 text-center transition-all ${n === 1 ? "border-white/[0.15] bg-white/[0.06]" : "border-white/[0.06] bg-white/[0.02]"}`}>
-                      <div className="text-[9px] font-medium text-white/30">Scene {n}</div>
-                    </div>
-                  ))}
+                  <div className="relative h-px w-full bg-white/[0.06]">
+                    <div className="absolute left-0 top-1/2 h-2 w-2 -translate-x-1 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                    <div className="absolute left-0 top-1/2 h-px w-[40%] -translate-y-1/2 bg-gradient-to-r from-emerald-400/40 to-emerald-400/10" />
+                  </div>
+                  <div className="mt-2.5 flex gap-1.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <div key={n} className={`flex-1 overflow-hidden rounded-lg border transition-all ${n === 3 ? 'border-white/[0.15] bg-white/[0.06]' : n === 1 || n === 2 ? 'border-emerald-500/10 bg-emerald-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+                        <div className="flex h-8 items-center justify-center">
+                          {n <= 2 ? (
+                            <div className="h-full w-full bg-gradient-to-b from-emerald-500/15 to-emerald-500/5" />
+                          ) : n === 3 ? (
+                            <div className="h-full w-full bg-gradient-to-b from-blue-500/15 to-blue-500/5" />
+                          ) : (
+                            <span className="text-[9px] font-medium text-white/20">{n}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* ===== CREATE FORM ===== */}
-            <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-white/[0.01] p-6 shadow-[0_0_80px_-20px_rgba(255,255,255,0.03)] sm:p-8">
-              <div className="mb-6 flex items-center justify-between">
+            <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-6 shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)] sm:p-8">
+              <div className="mb-5 flex items-center justify-between">
                 <div>
                   <div className="mb-1 flex items-center gap-2">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     <span className="text-[10px] font-medium uppercase tracking-widest text-emerald-400/60">AI Story Engine</span>
                   </div>
-                  <h2 className="text-lg font-semibold tracking-tight">Start with a story</h2>
+                  <h2 className="text-lg font-semibold tracking-tight">Create your video</h2>
                   <p className="mt-0.5 text-[13px] text-white/30">Describe an idea, concept or script and let AI build your video.</p>
                 </div>
                 <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/30">Beta</span>
@@ -640,12 +630,12 @@ export default function Home() {
               </div>
 
               {/* Example prompts */}
-              <div className="mt-3 flex flex-wrap gap-1.5">
+              <div className="mb-4 mt-3 flex flex-wrap gap-1.5">
                 {EXAMPLE_PROMPTS.map((ep) => (
                   <button
                     key={ep.label}
                     onClick={() => { setStory(ep.text); setError(""); }}
-                    className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] text-white/35 transition-all hover:border-white/[0.12] hover:bg-white/[0.05] hover:text-white/60 active:scale-[0.98]"
+                    className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] text-white/35 transition-all duration-200 hover:border-emerald-500/20 hover:bg-emerald-500/[0.04] hover:text-white/60 hover:-translate-y-px active:scale-[0.98]"
                   >
                     {ep.label}
                   </button>
@@ -706,102 +696,75 @@ export default function Home() {
               <p className="mt-3 text-center text-[11px] text-white/20">AI will create 5 scenes with narration and visual prompts.</p>
             </div>
 
-            {/* ===== VISUAL PIPELINE SHOWCASE ===== */}
+            {/* ===== SEE IT IN ACTION ===== */}
             <div className="mx-auto mt-14 max-w-5xl">
               <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">From idea to final scene.</h2>
-                <p className="mt-3 text-[14px] text-white/35">Watch your concept transform through every stage of production.</p>
+                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">See what PAT Orbit creates.</h2>
+                <p className="mt-3 text-[14px] text-white/35">From a single idea to a complete cinematic sequence.</p>
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-5 sm:overflow-visible">
-                {/* Step 1: Idea */}
-                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
-                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
-                    <div className="flex flex-col items-center gap-1">
-                      <Icon.Lightbulb className="h-7 w-7 text-amber-400/60" />
-                      <span className="text-[10px] font-medium text-amber-400/50">IDEA</span>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {/* Card 1: Story */}
+                <div className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
+                  <div className="flex h-40 items-center justify-center bg-gradient-to-br from-amber-500/[0.06] to-amber-500/[0.02]">
+                    <div className="flex flex-col items-center gap-2">
+                      <Icon.FileText className="h-8 w-8 text-amber-400/50" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/40">Story</span>
                     </div>
                   </div>
-                  <span className="text-[12px] font-semibold text-white/60">Your concept</span>
-                  <span className="mt-0.5 text-[10px] text-white/25">A mysterious door</span>
+                  <div className="p-5">
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/25">01 — Story</div>
+                    <p className="text-[13px] leading-relaxed text-white/40">&ldquo;A mysterious door appears inside an old house, revealing a hidden world of glowing crystals and ancient maps...&rdquo;</p>
+                  </div>
                 </div>
-                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
-                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
-                </div>
-                {/* Step 2: Story */}
-                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
-                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-blue-500/15 bg-blue-500/[0.04]">
-                    <div className="flex flex-col items-center gap-1">
-                      <Icon.FileText className="h-7 w-7 text-blue-400/60" />
-                      <span className="text-[10px] font-medium text-blue-400/50">STORY</span>
+                {/* Card 2: Scenes */}
+                <div className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
+                  <div className="flex h-40 items-center justify-center bg-gradient-to-br from-emerald-500/[0.06] to-emerald-500/[0.02]">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[1,2,3,4,5].map(n => (
+                        <div key={n} className={`flex h-8 w-10 items-center justify-center rounded border ${n <= 3 ? 'border-emerald-500/15 bg-emerald-500/[0.06]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
+                          <span className="text-[8px] font-bold text-white/25">{n}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <span className="text-[12px] font-semibold text-white/60">AI narrative</span>
-                  <span className="mt-0.5 text-[10px] text-white/25">5 scenes written</span>
+                  <div className="p-5">
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/25">02 — Scenes</div>
+                    <p className="text-[13px] leading-relaxed text-white/40">5 structured scenes with titles, narration and visual prompts for each moment of your story.</p>
+                  </div>
                 </div>
-                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
-                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
-                </div>
-                {/* Step 3: Scenes */}
-                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
-                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04]">
-                    <div className="flex flex-col items-center gap-1">
-                      <Icon.Sparkles className="h-7 w-7 text-emerald-400/60" />
-                      <span className="text-[10px] font-medium text-emerald-400/50">SCENES</span>
+                {/* Card 3: Video */}
+                <div className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
+                  <div className="relative flex h-40 items-center justify-center bg-gradient-to-br from-violet-500/[0.06] to-violet-500/[0.02]">
+                    <div className="absolute inset-4 overflow-hidden rounded-lg border border-white/[0.06]">
+                      <div className="h-full w-full bg-gradient-to-br from-[#0c0e1a] to-[#080a14]" />
+                      <div className="absolute left-1/2 top-1/2 h-16 w-10 -translate-x-1/2 -translate-y-1/2 rounded-t-full border border-violet-500/15 bg-violet-500/[0.06]" />
+                    </div>
+                    <div className="z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/[0.1] backdrop-blur-sm transition-all hover:scale-110 border border-white/[0.1]">
+                      <Icon.Play className="ml-0.5 h-4 w-4 text-white/70" />
                     </div>
                   </div>
-                  <span className="text-[12px] font-semibold text-white/60">Structured scenes</span>
-                  <span className="mt-0.5 text-[10px] text-white/25">Title, narration, visual</span>
-                </div>
-                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
-                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
-                </div>
-                {/* Step 4: Visuals */}
-                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
-                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-violet-500/15 bg-violet-500/[0.04]">
-                    <div className="flex flex-col items-center gap-1">
-                      <Icon.Image className="h-7 w-7 text-violet-400/60" />
-                      <span className="text-[10px] font-medium text-violet-400/50">VISUALS</span>
-                    </div>
+                  <div className="p-5">
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/25">03 — Video</div>
+                    <p className="text-[13px] leading-relaxed text-white/40">Cinematic AI-generated video with voice narration, captions and background music.</p>
                   </div>
-                  <span className="text-[12px] font-semibold text-white/60">Cinematic frames</span>
-                  <span className="mt-0.5 text-[10px] text-white/25">AI images & video</span>
-                </div>
-                <div className="hidden flex-shrink-0 items-center justify-center pt-8 sm:flex">
-                  <Icon.ArrowRight className="h-3 w-3 text-white/15" />
-                </div>
-                {/* Step 5: Video */}
-                <div className="flex min-w-[140px] flex-col items-center text-center sm:min-w-0">
-                  <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl border border-rose-500/15 bg-rose-500/[0.04]">
-                    <div className="flex flex-col items-center gap-1">
-                      <Icon.Video className="h-7 w-7 text-rose-400/60" />
-                      <span className="text-[10px] font-medium text-rose-400/50">VIDEO</span>
-                    </div>
-                  </div>
-                  <span className="text-[12px] font-semibold text-white/60">Final output</span>
-                  <span className="mt-0.5 text-[10px] text-white/25">MP4 with voice & music</span>
                 </div>
               </div>
             </div>
 
             {/* ===== WHY PAT ORBIT ===== */}
-            <div className="mx-auto mt-16 max-w-5xl">
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Why PAT Orbit.</h2>
-                <p className="mt-3 text-[14px] text-white/35">Everything you need to turn a simple idea into a complete AI video.</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mx-auto mt-14 max-w-4xl">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
-                  { icon: <Icon.Sparkles className="h-6 w-6 text-emerald-400/70" />, title: "AI Storytelling", desc: "Turn one idea into a structured 5-scene story with narration and visual prompts." },
-                  { icon: <Icon.Image className="h-6 w-6 text-blue-400/70" />, title: "Cinematic Visuals", desc: "Generate consistent AI visuals for every scene in your story." },
-                  { icon: <Icon.Video className="h-6 w-6 text-violet-400/70" />, title: "AI Video", desc: "Transform scenes into moving video with image-to-video generation." },
-                  { icon: <Icon.Mic className="h-6 w-6 text-amber-400/70" />, title: "One-Click Render", desc: "Combine scenes, voice, captions and music into a final MP4." },
+                  { icon: <Icon.Sparkles className="h-5 w-5 text-emerald-400/60" />, title: "AI Storytelling" },
+                  { icon: <Icon.Image className="h-5 w-5 text-blue-400/60" />, title: "Cinematic Visuals" },
+                  { icon: <Icon.Video className="h-5 w-5 text-violet-400/60" />, title: "AI Video" },
+                  { icon: <Icon.Mic className="h-5 w-5 text-amber-400/60" />, title: "Voice & Render" },
                 ].map((card) => (
-                  <div key={card.title} className="group rounded-2xl border border-white/[0.06] bg-white/[0.015] p-6 transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] transition-colors group-hover:border-white/[0.12]">
+                  <div key={card.title} className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-all duration-200 hover:border-white/[0.1] hover:bg-white/[0.04] hover:-translate-y-0.5">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.03]">
                       {card.icon}
                     </div>
-                    <h3 className="mb-1.5 text-[15px] font-semibold text-white/80">{card.title}</h3>
-                    <p className="text-[12px] leading-relaxed text-white/30">{card.desc}</p>
+                    <span className="text-[12px] font-medium text-white/50">{card.title}</span>
                   </div>
                 ))}
               </div>
