@@ -21,6 +21,20 @@ export async function POST(request: Request) {
       );
     }
 
+    if (prompt.length > 5000) {
+      return NextResponse.json(
+        { error: "Video prompt is too long. Maximum 5000 characters." },
+        { status: 400 }
+      );
+    }
+
+    if (aspectRatio && !['16:9', '9:16', '1:1'].includes(aspectRatio)) {
+      return NextResponse.json(
+        { error: "Invalid aspect ratio." },
+        { status: 400 }
+      );
+    }
+
     const jobId = `video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     // Store initial job state in Redis
@@ -51,6 +65,7 @@ export async function POST(request: Request) {
       data: { jobId },
     });
 
+    console.log(`[jobs/video] Created ${jobId} for scene ${sceneId ?? 'unknown'}`);
     return NextResponse.json({ jobId, status: "queued" }, { status: 202 });
   } catch (error) {
     console.error("Create video job error:", error);

@@ -24,12 +24,33 @@ export async function POST(request: Request) {
     // Validate each scene has a video URL
     for (let i = 0; i < scenes.length; i++) {
       const s = scenes[i];
-      if (!s || typeof s !== "object" || !s.video) {
+      if (!s || typeof s !== "object" || !s.video || typeof s.video !== "string") {
         return NextResponse.json(
           { error: `Scene ${i + 1} is missing a video.` },
           { status: 400 }
         );
       }
+      // Validate video URL is a reasonable format
+      if (!s.video.startsWith('http') && !s.video.startsWith('data:')) {
+        return NextResponse.json(
+          { error: `Scene ${i + 1} has an invalid video URL.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (aspectRatio && !['16:9', '9:16', '1:1'].includes(aspectRatio)) {
+      return NextResponse.json(
+        { error: "Invalid aspect ratio." },
+        { status: 400 }
+      );
+    }
+
+    if (music && !['None', 'Ambient', 'Cinematic', 'Emotional'].includes(music)) {
+      return NextResponse.json(
+        { error: "Invalid music option." },
+        { status: 400 }
+      );
     }
 
     const jobId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -66,6 +87,7 @@ export async function POST(request: Request) {
       data: { jobId },
     });
 
+    console.log(`[jobs/render] Created ${jobId} with ${scenes.length} scenes`);
     return NextResponse.json({ jobId, status: "queued" }, { status: 202 });
   } catch (error) {
     console.error("Create render job error:", error);

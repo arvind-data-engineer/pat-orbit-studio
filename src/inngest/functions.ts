@@ -33,6 +33,7 @@ export const generateVideoJob = inngest.createFunction(
     /* 1. Read job from Redis and mark as processing */
     const job = await getJob(jobId);
     if (!job) throw new Error("Job not found");
+    console.log(`[inngest/video] Processing ${jobId}, scene ${job.sceneId ?? 'unknown'}`);
     await updateJob(jobId, { status: "processing" });
 
     /* 2. Generate video with Veo */
@@ -97,15 +98,18 @@ export const generateVideoJob = inngest.createFunction(
         const videoBuffer = Buffer.from(v.video.videoBytes, "base64");
         const filename = `scene-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
         const videoUrl = await uploadToBlob(videoBuffer, filename, v.video.mimeType);
+        console.log(`[inngest/video] Completed ${jobId}`);
         await updateJob(jobId, { status: "completed", videoUrl });
         return { jobId, status: "completed", videoUrl };
       }
       if (v.video?.uri) {
+        console.log(`[inngest/video] Completed ${jobId} via URI`);
         await updateJob(jobId, { status: "completed", videoUrl: v.video.uri });
         return { jobId, status: "completed", videoUrl: v.video.uri };
       }
     }
 
+    console.error(`[inngest/video] No video returned for ${jobId}`);
     await updateJob(jobId, { status: "failed", error: "No video was returned by the model." });
     throw new Error("No video was returned by the model.");
   }
@@ -153,6 +157,7 @@ export const renderVideoJob = inngest.createFunction(
       /* 1. Load job and validate */
       const job = await getJob(jobId);
       if (!job || !job.render) throw new Error("Render job not found");
+      console.log(`[inngest/render] Processing ${jobId}, ${job.render.scenes.length} scenes`);
       await updateJob(jobId, { status: "processing" });
 
       const { render } = job;
@@ -385,6 +390,7 @@ export const renderVideoJob = inngest.createFunction(
       const videoUrl = await uploadToBlob(outputBuffer, filename, "video/mp4");
 
       /* 9. Mark job completed */
+      console.log(`[inngest/render] Completed ${jobId}, ${outputBuffer.length} bytes`);
       await updateJob(jobId, { status: "completed", videoUrl });
 
       return {
@@ -398,6 +404,7 @@ export const renderVideoJob = inngest.createFunction(
         hasCaptions: !!render.captions,
       };
     } catch (error) {
+      console.error(`[inngest/render] Failed ${jobId}:`, error instanceof Error ? error.message : error);
       await updateJob(jobId, {
         status: "failed",
         error: error instanceof Error ? error.message : "Failed to render video.",
