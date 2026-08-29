@@ -1186,24 +1186,40 @@ export default function Home() {
                 </div>
 
                 {/* Progress bar */}
-                {/* Production workflow indicator */}
-                <div className="mb-3 flex items-center gap-0.5 overflow-x-auto">
-                  {([
-                    { label: "STORY", done: true },
-                    { label: "SCENES", done: true },
-                    { label: "VISUALS", done: totalImagesGenerated >= result.scenes.length },
-                    { label: "MOTION", done: totalVideosGenerated >= result.scenes.length },
-                    { label: "AUDIO", done: totalVoiceReady >= result.scenes.filter(s => s.narration?.trim()).length },
-                    { label: "FINAL", done: !!finalVideo },
-                  ] as const).map((step, i, arr) => (
-                    <div key={step.label} className="flex items-center">
-                      <div className={`flex items-center gap-1 rounded px-1.5 py-0.5 ${step.done ? 'bg-emerald-500/10 text-emerald-400/80' : 'bg-white/[0.03] text-white/30'}`}>
-                        {step.done ? <Icon.Check className="h-2.5 w-2.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-white/15" />}
-                        <span className="text-[8px] font-bold tracking-wider whitespace-nowrap">{step.label}</span>
-                      </div>
-                      {i < arr.length - 1 && <div className="mx-0.5 h-px w-1.5 bg-white/[0.06]" />}
-                    </div>
-                  ))}
+                {/* Workflow progress bar */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-0 overflow-x-auto">
+                    {([
+                      { label: "IDEA", done: true },
+                      { label: "STORY", done: true },
+                      { label: "SCENES", done: result.scenes.length > 0 },
+                      { label: "VISUALS", done: totalImagesGenerated >= result.scenes.length },
+                      { label: "MOTION", done: totalVideosGenerated >= result.scenes.length },
+                      { label: "AUDIO", done: totalVoiceReady > 0 && totalVoiceReady >= result.scenes.filter((s: { narration?: string }) => s.narration?.trim()).length },
+                      { label: "FINAL", done: !!finalVideo },
+                    ] as const).map((step, i, arr) => {
+                      const isActive = !step.done && (i === 0 || arr[i - 1].done);
+                      return (
+                        <div key={step.label} className="flex items-center flex-1 min-w-0">
+                          <div className={`flex flex-1 flex-col items-center gap-1 ${step.done ? 'opacity-100' : isActive ? 'opacity-100' : 'opacity-40'}`}>
+                            <div className="flex items-center justify-center">
+                              <div className={`h-[3px] flex-1 rounded-full transition-all duration-300 ${step.done ? 'bg-emerald-500/60' : isActive ? 'bg-emerald-500/30' : 'bg-white/[0.06]'}`} />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {step.done ? (
+                                <Icon.Check className="h-[9px] w-[9px] text-emerald-400" />
+                              ) : isActive ? (
+                                <span className="h-[7px] w-[7px] rounded-full bg-emerald-400/60 animate-pulse" />
+                              ) : (
+                                <span className="h-[7px] w-[7px] rounded-full bg-white/[0.10]" />
+                              )}
+                              <span className={`text-[8px] font-bold tracking-wider whitespace-nowrap ${step.done ? 'text-emerald-400/80' : isActive ? 'text-emerald-400/60' : 'text-white/35'}`}>{step.label}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Scene circles */}
