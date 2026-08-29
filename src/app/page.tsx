@@ -123,14 +123,12 @@ const Icon = {
 };
 
 const TEMPLATES = [
-  { label: "Cinematic Story", icon: "01", desc: "Dramatic cinematic narrative", style: "Cinematic", duration: "60 sec", aspectRatio: "16:9", text: "A retired astronaut receives a mysterious signal from a distant planet. She must decide whether to return to space for one final mission that could change humanity's understanding of the universe." },
-  { label: "Viral Short", icon: "02", desc: "Fast-paced vertical video", style: "Cinematic", duration: "30 sec", aspectRatio: "9:16", text: "A street magician performs an impossible trick in a crowded market. The camera follows the coin as it transforms into something nobody expected, leaving the audience in complete shock." },
-  { label: "Horror", icon: "03", desc: "Suspenseful atmospheric story", style: "Cinematic", duration: "60 sec", aspectRatio: "9:16", text: "A family moves into an old Victorian house. On the first night, the youngest daughter whispers that someone else already lives here. Strange sounds begin echoing from the basement at exactly 3 AM." },
-  { label: "Kids Adventure", icon: "04", desc: "Colorful animated adventure", style: "Cartoon", duration: "60 sec", aspectRatio: "16:9", text: "A brave little fox named Pip discovers a hidden garden where tiny magical creatures live. When a storm threatens to destroy their home, Pip must find the legendary Sun Stone to save them all." },
-  { label: "Sci-Fi", icon: "05", desc: "Futuristic cinematic story", style: "Cinematic", duration: "60 sec", aspectRatio: "16:9", text: "In the year 2150, a city floats above the clouds. A young engineer discovers that the city's power source is slowly dying. She has 24 hours to find a solution before the entire city falls from the sky." },
-  { label: "Motivation", icon: "06", desc: "Inspirational video", style: "Cinematic", duration: "30 sec", aspectRatio: "9:16", text: "A young boxer trains alone in an empty gym at dawn. Through sweat and determination, we see the journey from struggle to triumph, ending with a powerful moment of victory." },
-  { label: "Product Promo", icon: "07", desc: "Promotional concept", style: "Realistic", duration: "30 sec", aspectRatio: "16:9", text: "A sleek wireless headphone floats in a dark void. Light rays catch every curve as the camera orbits around it, revealing premium materials and cutting-edge design in cinematic detail." },
-  { label: "Custom", icon: "08", desc: "Start from scratch", style: "Cartoon", duration: "60 sec", aspectRatio: "9:16", text: "" },
+  { label: "Cinematic Story", desc: "Dramatic narrative with cinematic visuals", style: "Cinematic", duration: "60 sec", aspectRatio: "16:9", text: "A retired astronaut receives a mysterious signal from a distant planet. She must decide whether to return to space for one final mission that could change humanity's understanding of the universe." },
+  { label: "YouTube Short", desc: "Fast-paced vertical short-form video", style: "Cinematic", duration: "30 sec", aspectRatio: "9:16", text: "A street magician performs an impossible trick in a crowded market. The camera follows the coin as it transforms into something nobody expected, leaving the audience in complete shock." },
+  { label: "Horror", desc: "Suspenseful atmospheric horror story", style: "Cinematic", duration: "60 sec", aspectRatio: "9:16", text: "A family moves into an old Victorian house. On the first night, the youngest daughter whispers that someone else already lives here. Strange sounds begin echoing from the basement at exactly 3 AM." },
+  { label: "Kids Adventure", desc: "Colorful animated adventure for all ages", style: "Cartoon", duration: "60 sec", aspectRatio: "16:9", text: "A brave little fox named Pip discovers a hidden garden where tiny magical creatures live. When a storm threatens to destroy their home, Pip must find the legendary Sun Stone to save them all." },
+  { label: "Sci-Fi", desc: "Futuristic cinematic story", style: "Cinematic", duration: "60 sec", aspectRatio: "16:9", text: "In the year 2150, a city floats above the clouds. A young engineer discovers that the city's power source is slowly dying. She has 24 hours to find a solution before the entire city falls from the sky." },
+  { label: "Motivational", desc: "Inspirational short video", style: "Cinematic", duration: "30 sec", aspectRatio: "9:16", text: "A young boxer trains alone in an empty gym at dawn. Through sweat and determination, we see the journey from struggle to triumph, ending with a powerful moment of victory." },
 ];
 
 const MUSIC_DESCRIPTIONS: Record<string, string> = {
@@ -1016,26 +1014,7 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Quick start templates */}
-              <div className="mb-4">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Quick start</span>
-                </div>
-                <div className="grid grid-cols-4 gap-1 sm:grid-cols-8">
-                  {TEMPLATES.map((t) => (
-                    <button key={t.label} onClick={() => {
-                      if (t.text) setStory(t.text);
-                      setStyle(t.style);
-                      setDuration(t.duration);
-                      setAspectRatio(t.aspectRatio);
-                      setError("");
-                    }} className="group flex flex-col items-center gap-0.5 rounded-lg border border-white/[0.04] bg-white/[0.01] p-2 text-center transition-all hover:border-emerald-500/15 hover:bg-emerald-500/[0.03]">
-                      <span className="text-[9px] font-bold text-white/20 group-hover:text-emerald-400/40">{t.icon}</span>
-                      <span className="text-[9px] font-medium text-white/45 group-hover:text-white/65 leading-tight">{t.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+
 
               {/* Main creation card */}
               <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-5 shadow-[0_0_60px_-15px_rgba(255,255,255,0.03)] sm:p-6">
@@ -1148,19 +1127,32 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* How it works - compact */}
-              <div className="mt-6 grid grid-cols-3 gap-2">
-                {[
-                  { num: "01", label: "Story", desc: "AI writes 5 scenes", icon: <Icon.FileText className="h-4 w-4 text-amber-400/35" /> },
-                  { num: "02", label: "Visuals", desc: "Images and motion", icon: <Icon.Image className="h-4 w-4 text-emerald-400/35" /> },
-                  { num: "03", label: "Final", desc: "Voice, music, render", icon: <Icon.Video className="h-4 w-4 text-violet-400/35" /> },
-                ].map((card) => (
-                  <div key={card.num} className="rounded-lg border border-white/[0.04] bg-white/[0.01] p-3 text-center transition-all hover:border-white/[0.08] hover:bg-white/[0.02]">
-                    <div className="mx-auto mb-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.03]">{card.icon}</div>
-                    <div className="text-[11px] font-semibold text-white/60">{card.label}</div>
-                    <div className="text-[10px] text-white/30">{card.desc}</div>
-                  </div>
-                ))}
+              {/* Quick Start Cards */}
+              <div className="mt-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Quick start</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {TEMPLATES.map((t) => (
+                    <button key={t.label} onClick={() => {
+                      setStory(t.text);
+                      setStyle(t.style);
+                      setDuration(t.duration);
+                      setAspectRatio(t.aspectRatio);
+                      setError("");
+                    }} className="group rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 text-left transition-all hover:border-emerald-500/20 hover:bg-emerald-500/[0.03] hover:-translate-y-0.5">
+                      <div className="text-[13px] font-semibold text-white/75 group-hover:text-white/90 transition-colors">{t.label}</div>
+                      <div className="mt-1 text-[11px] text-white/40 group-hover:text-white/55 transition-colors leading-relaxed">{t.desc}</div>
+                      <div className="mt-2.5 flex items-center gap-2 text-[9px] text-white/25">
+                        <span>{t.style}</span>
+                        <span>&middot;</span>
+                        <span>{t.duration}</span>
+                        <span>&middot;</span>
+                        <span>{t.aspectRatio}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </>
