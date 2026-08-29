@@ -149,6 +149,17 @@ export default function Home() {
   const imageAbortRef = useRef<Record<number, AbortController>>({});
   const videoAbortRef = useRef<Record<number, AbortController>>({});
 
+  /* Polling intervals for async video/render jobs */
+  const pollIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
+
+  /* Cleanup polling on unmount */
+  useEffect(() => {
+    return () => {
+      pollIntervalsRef.current.forEach(clearInterval);
+      pollIntervalsRef.current = [];
+    };
+  }, []);
+
   /* Close settings dropdown on outside click */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -372,43 +383,93 @@ export default function Home() {
     if (!result) return;
     const scene = result.scenes.find((item) => item.id === sceneId);
     if (!scene) return;
-    /* Cancel any in-flight video generation for this scene */
+    /* Cancel any in-flight polling for this scene */
     if (videoAbortRef.current[sceneId]) videoAbortRef.current[sceneId].abort();
-    const controller = new AbortController();
-    videoAbortRef.current[sceneId] = controller;
 
     setSceneStatus((c) => ({ ...c, [sceneId]: "video" }));
     setError("");
+
     try {
+      /* Create async job */
       const body: Record<string, unknown> = {
         prompt: scene.visual,
         duration,
         aspectRatio,
+        sceneId,
       };
-      if (sceneImages[sceneId]) {
-        body.image = sceneImages[sceneId];
-      }
-      const response = await fetch("/api/generate-video", {
+      if (sceneImages[sceneId]) body.image = sceneImages[sceneId];
+
+      const createResp = await fetch("/api/jobs/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: controller.signal,
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to generate video.");
-      if (data.videoUrl) {
-        setSceneVideos((c) => ({ ...c, [sceneId]: data.videoUrl }));
-      } else if (data.video) {
-        setSceneVideos((c) => ({ ...c, [sceneId]: data.video }));
-      } else if (data.videoUri) {
-        setSceneVideos((c) => ({ ...c, [sceneId]: data.videoUri }));
-      } else {
-        throw new Error("No video was returned.");
-      }
+      const createData = await createResp.json();
+      if (!createResp.ok) throw new Error(createData.error || "Failed to start video generation.");
+      const { jobId } = createData;
+      if (!jobId) throw new Error("No job ID returned.");
+
+      /* Poll for completion */
+      const MAX_POLL_ATTEMPTS = 120; // ~6 min at 3s intervals
+      const POLL_INTERVAL = 3000;
+
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+        let cancelled = false;
+
+        const controller = new AbortController();
+        videoAbortRef.current[sceneId] = controller;
+
+        const interval = setInterval(async () => {
+          if (cancelled) return;
+          attempts++;
+
+          if (attempts > MAX_POLL_ATTEMPTS) {
+            clearInterval(interval);
+            reject(new Error("Video generation timed out. Please try again."));
+            return;
+          }
+
+          try {
+            const resp = await fetch(`/api/jobs/video?jobId=${jobId}`, {
+              signal: controller.signal,
+            });
+            if (!resp.ok) return; // Keep polling on transient errors
+            const data = await resp.json();
+
+            if (data.status === "completed" && data.videoUrl) {
+              clearInterval(interval);
+              setSceneVideos((c) => ({ ...c, [sceneId]: data.videoUrl }));
+              setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
+              resolve();
+            } else if (data.status === "failed") {
+              clearInterval(interval);
+              reject(new Error(data.error || "Video generation failed."));
+            }
+            // queued/processing — keep polling
+          } catch (err) {
+            if (err instanceof Error && err.name === "AbortError") {
+              clearInterval(interval);
+              resolve(); // Silently stop on abort
+              return;
+            }
+            // Network error — keep polling
+          }
+        }, POLL_INTERVAL);
+
+        pollIntervalsRef.current.push(interval);
+
+        /* Cleanup function for AbortController */
+        const origSignal = controller.signal;
+        origSignal.addEventListener("abort", () => {
+          cancelled = true;
+          clearInterval(interval);
+          resolve();
+        });
+      });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : "Failed to generate video.");
-    } finally {
       setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
     }
   }
@@ -423,6 +484,7 @@ export default function Home() {
     setError("");
     setFinalVideo(null);
     try {
+      /* Step 1: Generate voice audio on client side (fast, sequential) */
       setRenderStage("Generating voice...");
       setRenderProgress(10);
       const voiceAudios: Record<number, string> = {};
@@ -445,29 +507,67 @@ export default function Home() {
           } catch { /* Non-fatal */ }
         }
       }
-      setRenderStage("Preparing captions...");
+
+      /* Step 2: Create async render job */
+      setRenderStage("Submitting render job...");
       setRenderProgress(40);
       const scenesPayload = result.scenes.map((s) => ({
         id: s.id,
         video: sceneVideos[s.id] || "",
         narration: captions ? s.narration : undefined,
       }));
-      setRenderStage("Mixing audio & rendering...");
-      setRenderProgress(50);
-      const response = await fetch("/api/render-video", {
+
+      const createResp = await fetch("/api/jobs/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voiceAudios }),
       });
-      setRenderStage("Finalizing...");
-      setRenderProgress(90);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to render video.");
-      const finalUrl = data.videoUrl || data.video;
-      if (!finalUrl) throw new Error("No video was returned from render.");
-      setFinalVideo(finalUrl);
-      setRenderStage("Complete");
-      setRenderProgress(100);
+      const createData = await createResp.json();
+      if (!createResp.ok) throw new Error(createData.error || "Failed to start render.");
+      const { jobId } = createData;
+      if (!jobId) throw new Error("No render job ID returned.");
+
+      /* Step 3: Poll for render completion */
+      setRenderStage("Mixing audio & rendering...");
+      setRenderProgress(50);
+      const MAX_POLL = 180; // ~9 min at 3s intervals
+      const POLL_MS = 3000;
+
+      await new Promise<void>((resolve, reject) => {
+        let attempts = 0;
+
+        const interval = setInterval(async () => {
+          attempts++;
+          if (attempts > MAX_POLL) {
+            clearInterval(interval);
+            reject(new Error("Render timed out. Please try again."));
+            return;
+          }
+          try {
+            const resp = await fetch(`/api/jobs/render?jobId=${jobId}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (data.status === "completed" && data.videoUrl) {
+              clearInterval(interval);
+              setFinalVideo(data.videoUrl);
+              setRenderStage("Complete");
+              setRenderProgress(100);
+              resolve();
+            } else if (data.status === "failed") {
+              clearInterval(interval);
+              reject(new Error(data.error || "Render failed."));
+            } else {
+              /* Update progress estimate based on elapsed time */
+              const pct = Math.min(50 + Math.round((attempts / MAX_POLL) * 45), 95);
+              setRenderProgress(pct);
+              if (attempts === 30) setRenderStage("Encoding with FFmpeg...");
+              if (attempts === 80) setRenderStage("Uploading final video...");
+            }
+          } catch { /* Keep polling on network errors */ }
+        }, POLL_MS);
+
+        pollIntervalsRef.current.push(interval);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to render video.");
       setRenderStage("Render failed");
