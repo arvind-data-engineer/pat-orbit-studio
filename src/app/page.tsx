@@ -365,6 +365,18 @@ export default function Home() {
     }
   }
 
+  function moveScene(sceneId: number, direction: -1 | 1) {
+    if (!result) return;
+    const idx = result.scenes.findIndex((s) => s.id === sceneId);
+    if (idx < 0) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= result.scenes.length) return;
+    const newScenes = [...result.scenes];
+    [newScenes[idx], newScenes[newIdx]] = [newScenes[newIdx], newScenes[idx]];
+    setResult({ ...result, scenes: newScenes });
+    setSaved(false);
+  }
+
   function updateScene(sceneId: number, field: "title" | "narration" | "visual", value: string) {
     if (!result) return;
     setResult({
@@ -1142,14 +1154,14 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Scenes</span>
                   <div className="flex gap-1.5">
-                    {result.scenes.map((scene) => {
+                    {result.scenes.map((scene, sceneIdx) => {
                       const hasVideo = !!sceneVideos[scene.id];
                       const hasImage = !!sceneImages[scene.id];
                       return (
                         <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                          title={`Scene ${scene.id}: ${hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
+                          title={`Scene ${sceneIdx + 1}: ${hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
                           className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all duration-200 ${activeScene === scene.id ? 'ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-[#08090c]' : ''} ${hasVideo ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : hasImage ? 'bg-emerald-500/10 text-emerald-400/60 border border-emerald-500/20' : 'bg-white/[0.04] text-white/50 border border-white/[0.06]'}`}>
-                          {hasVideo ? <Icon.Check className="h-3 w-3" /> : scene.id}
+                          {hasVideo ? <Icon.Check className="h-3 w-3" /> : String(sceneIdx + 1).padStart(2, '0')}
                         </button>
                       );
                     })}
@@ -1167,7 +1179,7 @@ export default function Home() {
                       <span className="text-[11px] text-white/50">{result.scenes.length} total</span>
                     </div>
                     <div className="space-y-1">
-                      {result.scenes.map((scene) => {
+                      {result.scenes.map((scene, sceneIdx) => {
                         const hasVideo = !!sceneVideos[scene.id];
                         const hasImage = !!sceneImages[scene.id];
                         const hasVoice = voiceStatus[scene.id] === 'ready';
@@ -1182,7 +1194,7 @@ export default function Home() {
                                 <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
                               ) : (
                                 <div className="flex h-full items-center justify-center">
-                                  <span className="text-[9px] font-bold text-white/55">{scene.id}</span>
+                                  <span className="text-[9px] font-bold text-white/55">{String(sceneIdx + 1).padStart(2, '0')}</span>
                                 </div>
                               )}
                               {hasVideo && (
@@ -1218,13 +1230,12 @@ export default function Home() {
                 </div>
 
                 {/* CENTER -- Preview */}
-                <div className="space-y-3">
-                  <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
-                    {result.scenes.map((scene) => (
+                <div className="space-y-3">                   <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
+                    {result.scenes.map((scene, sceneIdx) => (
                       <button key={scene.id} onClick={() => setActiveScene(scene.id)}
                         className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${activeScene === scene.id ? "bg-white/[0.1] text-white border border-white/[0.15]" : "bg-white/[0.03] text-white/65 border border-transparent"}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(scene.id)}`} />
-                        {scene.id}
+                        {String(sceneIdx + 1).padStart(2, '0')}
                       </button>
                     ))}
                   </div>
@@ -1791,45 +1802,150 @@ export default function Home() {
 
             {/* ===== TIMELINE ===== */}
             <div id="timeline" className="mt-6 rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="text-[13px] font-semibold text-white/80">Timeline</div>
-                <div className="text-[12px] text-white/60">{duration}</div>
+              {/* Timeline header */}
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-[13px] font-semibold text-white/85">Timeline</span>
+                  <span className="text-[11px] text-white/45">{result.scenes.length} scenes</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-white/55">{duration}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-white/40">Project order:</span>
+                    <span className="text-[10px] font-medium text-white/55">Drag scenes to reorder</span>
+                  </div>
+                </div>
               </div>
-              <div className="relative mb-2.5 h-px w-full bg-white/[0.06]">
-                <div className="absolute left-0 top-1/2 h-2 w-2 -translate-x-1 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                <div className="absolute left-0 top-1/2 h-px bg-emerald-400/40" style={{ width: `${(activeScene / result.scenes.length) * 100}%` }} />
-              </div>               <div className="flex gap-1.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-5">
-                {result.scenes.map((scene) => {
+
+              {/* Playhead track */}
+              <div className="relative mb-3">
+                <div className="h-px w-full bg-white/[0.06]">
+                  <div className="absolute left-0 top-1/2 h-2 w-2 -translate-x-1 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)] z-10" style={{ left: `${((result.scenes.findIndex((s) => s.id === activeScene) + 0.5) / result.scenes.length) * 100}%` }} />
+                  <div className="absolute left-0 top-1/2 h-px bg-emerald-400/40" style={{ width: `${((result.scenes.findIndex((s) => s.id === activeScene) + 1) / result.scenes.length) * 100}%` }} />
+                </div>
+              </div>
+
+              {/* Scene blocks */}
+              <div className="space-y-2">
+                {result.scenes.map((scene, sceneIdx) => {
                   const hasVideo = !!sceneVideos[scene.id];
                   const hasImage = !!sceneImages[scene.id];
                   const hasVoice = voiceStatus[scene.id] === 'ready';
                   const isComplete = hasImage && hasVideo;
+                  const isActive = activeScene === scene.id;
+                  const isFirst = sceneIdx === 0;
+                  const isLast = sceneIdx === result.scenes.length - 1;
+
                   return (
-                    <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                      className={`flex-shrink-0 rounded-lg border p-2 text-left transition-all duration-150 sm:flex-shrink ${activeScene === scene.id ? "border-white/[0.15] bg-white/[0.06]" : isComplete ? "border-emerald-500/10 bg-emerald-500/[0.02]" : "border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.03]"}`}>
-                      <div className="relative mb-1.5 flex h-10 items-center justify-center overflow-hidden rounded-md bg-white/[0.03]">
+                    <div key={scene.id}
+                      onClick={() => setActiveScene(scene.id)}
+                      className={`group relative flex items-stretch rounded-xl border transition-all duration-150 cursor-pointer ${isActive ? 'border-emerald-500/25 bg-emerald-500/[0.04] shadow-[0_0_20px_-8px_rgba(52,211,153,0.15)]' : isComplete ? 'border-emerald-500/8 bg-emerald-500/[0.015] hover:bg-emerald-500/[0.03]' : 'border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03]'}`}>
+
+                      {/* Reorder controls */}
+                      <div className="flex flex-col justify-center gap-0.5 border-r border-white/[0.04] px-1.5">
+                        <button onClick={(e) => { e.stopPropagation(); moveScene(scene.id, -1); }} disabled={isFirst}
+                          aria-label="Move scene left"
+                          className="flex h-5 w-5 items-center justify-center rounded text-white/25 transition-colors hover:bg-white/[0.06] hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 15l-6-6-6 6" /></svg>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); moveScene(scene.id, 1); }} disabled={isLast}
+                          aria-label="Move scene right"
+                          className="flex h-5 w-5 items-center justify-center rounded text-white/25 transition-colors hover:bg-white/[0.06] hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" /></svg>
+                        </button>
+                      </div>
+
+                      {/* Scene number */}
+                      <div className="flex w-10 flex-shrink-0 items-center justify-center border-r border-white/[0.04]">
+                        <span className={`text-[14px] font-bold ${isActive ? 'text-emerald-400/80' : 'text-white/30'}`}>{String(sceneIdx + 1).padStart(2, '0')}</span>
+                      </div>
+
+                      {/* Thumbnail */}
+                      <div className="relative h-14 w-20 flex-shrink-0 overflow-hidden border-r border-white/[0.04]">
                         {hasImage ? (
                           <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-[9px] font-bold text-white/55">{scene.id}</span>
-                        )}
-                        {hasVideo && (
-                          <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-500/90">
-                            <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          <div className="flex h-full items-center justify-center bg-white/[0.02]">
+                            <Icon.Image className="h-4 w-4 text-white/15" />
                           </div>
                         )}
+                        {hasVideo && (
+                          <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded bg-blue-500/90">
+                            <svg width="7" height="7" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          </div>
+                        )}
+                        {isActive && <div className="absolute inset-0 border-2 border-emerald-400/30" />}
                       </div>
-                      <div className="truncate text-[11px] font-medium text-white/80">{scene.title}</div>
-                      <div className="mt-0.5 flex items-center gap-1">
-                        {hasImage && <span className="text-[7px] font-bold text-emerald-400/60">IMG</span>}
-                        {hasVideo && <span className="text-[7px] font-bold text-blue-400/60">VID</span>}
-                        {hasVoice && <span className="text-[7px] font-bold text-violet-400/60">VOC</span>}
-                        {isComplete && !hasVoice && <span className="text-[7px] font-bold text-emerald-400/60">READY</span>}
-                        {isComplete && hasVoice && <span className="text-[7px] font-bold text-emerald-400/70">COMPLETE</span>}
+
+                      {/* Scene info */}
+                      <div className="flex-1 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[13px] font-semibold ${isActive ? 'text-white/90' : 'text-white/75'}`}>{scene.title}</span>
+                          {scene.beat && <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[8px] font-bold text-violet-400/70">{scene.beat}</span>}
+                        </div>
+                        {scene.sceneDuration && (
+                          <div className="mt-0.5 text-[10px] text-white/35">~{scene.sceneDuration}s</div>
+                        )}
                       </div>
-                    </button>
+
+                      {/* Status indicators */}
+                      <div className="flex items-center gap-2 border-l border-white/[0.04] px-3">
+                        <div className="flex flex-col items-center gap-1">
+                          <div className={`flex items-center gap-1 ${hasImage ? 'text-emerald-400/70' : 'text-white/20'}`}>
+                            {hasImage ? <Icon.Check className="h-3 w-3" /> : <span className="h-3 w-3 rounded-full border border-current" />}
+                            <span className="text-[9px] font-medium">IMG</span>
+                          </div>
+                          <div className={`flex items-center gap-1 ${hasVideo ? 'text-blue-400/70' : 'text-white/20'}`}>
+                            {hasVideo ? <Icon.Check className="h-3 w-3" /> : <span className="h-3 w-3 rounded-full border border-current" />}
+                            <span className="text-[9px] font-medium">VID</span>
+                          </div>
+                          <div className={`flex items-center gap-1 ${hasVoice ? 'text-violet-400/70' : 'text-white/20'}`}>
+                            {hasVoice ? <Icon.Check className="h-3 w-3" /> : <span className="h-3 w-3 rounded-full border border-current" />}
+                            <span className="text-[9px] font-medium">VOC</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Complete badge */}
+                      {isComplete && hasVoice && (
+                        <div className="flex items-center border-l border-white/[0.04] px-3">
+                          <span className="rounded bg-emerald-500/15 px-2 py-1 text-[9px] font-bold text-emerald-400">COMPLETE</span>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
+              </div>
+
+              {/* Timeline footer */}
+              <div className="mt-3 flex items-center justify-between border-t border-white/[0.04] pt-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-white/40">Active:</span>
+                    <span className="text-[10px] font-medium text-white/60">Scene {String(activeScene).padStart(2, '0')}</span>
+                  </div>
+                  {(() => {
+                    const activeIdx = result.scenes.findIndex((s) => s.id === activeScene);
+                    const activeS = result.scenes[activeIdx];
+                    if (!activeS) return null;
+                    return (
+                      <div className="flex items-center gap-2">
+                        {activeS.beat && <span className="text-[10px] text-violet-400/50">{activeS.beat}</span>}
+                        {activeS.sceneDuration && <span className="text-[10px] text-white/35">~{activeS.sceneDuration}s</span>}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { const idx = result.scenes.findIndex((s) => s.id === activeScene); if (idx > 0) setActiveScene(result.scenes[idx - 1].id); }} disabled={result.scenes.findIndex((s) => s.id === activeScene) <= 0}
+                    className="flex h-6 w-6 items-center justify-center rounded border border-white/[0.06] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-20">
+                    <Icon.ArrowLeft className="h-3 w-3" />
+                  </button>
+                  <button onClick={() => { const idx = result.scenes.findIndex((s) => s.id === activeScene); if (idx < result.scenes.length - 1) setActiveScene(result.scenes[idx + 1].id); }} disabled={result.scenes.findIndex((s) => s.id === activeScene) >= result.scenes.length - 1}
+                    className="flex h-6 w-6 items-center justify-center rounded border border-white/[0.06] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-20">
+                    <Icon.ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             </div>
           </>
