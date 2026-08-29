@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 type Scene = {
   id: number;
@@ -12,6 +16,13 @@ type Scene = {
 type StoryResult = {
   title: string;
   scenes: Scene[];
+};
+
+type Character = {
+  name: string;
+  description: string;
+  appearance: string;
+  role: string;
 };
 
 type Project = {
@@ -26,10 +37,11 @@ type Project = {
   sceneImages?: Record<number, string>;
   sceneVideos?: Record<number, string>;
   finalVideoUrl?: string | null;
+  characters?: Character[];
 };
 
 /* ------------------------------------------------------------------ */
-/*  SVG icons — emoji-free, encoding-safe                              */
+/*  SVG icons                                                          */
 /* ------------------------------------------------------------------ */
 const Icon = {
   ArrowLeft: (p: { className?: string }) => (
@@ -65,7 +77,6 @@ const Icon = {
   Download: (p: { className?: string }) => (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
   ),
-  /* New icons for the visual UX upgrade */
   Lightbulb: (p: { className?: string }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M9 18h6" /><path d="M10 22h4" /><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" /></svg>
   ),
@@ -90,6 +101,18 @@ const Icon = {
   Wand: (p: { className?: string }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h0" /><path d="M17.8 6.2 19 5" /><path d="M3 21l9-9" /><path d="M12.2 6.2 11 5" /></svg>
   ),
+  User: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+  ),
+  Plus: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+  ),
+  X: (p: { className?: string }) => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+  ),
+  Copy2: (p: { className?: string }) => (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+  ),
 };
 
 const EXAMPLE_PROMPTS = [
@@ -99,12 +122,22 @@ const EXAMPLE_PROMPTS = [
   { label: "Detective solves a strange mystery", text: "A private detective receives an anonymous letter that predicts events before they happen. As the predictions grow darker, the detective must uncover who is behind them and why before the final prediction comes true." },
 ];
 
+const MUSIC_DESCRIPTIONS: Record<string, string> = {
+  None: "No background music",
+  Ambient: "Soft, atmospheric background tones",
+  Cinematic: "Dramatic orchestral-style score",
+  Emotional: "Gentle, expressive melody",
+};
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                     */
+/* ------------------------------------------------------------------ */
+
 export default function Home() {
   const [story, setStory] = useState("");
   const [language, setLanguage] = useState("Hindi");
   const [style, setStyle] = useState("Cartoon");
   const [duration, setDuration] = useState("60 sec");
-
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [voice, setVoice] = useState("Natural");
   const [captions, setCaptions] = useState(true);
@@ -120,12 +153,18 @@ export default function Home() {
   const [projectName, setProjectName] = useState("Untitled Video");
   const [saved, setSaved] = useState(false);
 
-  const [sceneStatus, setSceneStatus] = useState<
-    Record<number, "idle" | "image" | "video">
-  >({});
-
+  const [sceneStatus, setSceneStatus] = useState<Record<number, "idle" | "image" | "video">>({});
   const [sceneImages, setSceneImages] = useState<Record<number, string>>({});
   const [sceneVideos, setSceneVideos] = useState<Record<number, string>>({});
+
+  /* Voice state */
+  const [voiceStatus, setVoiceStatus] = useState<Record<number, "idle" | "generating" | "ready">>({});
+  const [voiceAudios, setVoiceAudios] = useState<Record<number, string>>({});
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  /* Character consistency */
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [showCharacters, setShowCharacters] = useState(false);
 
   /* Render state */
   const [finalVideo, setFinalVideo] = useState<string | null>(null);
@@ -143,13 +182,14 @@ export default function Home() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const workspaceRef = useRef<HTMLDivElement>(null);
 
-  /* Abort controllers for generation requests */
+  /* Abort controllers */
   const storyAbortRef = useRef<AbortController | null>(null);
   const imageAbortRef = useRef<Record<number, AbortController>>({});
   const videoAbortRef = useRef<Record<number, AbortController>>({});
 
-  /* Polling intervals for async video/render jobs */
+  /* Polling intervals */
   const pollIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
   /* Cleanup polling on unmount */
@@ -171,29 +211,26 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  /* Load projects from localStorage */
   useEffect(() => {
     try {
       const stored = localStorage.getItem("pat-orbit-projects");
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          /* Filter out corrupted entries */
           const valid = parsed.filter((p) => p && typeof p === 'object' && p.id && p.title);
           setProjects(valid);
         }
       }
     } catch {
-      /* Corrupted localStorage data — start fresh */
       console.error("Could not load projects. Starting fresh.");
       localStorage.removeItem("pat-orbit-projects");
     }
   }, []);
 
-  /* Loading step animation during story generation */
+  /* Loading step animation */
   useEffect(() => {
     if (!loading) { setLoadingStep(0); return; }
-    const steps = [0, 1, 2, 3];
-    let idx = 0;
     const timers: NodeJS.Timeout[] = [];
     for (let i = 1; i <= 3; i++) {
       timers.push(setTimeout(() => { setLoadingStep(i); }, i * 2000));
@@ -207,23 +244,20 @@ export default function Home() {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
 
-      /* Escape: close modals/menus */
       if (e.key === 'Escape') {
         if (mobileNavOpen) { setMobileNavOpen(false); return; }
         if (settingsOpen) { setSettingsOpen(false); return; }
         if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+        if (showCharacters) { setShowCharacters(false); return; }
       }
 
-      /* Don't trigger scene navigation while typing */
       if (isInput) return;
 
-      /* Arrow keys: scene navigation */
       if (result) {
         if (e.key === 'ArrowLeft' && activeScene > 1) { e.preventDefault(); setActiveScene(activeScene - 1); }
         if (e.key === 'ArrowRight' && activeScene < result.scenes.length) { e.preventDefault(); setActiveScene(activeScene + 1); }
       }
 
-      /* Ctrl/Cmd + S: save */
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (result) saveCurrentProject();
@@ -231,19 +265,22 @@ export default function Home() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId]);
+  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, showCharacters]);
 
   function saveProjects(nextProjects: Project[]) {
     setProjects(nextProjects);
     localStorage.setItem("pat-orbit-projects", JSON.stringify(nextProjects));
   }
 
+  /* ================================================================ */
+  /*  STORY GENERATION                                                 */
+  /* ================================================================ */
+
   async function generateStory() {
     if (!story.trim()) {
       setError("Please enter a story idea first.");
       return;
     }
-    /* Cancel any in-flight generation */
     if (storyAbortRef.current) storyAbortRef.current.abort();
     const controller = new AbortController();
     storyAbortRef.current = controller;
@@ -267,7 +304,11 @@ export default function Home() {
       setSceneImages({});
       setSceneVideos({});
       setSceneStatus({});
+      setVoiceStatus({});
+      setVoiceAudios({});
       setActiveScene(1);
+      /* Auto-scroll to workspace */
+      setTimeout(() => workspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -287,16 +328,18 @@ export default function Home() {
     setSaved(false);
   }
 
-  /* Track unsaved changes */
+  /* ================================================================ */
+  /*  UNSAVED CHANGES                                                  */
+  /* ================================================================ */
+
   useEffect(() => {
     if (result && !saved) {
       setHasUnsavedChanges(true);
     } else {
       setHasUnsavedChanges(false);
     }
-  }, [result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo]);
+  }, [result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo, characters]);
 
-  /* Warn before leaving with unsaved changes */
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
       if (hasUnsavedChanges) {
@@ -308,6 +351,10 @@ export default function Home() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  /* ================================================================ */
+  /*  PROJECT PERSISTENCE                                              */
+  /* ================================================================ */
+
   function saveCurrentProject() {
     if (!result) return;
     const project: Project = {
@@ -318,6 +365,7 @@ export default function Home() {
       sceneImages: { ...sceneImages },
       sceneVideos: { ...sceneVideos },
       finalVideoUrl: finalVideo,
+      characters: characters.length > 0 ? [...characters] : undefined,
     };
     saveProjects([project, ...projects]);
     setSaved(true);
@@ -327,7 +375,6 @@ export default function Home() {
   }
 
   function loadProject(project: Project) {
-    /* Safe fallbacks for old/corrupted project data */
     setStory(project.story || '');
     setLanguage(project.language || 'Hindi');
     setStyle(project.style || 'Cartoon');
@@ -337,7 +384,10 @@ export default function Home() {
     setSceneImages(project.sceneImages && typeof project.sceneImages === 'object' ? project.sceneImages : {});
     setSceneVideos(project.sceneVideos && typeof project.sceneVideos === 'object' ? project.sceneVideos : {});
     setFinalVideo(typeof project.finalVideoUrl === 'string' ? project.finalVideoUrl : null);
+    setCharacters(Array.isArray(project.characters) ? project.characters : []);
     setSceneStatus({});
+    setVoiceStatus({});
+    setVoiceAudios({});
     setActiveScene(1);
     setSaved(true);
     setToast("Project loaded");
@@ -349,11 +399,29 @@ export default function Home() {
     saveProjects(projects.filter((p) => p.id !== id));
   }
 
+  function duplicateProject(project: Project) {
+    const dup: Project = {
+      ...project,
+      id: crypto.randomUUID(),
+      title: project.title + " (Copy)",
+      createdAt: new Date().toISOString(),
+      sceneImages: project.sceneImages ? { ...project.sceneImages } : undefined,
+      sceneVideos: undefined,
+      finalVideoUrl: null,
+    };
+    saveProjects([dup, ...projects]);
+    setToast("Project duplicated");
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  /* ================================================================ */
+  /*  IMAGE GENERATION                                                 */
+  /* ================================================================ */
+
   async function startImageGeneration(sceneId: number) {
     if (!result) return;
     const scene = result.scenes.find((item) => item.id === sceneId);
     if (!scene) return;
-    /* Cancel any in-flight image generation for this scene */
     if (imageAbortRef.current[sceneId]) imageAbortRef.current[sceneId].abort();
     const controller = new AbortController();
     imageAbortRef.current[sceneId] = controller;
@@ -379,18 +447,20 @@ export default function Home() {
     }
   }
 
+  /* ================================================================ */
+  /*  VIDEO GENERATION (ASYNC JOBS)                                    */
+  /* ================================================================ */
+
   async function startVideoGeneration(sceneId: number) {
     if (!result) return;
     const scene = result.scenes.find((item) => item.id === sceneId);
     if (!scene) return;
-    /* Cancel any in-flight polling for this scene */
     if (videoAbortRef.current[sceneId]) videoAbortRef.current[sceneId].abort();
 
     setSceneStatus((c) => ({ ...c, [sceneId]: "video" }));
     setError("");
 
     try {
-      /* Create async job */
       const body: Record<string, unknown> = {
         prompt: scene.visual,
         duration,
@@ -409,34 +479,27 @@ export default function Home() {
       const { jobId } = createData;
       if (!jobId) throw new Error("No job ID returned.");
 
-      /* Poll for completion */
-      const MAX_POLL_ATTEMPTS = 120; // ~6 min at 3s intervals
+      const MAX_POLL = 120;
       const POLL_INTERVAL = 3000;
 
       await new Promise<void>((resolve, reject) => {
         let attempts = 0;
         let cancelled = false;
-
         const controller = new AbortController();
         videoAbortRef.current[sceneId] = controller;
 
         const interval = setInterval(async () => {
           if (cancelled) return;
           attempts++;
-
-          if (attempts > MAX_POLL_ATTEMPTS) {
+          if (attempts > MAX_POLL) {
             clearInterval(interval);
             reject(new Error("Video generation timed out. Please try again."));
             return;
           }
-
           try {
-            const resp = await fetch(`/api/jobs/video?jobId=${jobId}`, {
-              signal: controller.signal,
-            });
-            if (!resp.ok) return; // Keep polling on transient errors
+            const resp = await fetch(`/api/jobs/video?jobId=${jobId}`, { signal: controller.signal });
+            if (!resp.ok) return;
             const data = await resp.json();
-
             if (data.status === "completed" && data.videoUrl) {
               clearInterval(interval);
               setSceneVideos((c) => ({ ...c, [sceneId]: data.videoUrl }));
@@ -446,22 +509,18 @@ export default function Home() {
               clearInterval(interval);
               reject(new Error(data.error || "Video generation failed."));
             }
-            // queued/processing — keep polling
           } catch (err) {
             if (err instanceof Error && err.name === "AbortError") {
               clearInterval(interval);
-              resolve(); // Silently stop on abort
+              resolve();
               return;
             }
-            // Network error — keep polling
           }
         }, POLL_INTERVAL);
 
         pollIntervalsRef.current.push(interval);
 
-        /* Cleanup function for AbortController */
-        const origSignal = controller.signal;
-        origSignal.addEventListener("abort", () => {
+        controller.signal.addEventListener("abort", () => {
           cancelled = true;
           clearInterval(interval);
           resolve();
@@ -474,7 +533,61 @@ export default function Home() {
     }
   }
 
+  /* ================================================================ */
+  /*  VOICE GENERATION (PER-SCENE)                                     */
+  /* ================================================================ */
+
+  async function startVoiceGeneration(sceneId: number) {
+    if (!result) return;
+    const scene = result.scenes.find((s) => s.id === sceneId);
+    if (!scene || !scene.narration?.trim()) return;
+
+    setVoiceStatus((c) => ({ ...c, [sceneId]: "generating" }));
+    try {
+      const resp = await fetch("/api/generate-voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ narration: scene.narration, language, voice }),
+      });
+      const data = await resp.json();
+      if (resp.ok && data.audio) {
+        setVoiceAudios((c) => ({ ...c, [sceneId]: data.audio }));
+        setVoiceStatus((c) => ({ ...c, [sceneId]: "ready" }));
+      } else {
+        throw new Error(data.error || "Voice generation failed.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate voice.");
+      setVoiceStatus((c) => ({ ...c, [sceneId]: "idle" }));
+    }
+  }
+
+  function playVoice(sceneId: number) {
+    const audio = voiceAudios[sceneId];
+    if (!audio) return;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    const a = new Audio(audio);
+    audioRef.current = a;
+    a.play().catch(() => {});
+  }
+
+  function stopVoice() {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  }
+
+  /* ================================================================ */
+  /*  RENDER                                                           */
+  /* ================================================================ */
+
   const totalVideosGenerated = Object.keys(sceneVideos).length;
+  const totalImagesGenerated = Object.keys(sceneImages).length;
+  const totalVoiceReady = Object.values(voiceStatus).filter((s) => s === "ready").length;
 
   async function startRender() {
     if (!result || totalVideosGenerated < result.scenes.length) return;
@@ -484,14 +597,14 @@ export default function Home() {
     setError("");
     setFinalVideo(null);
     try {
-      /* Step 1: Generate voice audio on client side (fast, sequential) */
+      /* Generate voice for scenes that don't have it yet */
       setRenderStage("Generating voice...");
       setRenderProgress(10);
-      const voiceAudios: Record<number, string> = {};
+      const renderVoiceAudios: Record<number, string> = { ...voiceAudios };
       const totalScenes = result.scenes.length;
       for (let i = 0; i < totalScenes; i++) {
         const s = result.scenes[i];
-        if (s.narration && s.narration.trim()) {
+        if (s.narration && s.narration.trim() && !renderVoiceAudios[s.id]) {
           setRenderStage(`Generating voice ${i + 1}/${totalScenes}...`);
           setRenderProgress(10 + Math.round((i / totalScenes) * 25));
           try {
@@ -502,13 +615,15 @@ export default function Home() {
             });
             const voiceData = await voiceResp.json();
             if (voiceResp.ok && voiceData.audio) {
-              voiceAudios[s.id] = voiceData.audio;
+              renderVoiceAudios[s.id] = voiceData.audio;
+              setVoiceAudios((c) => ({ ...c, [s.id]: voiceData.audio }));
+              setVoiceStatus((c) => ({ ...c, [s.id]: "ready" }));
             }
           } catch { /* Non-fatal */ }
         }
       }
 
-      /* Step 2: Create async render job */
+      /* Submit render job */
       setRenderStage("Submitting render job...");
       setRenderProgress(40);
       const scenesPayload = result.scenes.map((s) => ({
@@ -520,22 +635,21 @@ export default function Home() {
       const createResp = await fetch("/api/jobs/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voiceAudios }),
+        body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voiceAudios: renderVoiceAudios }),
       });
       const createData = await createResp.json();
       if (!createResp.ok) throw new Error(createData.error || "Failed to start render.");
       const { jobId } = createData;
       if (!jobId) throw new Error("No render job ID returned.");
 
-      /* Step 3: Poll for render completion */
+      /* Poll for completion */
       setRenderStage("Mixing audio & rendering...");
       setRenderProgress(50);
-      const MAX_POLL = 180; // ~9 min at 3s intervals
+      const MAX_POLL = 180;
       const POLL_MS = 3000;
 
       await new Promise<void>((resolve, reject) => {
         let attempts = 0;
-
         const interval = setInterval(async () => {
           attempts++;
           if (attempts > MAX_POLL) {
@@ -557,15 +671,13 @@ export default function Home() {
               clearInterval(interval);
               reject(new Error(data.error || "Render failed."));
             } else {
-              /* Update progress estimate based on elapsed time */
               const pct = Math.min(50 + Math.round((attempts / MAX_POLL) * 45), 95);
               setRenderProgress(pct);
               if (attempts === 30) setRenderStage("Encoding with FFmpeg...");
               if (attempts === 80) setRenderStage("Uploading final video...");
             }
-          } catch { /* Keep polling on network errors */ }
+          } catch { /* Keep polling */ }
         }, POLL_MS);
-
         pollIntervalsRef.current.push(interval);
       });
     } catch (err) {
@@ -591,6 +703,8 @@ export default function Home() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
+      setToast("Video exported successfully");
+      setTimeout(() => setToast(null), 2500);
     } catch {
       setError("Export failed. Please try again.");
     }
@@ -610,7 +724,7 @@ export default function Home() {
     if (st === "image" || st === "video") return "Generating";
     if (sceneVideos[sceneId]) return "Video ready";
     if (sceneImages[sceneId]) return "Image ready";
-    return "Ready";
+    return "Not started";
   }
 
   function getStatusColor(sceneId: number) {
@@ -631,8 +745,6 @@ export default function Home() {
     return "bg-white/20";
   }
 
-  const totalImagesGenerated = Object.keys(sceneImages).length;
-
   const loadingSteps = [
     { label: "Analyzing idea", done: loadingStep >= 1 },
     { label: "Building 5 scenes", done: loadingStep >= 2 },
@@ -640,12 +752,14 @@ export default function Home() {
     { label: "Preparing visual prompts", done: loading },
   ];
 
+  const renderReady = result && totalVideosGenerated >= result.scenes.length;
+  const renderReadiness = result ? Math.round(((totalVideosGenerated / result.scenes.length) * 70) + (totalImagesGenerated > 0 ? 15 : 0) + (totalVoiceReady > 0 ? 15 : 0)) : 0;
+
   return (
     <main className="min-h-screen bg-[#08090c] text-white overflow-x-hidden">
       {/* ========== HEADER ========== */}
       <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#08090c]/80 backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 sm:px-6">
-          {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-white to-white/70 text-[11px] font-black text-black">
               P
@@ -657,7 +771,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Desktop nav */}
           <nav className="hidden items-center gap-0.5 md:flex">
             {!result ? (
               <span className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-white/70">Create</span>
@@ -670,7 +783,6 @@ export default function Home() {
             )}
           </nav>
 
-          {/* Right actions */}
           <div className="flex items-center gap-1.5">
             {result && (
               <>
@@ -694,22 +806,20 @@ export default function Home() {
               {settingsOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/[0.08] bg-[#111218] p-1.5 shadow-2xl">
                   <div className="px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider text-white/50">Settings</div>
-                  <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white/70">Aspect ratio: {aspectRatio}</button>
-                  <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white/70">Voice: {voice}</button>
-                  <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white/70">Captions: {captions ? "ON" : "OFF"}</button>
-                  <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] text-white/50 transition-colors hover:bg-white/[0.05] hover:text-white/70">Music: {music}</button>
+                  <button onClick={() => setAspectRatio("9:16")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${aspectRatio === "9:16" ? "text-white/90" : "text-white/50"}`}>Aspect ratio: {aspectRatio}</button>
+                  <button onClick={() => setVoice(voice === "Natural" ? "Deep" : voice === "Deep" ? "Soft" : "Natural")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${voice !== "Natural" ? "text-white/90" : "text-white/50"}`}>Voice: {voice}</button>
+                  <button onClick={() => setCaptions(!captions)} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${captions ? "text-white/90" : "text-white/50"}`}>Captions: {captions ? "ON" : "OFF"}</button>
+                  <button onClick={() => setMusic(music === "None" ? "Ambient" : music === "Ambient" ? "Cinematic" : music === "Cinematic" ? "Emotional" : "None")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${music !== "None" ? "text-white/90" : "text-white/50"}`}>Music: {music}</button>
                 </div>
               )}
             </div>
 
-            {/* Mobile menu button */}
             <button onClick={() => setMobileNavOpen(!mobileNavOpen)} aria-label="Menu" className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/65 transition-colors md:hidden">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
             </button>
           </div>
         </div>
 
-        {/* Mobile nav panel */}
         {mobileNavOpen && (
           <div className="border-t border-white/[0.06] bg-[#0c0d12] px-4 py-3 md:hidden">
             <div className="flex flex-col gap-1">
@@ -725,13 +835,6 @@ export default function Home() {
               {result && (
                 <button onClick={() => { finalVideo && exportVideo(); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Export</button>
               )}
-              <div className="my-1 border-t border-white/[0.06]" />
-              <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-white/40">Settings</div>
-              <div className="grid grid-cols-2 gap-1 px-1">
-                {["9:16", "16:9", "1:1"].map((r) => (
-                  <button key={r} onClick={() => setAspectRatio(r)} className={`rounded-md py-1.5 text-[11px] font-medium transition-all ${aspectRatio === r ? "bg-white text-black" : "text-white/50"}`}>{r}</button>
-                ))}
-              </div>
             </div>
           </div>
         )}
@@ -742,7 +845,6 @@ export default function Home() {
           <>
             {/* ===== HERO ===== */}
             <div className="relative mx-auto mb-5 max-w-3xl text-center">
-              {/* Animated background glow */}
               <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
                 <div className="absolute left-1/2 top-0 h-[400px] w-[500px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent blur-3xl" />
                 <div className="absolute left-[30%] top-5 h-[250px] w-[250px] rounded-full bg-blue-500/[0.03] blur-3xl" />
@@ -762,7 +864,7 @@ export default function Home() {
               </p>
             </div>
 
-            {/* ===== WORKFLOW TRANSFORMATION LINE ===== */}
+            {/* ===== WORKFLOW LINE ===== */}
             <div className="mx-auto mb-8 flex max-w-2xl items-center justify-center gap-1 overflow-x-auto px-2 pb-1 sm:gap-0">
               {[
                 { label: "YOUR IDEA", color: "text-amber-400/70" },
@@ -781,80 +883,6 @@ export default function Home() {
                   )}
                 </div>
               ))}
-            </div>
-
-            {/* ===== HERO PRODUCT DEMO ===== */}
-            <div className="mx-auto mb-10 max-w-4xl group/demo">
-              <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0b10] shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)] transition-all duration-500 hover:shadow-[0_0_100px_-20px_rgba(255,255,255,0.06)] hover:border-white/[0.12]">
-                {/* Cinematic preview area */}
-                <div className="relative">
-                  {/* Animated glow behind preview */}
-                  <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                    <div className="absolute left-1/2 top-1/2 h-48 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.08] via-blue-500/[0.04] to-transparent blur-3xl" />
-                  </div>
-                  {/* Top badges */}
-                  <div className="absolute left-4 top-4 z-10 flex items-center gap-2">
-                    <span className="rounded-md bg-black/60 px-2 py-1 text-[9px] font-medium text-white/60 backdrop-blur-sm">Scene 03 / 05</span>
-                    <span className="rounded-md bg-emerald-500/20 px-2 py-1 text-[9px] font-bold text-emerald-400/80 backdrop-blur-sm">AI GENERATED</span>
-                  </div>
-                  {/* Stage labels */}
-                  <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5">
-                    {['Story', 'Scenes', 'Visuals', 'Video'].map((label, i) => (
-                      <span key={label} className={`rounded px-1.5 py-0.5 text-[8px] font-medium backdrop-blur-sm ${i === 2 ? 'bg-emerald-500/15 text-emerald-400/70' : i === 3 ? 'bg-blue-500/15 text-blue-400/70' : 'bg-white/[0.06] text-white/60'}`}>{label}</span>
-                    ))}
-                  </div>
-                  {/* Cinematic scene composition */}
-                  <div className="relative flex aspect-video items-center justify-center overflow-hidden">
-                    {/* Base gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#080c18] via-[#0a1425] to-[#060a14]" />
-                    {/* Atmospheric glows */}
-                    <div className="absolute left-1/2 top-1/2 h-56 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-b from-blue-500/12 via-cyan-500/6 to-transparent blur-2xl" />
-                    <div className="absolute left-[40%] top-[35%] h-32 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400/10 blur-2xl" />
-                    {/* Cinematic doorway shape */}
-                    <div className="relative z-10 flex h-44 w-24 flex-col items-center justify-end overflow-hidden rounded-t-full border border-emerald-500/15 bg-gradient-to-b from-emerald-500/8 to-transparent shadow-[0_0_80px_-10px_rgba(16,185,129,0.12)]">
-                      <div className="h-6 w-6 rounded-full bg-emerald-400/20 blur-md" />
-                      <div className="h-3 w-3 -mt-8 rounded-full bg-white/10 blur-sm" />
-                    </div>
-                    {/* Floor reflection */}
-                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
-                    {/* Particles effect (CSS only) */}
-                    <div className="absolute left-[35%] top-[30%] h-1 w-1 rounded-full bg-white/20 animate-[pulse_4s_ease-in-out_infinite]" />
-                    <div className="absolute left-[55%] top-[25%] h-0.5 w-0.5 rounded-full bg-emerald-400/30 animate-[pulse_3s_ease-in-out_1s_infinite]" />
-                    <div className="absolute left-[45%] top-[40%] h-0.5 w-0.5 rounded-full bg-blue-400/25 animate-[pulse_5s_ease-in-out_2s_infinite]" />
-                    {/* Play button */}
-                    <div className="absolute z-20 flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-white/[0.08] backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-white/[0.12] border border-white/[0.12] shadow-[0_0_40px_-10px_rgba(255,255,255,0.1)]">
-                      <Icon.Play className="ml-1 h-6 w-6 text-white/80" />
-                    </div>
-                  </div>
-                </div>
-                {/* Demo timeline */}
-                <div className="border-t border-white/[0.10] bg-white/[0.025] px-5 py-3">
-                  <div className="mb-2 flex items-center justify-between text-[10px] text-white/45">
-                    <span>00:00</span>
-                    <span className="text-[10px] font-medium text-white/55">Timeline</span>
-                    <span>01:00</span>
-                  </div>
-                  <div className="relative h-px w-full bg-white/[0.06]">
-                    <div className="absolute left-0 top-1/2 h-2 w-2 -translate-x-1 -translate-y-1/2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-                    <div className="absolute left-0 top-1/2 h-px w-[40%] -translate-y-1/2 bg-gradient-to-r from-emerald-400/40 to-emerald-400/10" />
-                  </div>
-                  <div className="mt-2.5 flex gap-1.5">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <div key={n} className={`flex-1 overflow-hidden rounded-lg border transition-all ${n === 3 ? 'border-white/[0.15] bg-white/[0.06]' : n === 1 || n === 2 ? 'border-emerald-500/10 bg-emerald-500/[0.03]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
-                        <div className="flex h-8 items-center justify-center">
-                          {n <= 2 ? (
-                            <div className="h-full w-full bg-gradient-to-b from-emerald-500/15 to-emerald-500/5" />
-                          ) : n === 3 ? (
-                            <div className="h-full w-full bg-gradient-to-b from-blue-500/15 to-blue-500/5" />
-                          ) : (
-                            <span className="text-[9px] font-medium text-white/45">{n}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* ===== CREATE FORM ===== */}
@@ -883,7 +911,6 @@ export default function Home() {
                 <span className="absolute bottom-3 right-4 text-[11px] text-white/55 tabular-nums">{story.length}</span>
               </div>
 
-              {/* Example prompts */}
               <div className="mb-4 mt-3 flex flex-wrap gap-1.5">
                 {EXAMPLE_PROMPTS.map((ep) => (
                   <button
@@ -923,7 +950,7 @@ export default function Home() {
                 <div className="mt-5 rounded-xl border border-white/[0.08] bg-[#0c0d12] p-5">
                   <div className="mb-4 flex items-center gap-2">
                     <Icon.Spinner className="h-4 w-4 text-emerald-400" />
-                    <span className="text-[13px] font-semibold text-white/80">Creating your story</span>
+                    <span className="text-[13px] font-semibold text-white/80">Creating your story...</span>
                   </div>
                   <div className="space-y-2.5">
                     {loadingSteps.map((step, i) => (
@@ -937,7 +964,7 @@ export default function Home() {
                             <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
                           </span>
                         )}
-                        <span className={`text-[12px] ${step.done ? "text-white/50" : i === loadingSteps.findIndex(s => !s.done) ? "text-white/70" : "text-white/50"}`}>{step.label}</span>
+                        <span className={`text-[12px] ${step.done ? "text-white/50" : "text-white/70"}`}>{step.label}</span>
                       </div>
                     ))}
                   </div>
@@ -957,7 +984,6 @@ export default function Home() {
                 <p className="mt-3 text-[15px] text-white/70">From a single idea to a complete cinematic sequence.</p>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
-                {/* Card 1: Story */}
                 <div className="group rounded-2xl border border-white/[0.10] bg-white/[0.025] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
                   <div className="flex h-40 items-center justify-center bg-gradient-to-br from-amber-500/[0.06] to-amber-500/[0.02]">
                     <div className="flex flex-col items-center gap-2">
@@ -970,7 +996,6 @@ export default function Home() {
                     <p className="text-[14px] leading-relaxed text-white/75">&ldquo;A mysterious door appears inside an old house, revealing a hidden world of glowing crystals and ancient maps...&rdquo;</p>
                   </div>
                 </div>
-                {/* Card 2: Scenes */}
                 <div className="group rounded-2xl border border-white/[0.10] bg-white/[0.025] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
                   <div className="flex h-40 items-center justify-center bg-gradient-to-br from-emerald-500/[0.06] to-emerald-500/[0.02]">
                     <div className="grid grid-cols-3 gap-1.5">
@@ -986,14 +1011,12 @@ export default function Home() {
                     <p className="text-[14px] leading-relaxed text-white/75">5 structured scenes with titles, narration and visual prompts for each moment of your story.</p>
                   </div>
                 </div>
-                {/* Card 3: Video */}
                 <div className="group rounded-2xl border border-white/[0.10] bg-white/[0.025] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
                   <div className="relative flex h-40 items-center justify-center bg-gradient-to-br from-violet-500/[0.06] to-violet-500/[0.02]">
                     <div className="absolute inset-4 overflow-hidden rounded-lg border border-white/[0.06]">
                       <div className="h-full w-full bg-gradient-to-br from-[#0c0e1a] to-[#080a14]" />
-                      <div className="absolute left-1/2 top-1/2 h-16 w-10 -translate-x-1/2 -translate-y-1/2 rounded-t-full border border-violet-500/15 bg-violet-500/[0.06]" />
                     </div>
-                    <div className="z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white/[0.1] backdrop-blur-sm transition-all hover:scale-110 border border-white/[0.1]">
+                    <div className="z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.1] backdrop-blur-sm transition-all hover:scale-110 border border-white/[0.1]">
                       <Icon.Play className="ml-0.5 h-4 w-4 text-white/70" />
                     </div>
                   </div>
@@ -1004,125 +1027,59 @@ export default function Home() {
                 </div>
               </div>
             </div>
-
-            {/* ===== WHY PAT ORBIT ===== */}
-            <div className="mx-auto mt-14 max-w-4xl">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { icon: <Icon.Sparkles className="h-5 w-5 text-emerald-400/60" />, title: "AI Storytelling" },
-                  { icon: <Icon.Image className="h-5 w-5 text-blue-400/60" />, title: "Cinematic Visuals" },
-                  { icon: <Icon.Video className="h-5 w-5 text-violet-400/60" />, title: "AI Video" },
-                  { icon: <Icon.Mic className="h-5 w-5 text-amber-400/60" />, title: "Voice & Render" },
-                ].map((card) => (
-                  <div key={card.title} className="group flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 transition-all duration-200 hover:border-white/[0.1] hover:bg-white/[0.04] hover:-translate-y-0.5">
-                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.03]">
-                      {card.icon}
-                    </div>
-                    <span className="text-[12px] font-medium text-white/50">{card.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </>
         ) : (
           <>
-            {/* ===== WORKSPACE HEADER ===== */}
-            <div className="mb-4">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  {/* Breadcrumb */}
-                  <div className="mb-2 flex items-center gap-1.5 text-[11px] text-white/50">
-                    <button onClick={() => setResult(null)} className="transition-colors hover:text-white/70">PAT Orbit Studio</button>
-                    <span className="text-white/30">/</span>
-                    <button onClick={() => { setResult(null); setTimeout(() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' }), 100); }} className="transition-colors hover:text-white/70">Projects</button>
-                    <span className="text-white/30">/</span>
-                    <span className="text-white/70 truncate max-w-[180px]">{projectName}</span>
+            {/* ===== WORKSPACE ===== */}
+            <div ref={workspaceRef}>
+              {/* Workspace header */}
+              <div className="mb-4">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="mb-2 flex items-center gap-1.5 text-[11px] text-white/50">
+                      <button onClick={() => setResult(null)} className="transition-colors hover:text-white/70">PAT Orbit Studio</button>
+                      <span className="text-white/30">/</span>
+                      <span className="text-white/70 truncate max-w-[180px]">{projectName}</span>
+                    </div>
+                    <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl text-white" />
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">Editing project</span>
+                      {saved && !hasUnsavedChanges && <span className="text-[11px] text-white/40">Last saved just now</span>}
+                    </div>
                   </div>
-                  {/* Title */}
-                  <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl text-white" />
-                  {/* Editing status */}
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">Editing project</span>
-                    {saved && !hasUnsavedChanges && <span className="text-[11px] text-white/40">Last saved just now</span>}
+                  <div className="flex items-center gap-2">
+                    <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-all active:scale-[0.98] ${hasUnsavedChanges ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25' : saved && !hasUnsavedChanges ? 'border border-white/[0.08] bg-white/[0.04] text-emerald-400/70' : 'border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white/80'}`}>
+                      <Icon.Folder className="text-white/55" />{saved && !hasUnsavedChanges ? "Saved" : "Save"}
+                    </button>
+                    <button onClick={finalVideo ? exportVideo : undefined} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98]">
+                      <Icon.Download className="text-black/60" />Export
+                    </button>
                   </div>
                 </div>
+
+                {/* Progress bar */}
+                <div className="mb-3">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-white/55">Production Progress</span>
+                    <span className="text-[11px] text-white/65">{totalImagesGenerated} images, {totalVideosGenerated} videos</span>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500" style={{ width: `${renderReadiness}%` }} />
+                  </div>
+                </div>
+
+                {/* Scene circles */}
                 <div className="flex items-center gap-2">
-                  <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-all active:scale-[0.98] ${hasUnsavedChanges ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25' : saved && !hasUnsavedChanges ? 'border border-white/[0.08] bg-white/[0.04] text-emerald-400/70' : 'border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white/80'}`}>
-                    <Icon.Folder className="text-white/55" />{saved && !hasUnsavedChanges ? "Saved" : "Save"}
-                  </button>
-                  <button onClick={finalVideo ? exportVideo : undefined} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98]">
-                    <Icon.Download className="text-black/60" />Export
-                  </button>
-                </div>
-              </div>
-
-              {/* Video progress bar */}
-              <div className="mb-3">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-white/55">Video Progress</span>
-                  <span className="text-[11px] text-white/65">{totalVideosGenerated} / {result.scenes.length} scenes ready</span>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500" style={{ width: `${(totalVideosGenerated / result.scenes.length) * 100}%` }} />
-                </div>
-              </div>
-
-              {/* Scene completion circles */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Scenes</span>
-                <div className="flex gap-1.5">
-                  {result.scenes.map((scene) => {
-                    const hasVideo = !!sceneVideos[scene.id];
-                    const hasImage = !!sceneImages[scene.id];
-                    return (
-                      <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                        title={`Scene ${scene.id}: ${hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all duration-200 ${activeScene === scene.id ? 'ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-[#08090c]' : ''} ${hasVideo ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : hasImage ? 'bg-emerald-500/10 text-emerald-400/60 border border-emerald-500/20' : 'bg-white/[0.04] text-white/50 border border-white/[0.06]'}`}>
-                        {hasVideo ? <Icon.Check className="h-3 w-3" /> : scene.id}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* ===== 3-COLUMN WORKSPACE ===== */}
-            <div className="grid gap-5 lg:grid-cols-[240px_1fr_300px]">
-              {/* LEFT -- Scene Navigator */}
-              <div className="hidden lg:block">
-                <div className="sticky top-20">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[12px] font-semibold uppercase tracking-wider text-white/70">Scenes</span>
-                    <span className="text-[11px] text-white/50">{result.scenes.length} total</span>
-                  </div>
-                  <div className="space-y-1">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Scenes</span>
+                  <div className="flex gap-1.5">
                     {result.scenes.map((scene) => {
                       const hasVideo = !!sceneVideos[scene.id];
                       const hasImage = !!sceneImages[scene.id];
                       return (
                         <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                          className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 ${activeScene === scene.id ? "bg-white/[0.08] border border-white/[0.12] shadow-[0_0_20px_-10px_rgba(255,255,255,0.06)]" : "border border-transparent hover:bg-white/[0.04]"}`}>
-                          {/* Thumbnail */}
-                          <div className="relative h-10 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.04]">
-                            {hasImage ? (
-                              <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center">
-                                <span className="text-[9px] font-bold text-white/55">{scene.id}</span>
-                              </div>
-                            )}
-                            {hasVideo && (
-                              <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-500/90">
-                                <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[12px] font-medium text-white/80">{scene.title}</div>
-                            <div className="mt-0.5">
-                              <span className={`inline-block rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${getStatusColor(scene.id)}`}>{getStatusLabel(scene.id)}</span>
-                            </div>
-                          </div>
+                          title={`Scene ${scene.id}: ${hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
+                          className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all duration-200 ${activeScene === scene.id ? 'ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-[#08090c]' : ''} ${hasVideo ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : hasImage ? 'bg-emerald-500/10 text-emerald-400/60 border border-emerald-500/20' : 'bg-white/[0.04] text-white/50 border border-white/[0.06]'}`}>
+                          {hasVideo ? <Icon.Check className="h-3 w-3" /> : scene.id}
                         </button>
                       );
                     })}
@@ -1130,216 +1087,313 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* CENTER -- Preview + Actions */}
-              <div className="space-y-3">
-                {/* Mobile scene tabs */}
-                <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
-                  {result.scenes.map((scene) => (
-                    <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                      className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${activeScene === scene.id ? "bg-white/[0.1] text-white border border-white/[0.15]" : "bg-white/[0.03] text-white/65 border border-transparent"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(scene.id)}`} />
-                      {scene.id}
-                    </button>
-                  ))}
+              {/* 3-Column Workspace */}
+              <div className="grid gap-5 lg:grid-cols-[240px_1fr_300px]">
+                {/* LEFT -- Scene Navigator */}
+                <div className="hidden lg:block">
+                  <div className="sticky top-20">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[12px] font-semibold uppercase tracking-wider text-white/70">Scenes</span>
+                      <span className="text-[11px] text-white/50">{result.scenes.length} total</span>
+                    </div>
+                    <div className="space-y-1">
+                      {result.scenes.map((scene) => {
+                        const hasVideo = !!sceneVideos[scene.id];
+                        const hasImage = !!sceneImages[scene.id];
+                        return (
+                          <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                            className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 ${activeScene === scene.id ? "bg-white/[0.08] border border-white/[0.12] shadow-[0_0_20px_-10px_rgba(255,255,255,0.06)]" : "border border-transparent hover:bg-white/[0.04]"}`}>
+                            <div className="relative h-10 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.04]">
+                              {hasImage ? (
+                                <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full items-center justify-center">
+                                  <span className="text-[9px] font-bold text-white/55">{scene.id}</span>
+                                </div>
+                              )}
+                              {hasVideo && (
+                                <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-500/90">
+                                  <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-[12px] font-medium text-white/80">{scene.title}</div>
+                              <div className="mt-0.5">
+                                <span className={`inline-block rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${getStatusColor(scene.id)}`}>{getStatusLabel(scene.id)}</span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Preview info bar */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[12px] font-bold uppercase tracking-wider text-white/70">Scene {String(activeScene).padStart(2, "0")}</span>
-                    <span className="text-[11px] text-white/45">&middot;</span>
-                    <span className="text-[11px] text-white/55">{result.scenes.length} scenes</span>
+                {/* CENTER -- Preview */}
+                <div className="space-y-3">
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
+                    {result.scenes.map((scene) => (
+                      <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                        className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${activeScene === scene.id ? "bg-white/[0.1] text-white border border-white/[0.15]" : "bg-white/[0.03] text-white/65 border border-transparent"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(scene.id)}`} />
+                        {scene.id}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {currentScene && sceneImages[currentScene.id] && (
-                      <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">IMAGE READY</span>
-                    )}
-                    {currentScene && sceneVideos[currentScene.id] && (
-                      <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-400/70">VIDEO READY</span>
-                    )}
-                  </div>
-                </div>
 
-                {/* Preview card */}
-                <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0d12] shadow-[0_4px_40px_-12px_rgba(0,0,0,0.5)]">
-                  {/* Generation overlays */}
-                  {currentScene && sceneStatus[currentScene.id] === "image" ? (
-                    <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
-                      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
-                        <Icon.Spinner className="h-6 w-6 text-amber-400" />
-                      </div>
-                      <span className="text-[12px] font-semibold text-white/60">Generating Image</span>
-                      <span className="mt-1 text-[11px] text-white/50">Creating cinematic scene...</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-white/70">Scene {String(activeScene).padStart(2, "0")}</span>
+                      <span className="text-[11px] text-white/45">&middot;</span>
+                      <span className="text-[11px] text-white/55">{result.scenes.length} scenes</span>
                     </div>
-                  ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
-                    <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
-                      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
-                        <Icon.Spinner className="h-6 w-6 text-violet-400" />
-                      </div>
-                      <span className="text-[12px] font-semibold text-white/60">Generating Video</span>
-                      <span className="mt-1 text-[11px] text-white/50">Creating motion from this scene...</span>
+                    <div className="flex items-center gap-2">
+                      {currentScene && sceneImages[currentScene.id] && (
+                        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">IMAGE READY</span>
+                      )}
+                      {currentScene && sceneVideos[currentScene.id] && (
+                        <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-400/70">VIDEO READY</span>
+                      )}
                     </div>
-                  ) : currentScene && sceneVideos[currentScene.id] ? (
-                    <video src={sceneVideos[currentScene.id]} controls className="aspect-video w-full object-cover bg-black" poster={sceneImages[currentScene.id]} />
-                  ) : currentScene && sceneImages[currentScene.id] ? (
-                    <img src={sceneImages[currentScene.id]} alt={currentScene.title} className="aspect-video w-full object-cover" />
-                  ) : (
-                    <div className="flex aspect-video flex-col items-center justify-center" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
-                      <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
-                        <Icon.Image className="text-white/55" />
+                  </div>
+
+                  {/* Preview card */}
+                  <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0d12] shadow-[0_4px_40px_-12px_rgba(0,0,0,0.5)]">
+                    {currentScene && sceneStatus[currentScene.id] === "image" ? (
+                      <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
+                          <Icon.Spinner className="h-6 w-6 text-amber-400" />
+                        </div>
+                        <span className="text-[12px] font-semibold text-white/60">Creating cinematic scene...</span>
                       </div>
-                      <span className="text-[13px] font-medium text-white/65">Scene preview</span>
-                      <span className="mt-1 text-[11px] text-white/45">Generate an image to visualize this scene.</span>
+                    ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
+                      <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
+                          <Icon.Spinner className="h-6 w-6 text-violet-400" />
+                        </div>
+                        <span className="text-[12px] font-semibold text-white/60">Creating motion from this scene...</span>
+                      </div>
+                    ) : currentScene && sceneVideos[currentScene.id] ? (
+                      <video src={sceneVideos[currentScene.id]} controls className="aspect-video w-full object-cover bg-black" poster={sceneImages[currentScene.id]} />
+                    ) : currentScene && sceneImages[currentScene.id] ? (
+                      <img src={sceneImages[currentScene.id]} alt={currentScene.title} className="aspect-video w-full object-cover" />
+                    ) : (
+                      <div className="flex aspect-video flex-col items-center justify-center" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
+                        <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
+                          <Icon.Image className="text-white/55" />
+                        </div>
+                        <span className="text-[13px] font-medium text-white/65">Generate a visual for this scene</span>
+                        <span className="mt-1 text-[11px] text-white/45">Turn the scene description into a cinematic visual.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Generation actions */}
+                  {currentScene && (
+                    <div className="flex gap-2">
+                      <button onClick={() => startImageGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "image"}
+                        className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
+                        {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneImages[currentScene.id] ? "Regenerate Image" : "Generate Image"}
+                      </button>
+                      <button onClick={() => startVideoGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "video"}
+                        className="flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
+                        {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneVideos[currentScene.id] ? "Regenerate Video" : "Generate Video"}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Next-step guidance */}
+                  {currentScene && !sceneStatus[currentScene.id] && (
+                    <div className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2">
+                      <p className="text-[11px] text-white/55">
+                        {!sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Start by generating the scene image."}
+                        {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Image ready. Generate a video next."}
+                        {sceneVideos[currentScene.id] && "Scene complete. Move to the next scene or render your final video."}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Error card */}
+                  {error && (
+                    <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3">
+                      <div className="mb-1 text-[12px] font-semibold text-red-400">Generation failed</div>
+                      <p className="text-[13px] text-red-300/80">{error}</p>
+                      {currentScene && (
+                        <div className="mt-2 flex gap-2">
+                          {!sceneImages[currentScene.id] && (
+                            <button onClick={() => startImageGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try image again</button>
+                          )}
+                          {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && (
+                            <button onClick={() => startVideoGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try video again</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Generation actions */}
-                {currentScene && (
-                  <div className="flex gap-2">
-                    <button onClick={() => startImageGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "image"}
-                      className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                      {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneImages[currentScene.id] ? "Regenerate Image" : "Generate Image"}
-                    </button>
-                    <button onClick={() => startVideoGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "video"}
-                      className="flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                      {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : sceneVideos[currentScene.id] ? "Regenerate Video" : "Generate Video"}
-                    </button>
-                  </div>
-                )}
-
-                {/* Next-step guidance */}
-                {currentScene && !sceneStatus[currentScene.id] && (
-                  <div className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2">
-                    <p className="text-[11px] text-white/55">
-                      {!sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Start by generating the scene image."}
-                      {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Your scene is visualized. Generate a video next."}
-                      {sceneVideos[currentScene.id] && "Scene complete. Continue to the next scene."}
-                    </p>
-                  </div>
-                )}
-
-                {/* Error card */}
-                {error && (
-                  <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3">
-                    <div className="mb-1 text-[12px] font-semibold text-red-400">Generation failed</div>
-                    <p className="text-[13px] text-red-300/80">{error}</p>
-                    {currentScene && (
-                      <div className="mt-2 flex gap-2">
-                        {!sceneImages[currentScene.id] && (
-                          <button onClick={() => startImageGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try image again</button>
-                        )}
-                        {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && (
-                          <button onClick={() => startVideoGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try video again</button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* RIGHT -- Scene Details + Settings */}
-              <div className="space-y-3">
-                {currentScene && (<>
-                  {/* Scene title */}
-                  <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                    <label className="mb-1.5 block text-[12px] font-medium text-white/80">Scene Title</label>
-                    <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition-all focus:border-white/[0.20]" />
-                  </div>
-
-                  {/* Narration */}
-                  <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <label className="text-[12px] font-medium text-white/75">Narration</label>
-                      <button onClick={() => copyToClipboard(currentScene.narration, "narration")} aria-label="Copy narration" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/65">
-                        {copiedField === "narration" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
-                      </button>
+                {/* RIGHT -- Details + Settings */}
+                <div className="space-y-3">
+                  {currentScene && (<>
+                    {/* Scene title */}
+                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
+                      <label className="mb-1.5 block text-[12px] font-medium text-white/80">Scene Title</label>
+                      <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition-all focus:border-white/[0.20]" />
                     </div>
-                    <textarea value={currentScene.narration} onChange={(e) => updateScene(currentScene.id, "narration", e.target.value)} rows={5} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/80 outline-none transition-all focus:border-white/[0.20]" />
-                  </div>
 
-                  {/* Visual prompt */}
-                  <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <label className="text-[12px] font-medium text-white/75">Visual Prompt</label>
-                      <button onClick={() => copyToClipboard(currentScene.visual, "visual")} aria-label="Copy visual prompt" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/65">
-                        {copiedField === "visual" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
-                      </button>
-                    </div>
-                    <textarea value={currentScene.visual} onChange={(e) => updateScene(currentScene.id, "visual", e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/75 outline-none transition-all focus:border-white/[0.20]" />
-                  </div>
-
-                  {/* Video Settings */}
-                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-                    <div className="mb-3 text-[13px] font-semibold text-white/80">Video Settings</div>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-white/65">Aspect Ratio</label>
-                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
-                          {["9:16", "16:9", "1:1"].map((ratio) => (
-                            <button key={ratio} onClick={() => setAspectRatio(ratio)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${aspectRatio === ratio ? "bg-white text-black shadow-sm" : "text-white/55 hover:text-white/50"}`}>{ratio}</button>
-                          ))}
+                    {/* Narration */}
+                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="text-[12px] font-medium text-white/75">Narration</label>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => copyToClipboard(currentScene.narration, "narration")} aria-label="Copy narration" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/65">
+                            {copiedField === "narration" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
+                          </button>
                         </div>
                       </div>
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-white/65">Voice</label>
-                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
-                          {["Natural", "Deep", "Soft"].map((v) => (
-                            <button key={v} onClick={() => setVoice(v)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${voice === v ? "bg-white text-black shadow-sm" : "text-white/55 hover:text-white/50"}`}>{v}</button>
-                          ))}
-                        </div>
+                      <textarea value={currentScene.narration} onChange={(e) => updateScene(currentScene.id, "narration", e.target.value)} rows={5} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/80 outline-none transition-all focus:border-white/[0.20]" />
+                      {/* Per-scene voice */}
+                      <div className="mt-2 flex items-center gap-2">
+                        <button onClick={() => startVoiceGeneration(currentScene.id)} disabled={voiceStatus[currentScene.id] === "generating" || !currentScene.narration?.trim()}
+                          className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40">
+                          {voiceStatus[currentScene.id] === "generating" ? (<><Icon.Spinner className="h-3 w-3 animate-spin" />Generating voice...</>) : voiceStatus[currentScene.id] === "ready" ? (<><Icon.Mic className="h-3 w-3 text-emerald-400" />Voice ready</>) : (<><Icon.Mic className="h-3 w-3" />Generate voice</>)}
+                        </button>
+                        {voiceStatus[currentScene.id] === "ready" && (
+                          <button onClick={() => playVoice(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
+                            <Icon.Play className="h-3 w-3" />Play
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-white/65">Captions</label>
-                        <button onClick={() => setCaptions(!captions)} className="flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2 text-[11px] transition-all hover:border-white/[0.1]">
-                          <span className="text-white/75">Auto captions</span>
-                          <span className={`rounded px-2 py-0.5 text-[9px] font-bold transition-colors ${captions ? "bg-white text-black" : "bg-white/[0.06] text-white/50"}`}>{captions ? "ON" : "OFF"}</span>
+                    </div>
+
+                    {/* Visual prompt */}
+                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label className="text-[12px] font-medium text-white/75">Visual Prompt</label>
+                        <button onClick={() => copyToClipboard(currentScene.visual, "visual")} aria-label="Copy visual prompt" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/65">
+                          {copiedField === "visual" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
                         </button>
                       </div>
-                      <div>
-                        <label className="mb-1.5 block text-[11px] font-medium text-white/65">Background Music</label>
-                        <div className="grid grid-cols-2 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
-                          {["None", "Ambient", "Cinematic", "Emotional"].map((m) => (
-                            <button key={m} onClick={() => setMusic(m)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${music === m ? "bg-white text-black shadow-sm" : "text-white/55 hover:text-white/50"}`}>{m}</button>
+                      <textarea value={currentScene.visual} onChange={(e) => updateScene(currentScene.id, "visual", e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/75 outline-none transition-all focus:border-white/[0.20]" />
+                    </div>
+
+                    {/* Characters */}
+                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon.User className="text-white/60" />
+                          <span className="text-[12px] font-semibold text-white/80">Characters</span>
+                        </div>
+                        <button onClick={() => setShowCharacters(!showCharacters)} className="text-[10px] text-white/45 hover:text-white/65 transition-colors">
+                          {showCharacters ? "Hide" : "Edit"}
+                        </button>
+                      </div>
+                      {characters.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {characters.map((c, i) => (
+                            <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-2.5 py-1.5 text-[11px]">
+                              <span className="font-medium text-white/70">{c.name}</span>
+                              <span className="text-white/40">-</span>
+                              <span className="truncate text-white/50">{c.appearance || c.description}</span>
+                            </div>
                           ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-white/45">Keep characters visually consistent across scenes.</p>
+                      )}
+                    </div>
+
+                    {/* Video Settings */}
+                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                      <div className="mb-3 text-[13px] font-semibold text-white/80">Video Settings</div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="mb-1.5 block text-[11px] font-medium text-white/65">Aspect Ratio</label>
+                          <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
+                            {["9:16", "16:9", "1:1"].map((ratio) => (
+                              <button key={ratio} onClick={() => setAspectRatio(ratio)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${aspectRatio === ratio ? "bg-white text-black shadow-sm" : "text-white/55 hover:text-white/50"}`}>{ratio}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-[11px] font-medium text-white/65">Voice</label>
+                          <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
+                            {["Natural", "Deep", "Soft"].map((v) => (
+                              <button key={v} onClick={() => setVoice(v)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${voice === v ? "bg-white text-black shadow-sm" : "text-white/55 hover:text-white/50"}`}>{v}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-[11px] font-medium text-white/65">Captions</label>
+                          <button onClick={() => setCaptions(!captions)} className="flex w-full items-center justify-between rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2 text-[11px] transition-all hover:border-white/[0.1]">
+                            <span className="text-white/75">Auto captions</span>
+                            <span className={`rounded px-2 py-0.5 text-[9px] font-bold transition-colors ${captions ? "bg-white text-black" : "bg-white/[0.06] text-white/50"}`}>{captions ? "ON" : "OFF"}</span>
+                          </button>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-[11px] font-medium text-white/65">Background Music</label>
+                          <div className="grid grid-cols-2 gap-1 rounded-lg bg-[#0c0d12] p-0.5">
+                            {["None", "Ambient", "Cinematic", "Emotional"].map((m) => (
+                              <button key={m} onClick={() => setMusic(m)} className={`rounded-md py-1.5 text-[10px] font-medium transition-all ${music === m ? "bg-white text-black shadow-sm" : "text-white/55 hover:text-white/50"}`}>{m}</button>
+                            ))}
+                          </div>
+                          <p className="mt-1 text-[10px] text-white/40">{MUSIC_DESCRIPTIONS[music]}</p>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Render Panel */}
-                  <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[12px] font-semibold text-white/80">Final Video</span>
-                      <span className="text-[12px] font-medium text-white/70">{totalVideosGenerated} / {result.scenes.length} videos ready</span>
-                    </div>
-                    <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                      <div className={`h-full rounded-full transition-all duration-500 ${renderProgress === 100 ? 'bg-emerald-400' : rendering ? 'bg-blue-400' : 'bg-white/30'}`} style={{ width: `${rendering || finalVideo ? (renderProgress || (totalVideosGenerated / result.scenes.length) * 100) : (totalVideosGenerated / result.scenes.length) * 100}%` }} />
-                    </div>
-
-                    {rendering && renderStage && (
-                      <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500/10 px-3 py-2">
-                        <Icon.Spinner className="h-3 w-3 animate-spin text-blue-400" />
-                        <span className="text-[10px] font-medium text-blue-400">{renderStage}</span>
+                    {/* Render Panel */}
+                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[12px] font-semibold text-white/80">Final Video</span>
+                        <span className="text-[12px] font-medium text-white/70">{totalVideosGenerated} / {result.scenes.length} ready</span>
                       </div>
-                    )}
-
-                    {finalVideo && !rendering && (
-                      <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
-                        <Icon.Check className="h-3 w-3 text-emerald-400" />
-                        <span className="text-[10px] font-medium text-emerald-400">Final video ready</span>
+                      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                        <div className={`h-full rounded-full transition-all duration-500 ${renderProgress === 100 ? 'bg-emerald-400' : rendering ? 'bg-blue-400' : 'bg-white/30'}`} style={{ width: `${rendering || finalVideo ? (renderProgress || (totalVideosGenerated / result.scenes.length) * 100) : (totalVideosGenerated / result.scenes.length) * 100}%` }} />
                       </div>
-                    )}
 
-                    <button onClick={finalVideo ? exportVideo : startRender} disabled={rendering || (!finalVideo && totalVideosGenerated < result.scenes.length)} className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-2.5 text-[12px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
-                      {rendering ? (<span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-3.5 w-3.5" />Rendering... {renderProgress}%</span>) : finalVideo ? (<span className="flex items-center justify-center gap-2"><Icon.Download />Export Video</span>) : "Render Final Video"}
-                    </button>
+                      {/* Readiness checklist */}
+                      <div className="mb-3 space-y-1.5">
+                        {[
+                          { label: "Scene videos", done: totalVideosGenerated >= result.scenes.length, detail: `${totalVideosGenerated}/${result.scenes.length}` },
+                          { label: "Narration voice", done: totalVoiceReady >= result.scenes.filter(s => s.narration?.trim()).length, detail: `${totalVoiceReady} ready` },
+                          { label: "Music", done: true, detail: music },
+                        ].map((item) => (
+                          <div key={item.label} className="flex items-center justify-between text-[10px]">
+                            <div className="flex items-center gap-1.5">
+                              {item.done ? <Icon.Check className="h-3 w-3 text-emerald-400" /> : <span className="h-3 w-3 rounded-full border border-white/20" />}
+                              <span className={item.done ? "text-white/70" : "text-white/45"}>{item.label}</span>
+                            </div>
+                            <span className="text-white/40">{item.detail}</span>
+                          </div>
+                        ))}
+                      </div>
 
-                    <p className="mt-2 text-center text-[11px] text-white/55">
-                      {totalVideosGenerated === 0 ? "Generate videos for all 5 scenes to render the final video." : totalVideosGenerated < result.scenes.length ? `${result.scenes.length - totalVideosGenerated} scene${result.scenes.length - totalVideosGenerated !== 1 ? 's' : ''} need${result.scenes.length - totalVideosGenerated === 1 ? 's' : ''} video generation.` : finalVideo ? 'Click to download your final video.' : 'All scenes are ready. Your final video can now be rendered.'}
-                    </p>
-                  </div>
-                </>)}
+                      {rendering && renderStage && (
+                        <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-500/10 px-3 py-2">
+                          <Icon.Spinner className="h-3 w-3 animate-spin text-blue-400" />
+                          <span className="text-[10px] font-medium text-blue-400">{renderStage}</span>
+                        </div>
+                      )}
+
+                      {finalVideo && !rendering && (
+                        <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2">
+                          <Icon.Check className="h-3 w-3 text-emerald-400" />
+                          <span className="text-[10px] font-medium text-emerald-400">Final video ready</span>
+                        </div>
+                      )}
+
+                      <button onClick={finalVideo ? exportVideo : startRender} disabled={rendering || (!finalVideo && totalVideosGenerated < result.scenes.length)} className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-2.5 text-[12px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                        {rendering ? (<span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-3.5 w-3.5" />Rendering... {renderProgress}%</span>) : finalVideo ? (<span className="flex items-center justify-center gap-2"><Icon.Download />Export Video</span>) : "Render Final Video"}
+                      </button>
+
+                      <p className="mt-2 text-center text-[11px] text-white/55">
+                        {!renderReady ? `${result.scenes.length - totalVideosGenerated} scene${result.scenes.length - totalVideosGenerated !== 1 ? 's' : ''} need${result.scenes.length - totalVideosGenerated === 1 ? 's' : ''} video generation.` : finalVideo ? 'Click to download your final video.' : 'All scenes ready. Render your final video.'}
+                      </p>
+                    </div>
+                  </>)}
+                </div>
               </div>
             </div>
 
@@ -1416,7 +1470,6 @@ export default function Home() {
 
         {/* ===== PROJECTS ===== */}
         <div id="projects" className="mx-auto mt-14 max-w-5xl">
-          {/* Header */}
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-bold tracking-tight text-white">Projects</h2>
@@ -1427,7 +1480,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Stats + Search + Filter row */}
           {projects.length > 0 && (
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex gap-2">
@@ -1453,14 +1505,13 @@ export default function Home() {
             </div>
           )}
 
-          {/* Empty state */}
           {projects.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/[0.10] bg-white/[0.02] p-16 text-center">
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03]">
                 <Icon.Play className="h-7 w-7 text-white/30" />
               </div>
               <div className="text-[16px] font-semibold text-white/70">Your next video starts here</div>
-              <p className="mx-auto mt-2 max-w-sm text-[13px] text-white/50">Turn a simple idea into a complete AI-generated video.</p>
+              <p className="mx-auto mt-2 max-w-sm text-[13px] text-white/50">Start with an idea. PAT Orbit turns it into a story, scenes, visuals, voice and video.</p>
               <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="mt-6 rounded-xl bg-white/[0.08] px-5 py-2.5 text-[13px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90 active:scale-[0.98]">Create your first video</button>
             </div>
           ) : (() => {
@@ -1485,11 +1536,11 @@ export default function Home() {
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((project) => {
                   const imageCount = project.sceneImages ? Object.keys(project.sceneImages).length : 0;
+                  const videoCount = project.sceneVideos ? Object.keys(project.sceneVideos).length : 0;
                   const isComplete = imageCount >= 5;
                   const firstImage = project.sceneImages ? Object.values(project.sceneImages)[0] : null;
                   return (
                     <div key={project.id} className="group rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.03] hover:-translate-y-0.5 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]">
-                      {/* Preview */}
                       <button onClick={() => loadProject(project)} className="block w-full text-left">
                         <div className="relative overflow-hidden">
                           <div className="aspect-video bg-[#0c0d12]">
@@ -1512,7 +1563,6 @@ export default function Home() {
                         </div>
                       </button>
 
-                      {/* Info */}
                       <div className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="min-w-0 flex-1">
@@ -1529,10 +1579,9 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Progress */}
                         <div className="mt-3">
                           <div className="mb-1 flex items-center justify-between">
-                            <span className="text-[10px] font-medium text-white/50">{imageCount} / 5 scenes</span>
+                            <span className="text-[10px] font-medium text-white/50">{imageCount} images, {videoCount} videos</span>
                             {project.createdAt && <span className="text-[10px] text-white/35">{new Date(project.createdAt).toLocaleDateString()}</span>}
                           </div>
                           <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
@@ -1540,10 +1589,12 @@ export default function Home() {
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="mt-3 flex items-center gap-2 border-t border-white/[0.06] pt-3">
                           <button onClick={() => loadProject(project)} className="flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-3 py-1.5 text-[11px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90 active:scale-[0.98]">
                             <Icon.Folder className="text-white/50" />Open
+                          </button>
+                          <button onClick={() => duplicateProject(project)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:bg-white/[0.06] hover:text-white/65 active:scale-[0.98]">
+                            <Icon.Copy2 />Duplicate
                           </button>
                           <button onClick={() => setDeleteConfirmId(project.id)} aria-label="Delete project" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:bg-red-500/10 hover:text-red-400/80 active:scale-[0.98]">
                             <Icon.Trash />Delete
@@ -1557,6 +1608,35 @@ export default function Home() {
             );
           })()}
         </div>
+
+        {/* Character editor modal */}
+        {showCharacters && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/[0.10] bg-[#111218] p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[16px] font-semibold text-white/90">Character Consistency</h3>
+                <button onClick={() => setShowCharacters(false)} className="text-white/40 hover:text-white/70"><Icon.X /></button>
+              </div>
+              <p className="text-[12px] text-white/50 mb-4">Define characters to keep them visually consistent across scenes.</p>
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {characters.map((c, i) => (
+                  <div key={i} className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <input value={c.name} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], name: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Name" className="bg-transparent text-[13px] font-medium text-white/80 outline-none flex-1" />
+                      <button onClick={() => { setCharacters(characters.filter((_, j) => j !== i)); setSaved(false); }} className="text-white/30 hover:text-red-400"><Icon.Trash /></button>
+                    </div>
+                    <input value={c.appearance} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], appearance: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Appearance (e.g. brown hair, green eyes)" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
+                    <input value={c.role} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], role: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Role in story" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => { setCharacters([...characters, { name: "", description: "", appearance: "", role: "" }]); setSaved(false); }} className="mt-4 flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
+                <Icon.Plus />Add character
+              </button>
+              <button onClick={() => setShowCharacters(false)} className="mt-3 w-full rounded-lg bg-white/[0.08] px-4 py-2 text-[12px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90">Done</button>
+            </div>
+          </div>
+        )}
 
         {/* Delete confirmation modal */}
         {deleteConfirmId && (
