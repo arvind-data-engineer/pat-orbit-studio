@@ -997,188 +997,154 @@ export default function Home() {
       <section className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6 sm:py-12">
         {!result ? (
           <>
-            {/* ===== HERO ===== */}
-            <div className="relative mx-auto mb-5 max-w-3xl text-center">
-              <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute left-1/2 top-0 h-[400px] w-[500px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent blur-3xl" />
-                <div className="absolute left-[30%] top-5 h-[250px] w-[250px] rounded-full bg-blue-500/[0.03] blur-3xl" />
-                <div className="absolute right-[30%] top-5 h-[250px] w-[250px] rounded-full bg-violet-500/[0.03] blur-3xl" />
-                <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
-              </div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-medium uppercase tracking-widest text-white/65">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                AI Video Creator
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight leading-[1.08] sm:text-4xl lg:text-5xl text-white">
-                Turn an idea<br />
-                <span className="bg-gradient-to-r from-white via-white/90 to-white/60 bg-clip-text text-transparent">into a complete video.</span>
-              </h1>
-              <p className="mx-auto mt-3 max-w-lg text-[15px] leading-7 text-white/70">
-                Write one idea. PAT Orbit creates the story, scenes, visuals, voice and final video.
-              </p>
-            </div>
-
-            {/* ===== WORKFLOW LINE ===== */}
-            <div className="mx-auto mb-8 flex max-w-2xl items-center justify-center gap-1 overflow-x-auto px-2 pb-1 sm:gap-0">
-              {[
-                { label: "YOUR IDEA", color: "text-amber-400/70" },
-                { label: "AI STORY", color: "text-blue-400/70" },
-                { label: "5 SCENES", color: "text-emerald-400/70" },
-                { label: "CINEMATIC VISUALS", color: "text-violet-400/70" },
-                { label: "FINAL VIDEO", color: "text-rose-400/70" },
-              ].map((step, i) => (
-                <div key={step.label} className="flex items-center">
-                  <span className={`whitespace-nowrap text-[9px] font-bold tracking-wider ${step.color} sm:text-[10px]`}>{step.label}</span>
-                  {i < 4 && (
-                    <div className="relative mx-1 h-px w-3 sm:w-5">
-                      <div className="absolute inset-0 bg-white/[0.08]" />
-                      <div className="absolute inset-y-0 left-0 w-1/2 bg-emerald-400/30 animate-[pulse_2.5s_ease-in-out_infinite]" />
-                    </div>
-                  )}
+            {/* ===== CREATE SCREEN ===== */}
+            <div className="mx-auto max-w-4xl">
+              {/* Hero - compact */}
+              <div className="relative mb-6 text-center">
+                <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+                  <div className="absolute left-1/2 top-0 h-[300px] w-[400px] -translate-x-1/2 rounded-full bg-gradient-to-b from-emerald-500/[0.05] via-emerald-500/[0.02] to-transparent blur-3xl" />
+                  <div className="absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.015) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
                 </div>
-              ))}
-            </div>
+                <h1 className="text-3xl font-bold tracking-tight leading-[1.1] sm:text-4xl text-white">
+                  Create your next video
+                </h1>
+                <p className="mx-auto mt-2.5 max-w-lg text-[14px] leading-6 text-white/60">
+                  Turn one idea into a complete cinematic video with AI-generated story, scenes, visuals, voice and music.
+                </p>
+              </div>
 
-            {/* ===== CREATE FORM ===== */}
-            <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.1] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-6 shadow-[0_0_80px_-20px_rgba(255,255,255,0.04)] sm:p-8">
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span className="text-[10px] font-medium uppercase tracking-widest text-emerald-400/60">AI Story Engine</span>
+              {/* Pipeline indicator */}
+              <div className="mb-6 flex items-center justify-center gap-0.5 overflow-x-auto px-2">
+                {[
+                  { label: "IDEA", color: "text-amber-400/70" },
+                  { label: "STORY", color: "text-blue-400/70" },
+                  { label: "SCENES", color: "text-emerald-400/70" },
+                  { label: "VISUALS", color: "text-violet-400/70" },
+                  { label: "MOTION", color: "text-rose-400/70" },
+                  { label: "FINAL", color: "text-white/50" },
+                ].map((step, i) => (
+                  <div key={step.label} className="flex items-center">
+                    <span className={`whitespace-nowrap text-[8px] font-bold tracking-widest ${step.color} sm:text-[9px]`}>{step.label}</span>
+                    {i < 5 && <div className="mx-1 h-px w-2 sm:w-3 bg-white/[0.08]" />}
                   </div>
-                  <h2 className="text-lg font-semibold tracking-tight">Create your video</h2>
-                  <p className="mt-0.5 text-[13px] text-white/55">Describe an idea, concept or script and let AI build your video.</p>
-                </div>
-                <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/55">Beta</span>
-              </div>
-
-              <div className="relative group">
-                <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-white/[0.06] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
-                <textarea
-                  value={story}
-                  onChange={(e) => { setStory(e.target.value); setError(""); }}
-                  placeholder="Describe your video idea..."
-                  rows={5}
-                  className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0c0d12] p-5 text-[15px] leading-7 text-white outline-none transition-all placeholder:text-white/40 focus:border-white/[0.25] focus:shadow-[0_0_30px_-10px_rgba(255,255,255,0.08)]"
-                />
-                <span className="absolute bottom-3 right-4 text-[11px] text-white/55 tabular-nums">{story.length}</span>
-              </div>
-
-              <div className="mb-4 mt-3 flex flex-wrap gap-1.5">
-                {EXAMPLE_PROMPTS.map((ep) => (
-                  <button
-                    key={ep.label}
-                    onClick={() => { setStory(ep.text); setError(""); }}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] font-medium text-white/65 transition-all duration-200 hover:border-emerald-500/25 hover:bg-emerald-500/[0.06] hover:text-white/80 hover:-translate-y-px active:scale-[0.98]"
-                  >
-                    {ep.label}
-                  </button>
                 ))}
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-white/80">Language</label>
-                  <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition focus:border-white/[0.20]">
-                    <option>Hindi</option><option>Hinglish</option><option>English</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-white/80">Visual style</label>
-                  <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition focus:border-white/[0.20]">
-                    <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[12px] font-medium text-white/80">Duration</label>
-                  <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition focus:border-white/[0.20]">
-                    <option>30 sec</option><option>60 sec</option><option>90 sec</option>
-                  </select>
-                </div>
-              </div>
-
-              {error && <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3 text-[13px] text-red-300/90">{error}</div>}
-
-              {loading ? (
-                <div className="mt-5 rounded-xl border border-white/[0.08] bg-[#0c0d12] p-5">
-                  <div className="mb-4 flex items-center gap-2">
-                    <Icon.Spinner className="h-4 w-4 text-emerald-400" />
-                    <span className="text-[13px] font-semibold text-white/80">Creating your story...</span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {loadingSteps.map((step, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        {step.done ? (
-                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
-                            <Icon.Check className="h-3 w-3 text-emerald-400" />
-                          </span>
-                        ) : (
-                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-                          </span>
-                        )}
-                        <span className={`text-[12px] ${step.done ? "text-white/50" : "text-white/70"}`}>{step.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <button onClick={generateStory} disabled={loading} className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-white to-white/90 px-6 py-3.5 text-[14px] font-semibold text-black shadow-[0_2px_20px_-4px_rgba(255,255,255,0.25)] transition-all hover:shadow-[0_4px_30px_-4px_rgba(255,255,255,0.35)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
-                  Generate Story
-                </button>
-              )}
-              <p className="mt-3 text-center text-[11px] text-white/45">AI will create 5 scenes with narration and visual prompts.</p>
-            </div>
-
-            {/* ===== SEE IT IN ACTION ===== */}
-            <div className="mx-auto mt-14 max-w-5xl">
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold tracking-tight sm:text-3xl text-white">See what PAT Orbit creates.</h2>
-                <p className="mt-3 text-[15px] text-white/70">From a single idea to a complete cinematic sequence.</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="group rounded-2xl border border-white/[0.10] bg-white/[0.025] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
-                  <div className="flex h-40 items-center justify-center bg-gradient-to-br from-amber-500/[0.06] to-amber-500/[0.02]">
-                    <div className="flex flex-col items-center gap-2">
-                      <Icon.FileText className="h-8 w-8 text-amber-400/50" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/40">Story</span>
+              {/* Main creation card */}
+              <div className="rounded-2xl border border-white/[0.10] bg-gradient-to-b from-white/[0.04] to-white/[0.015] p-5 shadow-[0_0_60px_-15px_rgba(255,255,255,0.03)] sm:p-7">
+                {/* Card header */}
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
+                      <Icon.Sparkles className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-[15px] font-semibold text-white/90">What do you want to create?</h2>
+                      <p className="text-[11px] text-white/45">Describe your idea and AI will build the complete video.</p>
                     </div>
                   </div>
-                  <div className="p-5">
-                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/50">01 — Story</div>
-                    <p className="text-[14px] leading-relaxed text-white/75">&ldquo;A mysterious door appears inside an old house, revealing a hidden world of glowing crystals and ancient maps...&rdquo;</p>
+                  <span className="rounded-md bg-white/[0.05] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/40">AI Powered</span>
+                </div>
+
+                {/* Textarea */}
+                <div className="relative group">
+                  <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-emerald-500/[0.08] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
+                  <textarea
+                    value={story}
+                    onChange={(e) => { setStory(e.target.value); setError(""); }}
+                    placeholder="A young boy discovers a mysterious portal beneath his school and enters a glowing world of floating islands and ancient secrets..."
+                    rows={4}
+                    className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[14px] leading-6 text-white outline-none transition-all placeholder:text-white/30 focus:border-emerald-500/30 focus:shadow-[0_0_20px_-8px_rgba(52,211,153,0.1)]"
+                  />
+                  <div className="absolute bottom-2.5 right-3 flex items-center gap-2">
+                    <span className="text-[10px] text-white/30 tabular-nums">{story.length}</span>
                   </div>
                 </div>
-                <div className="group rounded-2xl border border-white/[0.10] bg-white/[0.025] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
-                  <div className="flex h-40 items-center justify-center bg-gradient-to-br from-emerald-500/[0.06] to-emerald-500/[0.02]">
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[1,2,3,4,5].map(n => (
-                        <div key={n} className={`flex h-8 w-10 items-center justify-center rounded border ${n <= 3 ? 'border-emerald-500/15 bg-emerald-500/[0.06]' : 'border-white/[0.06] bg-white/[0.02]'}`}>
-                          <span className="text-[8px] font-bold text-white/50">{n}</span>
+
+                {/* Example prompts */}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {EXAMPLE_PROMPTS.map((ep) => (
+                    <button
+                      key={ep.label}
+                      onClick={() => { setStory(ep.text); setError(""); }}
+                      className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[11px] font-medium text-white/55 transition-all duration-200 hover:border-emerald-500/20 hover:bg-emerald-500/[0.04] hover:text-white/75 active:scale-[0.98]"
+                    >
+                      {ep.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Settings row */}
+                <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/40">Language</label>
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[13px] font-medium text-white outline-none transition focus:border-white/[0.15]">
+                      <option>Hindi</option><option>Hinglish</option><option>English</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/40">Style</label>
+                    <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[13px] font-medium text-white outline-none transition focus:border-white/[0.15]">
+                      <option>Cartoon</option><option>Cinematic</option><option>Anime</option><option>Realistic</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/40">Duration</label>
+                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2.5 py-2 text-[13px] font-medium text-white outline-none transition focus:border-white/[0.15]">
+                      <option>30 sec</option><option>60 sec</option><option>90 sec</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Error */}
+                {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2.5 text-[12px] text-red-300/90">{error}</div>}
+
+                {/* Generate button or loading */}
+                {loading ? (
+                  <div className="mt-4 rounded-xl border border-white/[0.06] bg-[#0a0b0f] p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Icon.Spinner className="h-4 w-4 text-emerald-400" />
+                      <span className="text-[12px] font-semibold text-white/80">Creating your story...</span>
+                    </div>
+                    <div className="space-y-2">
+                      {loadingSteps.map((step, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                          {step.done ? (
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20">
+                              <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />
+                            </span>
+                          ) : (
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-white/[0.04]">
+                              <span className="h-1 w-1 rounded-full bg-white/20" />
+                            </span>
+                          )}
+                          <span className={`text-[11px] ${step.done ? "text-white/40" : "text-white/60"}`}>{step.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="p-5">
-                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/50">02 — Scenes</div>
-                    <p className="text-[14px] leading-relaxed text-white/75">5 structured scenes with titles, narration and visual prompts for each moment of your story.</p>
+                ) : (
+                  <button onClick={generateStory} disabled={!story.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-5 py-3 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                    <Icon.Sparkles className="h-3.5 w-3.5" />
+                    Generate Story
+                  </button>
+                )}
+              </div>
+
+              {/* Compact pipeline showcase */}
+              <div className="mt-8 grid grid-cols-3 gap-3">
+                {[
+                  { num: "01", label: "Story", desc: "AI writes 5 cinematic scenes", color: "from-amber-500/[0.06] to-amber-500/[0.02]", icon: <Icon.FileText className="h-5 w-5 text-amber-400/40" /> },
+                  { num: "02", label: "Visuals", desc: "Generate images and motion video", color: "from-emerald-500/[0.06] to-emerald-500/[0.02]", icon: <Icon.Image className="h-5 w-5 text-emerald-400/40" /> },
+                  { num: "03", label: "Final Video", desc: "Voice, captions, music and render", color: "from-violet-500/[0.06] to-violet-500/[0.02]", icon: <Icon.Video className="h-5 w-5 text-violet-400/40" /> },
+                ].map((card) => (
+                  <div key={card.num} className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-4 transition-all hover:border-white/[0.10] hover:bg-white/[0.025]">
+                    <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${card.color}`}>{card.icon}</div>
+                    <div className="text-[9px] font-bold uppercase tracking-widest text-white/30">{card.num}</div>
+                    <div className="mt-0.5 text-[13px] font-semibold text-white/75">{card.label}</div>
+                    <div className="mt-0.5 text-[11px] text-white/40">{card.desc}</div>
                   </div>
-                </div>
-                <div className="group rounded-2xl border border-white/[0.10] bg-white/[0.025] overflow-hidden transition-all duration-200 hover:border-white/[0.12] hover:bg-white/[0.03] hover:-translate-y-0.5">
-                  <div className="relative flex h-40 items-center justify-center bg-gradient-to-br from-violet-500/[0.06] to-violet-500/[0.02]">
-                    <div className="absolute inset-4 overflow-hidden rounded-lg border border-white/[0.06]">
-                      <div className="h-full w-full bg-gradient-to-br from-[#0c0e1a] to-[#080a14]" />
-                    </div>
-                    <div className="z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.1] backdrop-blur-sm transition-all hover:scale-110 border border-white/[0.1]">
-                      <Icon.Play className="ml-0.5 h-4 w-4 text-white/70" />
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/50">03 — Video</div>
-                    <p className="text-[14px] leading-relaxed text-white/75">Cinematic AI-generated video with voice narration, captions and background music.</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </>
