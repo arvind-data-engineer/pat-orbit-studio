@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { analyzeRegenerationRequest, type RegenerationTarget } from "@/lib/ai/regeneration";
+import type { DirectorScene, ProductionPlan } from "@/lib/ai/director-schema";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -13,6 +15,12 @@ type Scene = {
   visual: string;
   beat?: string;
   sceneDuration?: string;
+  // Director plan fields (optional for backward compatibility with old projects)
+  directorCamera?: { shotType: string; angle: string; movement: string; framing: string };
+  directorMotion?: { subjectMovement: string; environmentMovement: string; intensity: string };
+  directorVoice?: { voice: string; emotion: string; pace: string; emphasis: string };
+  directorContinuityBefore?: { characters: { name: string; appearance: string }[]; location: string; timeOfDay: string; weather: string; importantObjects: string[]; previousSceneEnding: string };
+  directorContinuityAfter?: { characters: { name: string; appearance: string }[]; location: string; timeOfDay: string; weather: string; importantObjects: string[]; previousSceneEnding: string };
 };
 
 type StoryResult = {
@@ -45,7 +53,48 @@ type Project = {
   voice?: string;
   captions?: boolean;
   music?: string;
+  voiceGenerated?: Record<number, boolean>;
 };
+
+/* ------------------------------------------------------------------ */
+/*  Regeneration helpers                                               */
+/* ------------------------------------------------------------------ */
+
+/** Map the page.tsx Scene type to DirectorScene for the regeneration planner. */
+function sceneToDirectorScene(scene: Scene, sceneIdx: number, style: string): DirectorScene {
+  return {
+    id: `scene-${scene.id}`,
+    title: scene.title,
+    purpose: sceneIdx === 0 ? "hook" : sceneIdx === 1 ? "development" : sceneIdx === 2 ? "turning-point" : sceneIdx === 3 ? "climax" : "resolution",
+    beat: scene.beat || "",
+    duration: parseInt(scene.sceneDuration || "10", 10) || 10,
+    narration: scene.narration,
+    characters: [],
+    visual: {
+      subject: scene.visual,
+      environment: "",
+      action: "",
+      lighting: "",
+      composition: "",
+      visualStyle: style,
+    },
+    camera: scene.directorCamera ? { ...scene.directorCamera } : { shotType: "medium", angle: "eye-level", movement: "static", framing: "centered" },
+    motion: scene.directorMotion ? { ...scene.directorMotion, intensity: scene.directorMotion.intensity as "subtle" | "moderate" | "dramatic" } : { subjectMovement: "none", environmentMovement: "none", intensity: "subtle" as const },
+    voice: scene.directorVoice ? { ...scene.directorVoice, voice: scene.directorVoice.voice as "Natural" | "Deep" | "Soft", pace: scene.directorVoice.pace as "slow" | "moderate" | "fast" } : { voice: "Natural" as const, emotion: "neutral", pace: "moderate" as const, emphasis: "" },
+    continuityBefore: scene.directorContinuityBefore as DirectorScene["continuityBefore"],
+    continuityAfter: scene.directorContinuityAfter as DirectorScene["continuityAfter"],
+  };
+}
+
+/** Build a minimal ProductionPlan from available page state for the regeneration planner. */
+function buildMinimalPlan(scenes: Scene[], characters: Character[], style: string): ProductionPlan {
+  return {
+    project: { title: "", genre: style, tone: "", duration: 60, aspectRatio: "16:9", visualStyle: style },
+    characters: characters.map((c) => ({ name: c.name, role: c.role, appearance: c.appearance, description: c.description })),
+    scenes: scenes.map((s, i) => sceneToDirectorScene(s, i, style)),
+    music: { style: "Cinematic", mood: "cinematic", intensity: "medium" },
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /*  SVG icons                                                          */
@@ -251,6 +300,7 @@ export default function Home() {
   /* Voice state */
   const [voiceStatus, setVoiceStatus] = useState<Record<number, "idle" | "generating" | "ready">>({});
   const [voiceAudios, setVoiceAudios] = useState<Record<number, string>>({});
+  const [voiceGenerated, setVoiceGenerated] = useState<Record<number, boolean>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   /* Character consistency */
@@ -258,6 +308,7 @@ export default function Home() {
   const [showCharacters, setShowCharacters] = useState(false);
   const [sceneCharacters, setSceneCharacters] = useState<Record<number, number[]>>({});
   const [expandedPrompts, setExpandedPrompts] = useState(false);
+  const [showContinuity, setShowContinuity] = useState(false);
 
   /* Scene editing state */
   const [isEditingScene, setIsEditingScene] = useState(false);
@@ -318,6 +369,7 @@ export default function Home() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const saveProjectRef = useRef<() => void>(() => {});
 
   /* Abort controllers */
   const storyAbortRef = useRef<AbortController | null>(null);
@@ -398,7 +450,7 @@ export default function Home() {
 
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        if (result) saveCurrentProject();
+        if (result) saveProjectRef.current();
       }
     }
     document.addEventListener('keydown', handleKeyDown);
@@ -432,7 +484,7 @@ export default function Home() {
       const response = await fetch("/api/generate-story", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ story, language, style, duration, contentType: "Story", characters: characters.length > 0 ? characters : undefined }),
+        body: JSON.stringify({ story, language, style, duration, aspectRatio, characters: characters.length > 0 ? characters : undefined }),
         signal: controller.signal,
       });
       const data = await response.json();
@@ -569,7 +621,7 @@ export default function Home() {
     } else {
       setHasUnsavedChanges(false);
     }
-  }, [result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo, characters, sceneCharacters]);
+  }, [saved, result, projectName, story, language, style, duration, sceneImages, sceneVideos, finalVideo, characters, sceneCharacters]);
 
   useEffect(() => {
     function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -602,6 +654,7 @@ export default function Home() {
           characters: characters.length > 0 ? [...characters] : undefined,
           sceneCharacters: Object.keys(sceneCharacters).length > 0 ? { ...sceneCharacters } : undefined,
           aspectRatio, voice, captions, music,
+          voiceGenerated: Object.keys(voiceGenerated).length > 0 ? { ...voiceGenerated } : undefined,
         };
       });
       saveProjects(updated);
@@ -619,6 +672,7 @@ export default function Home() {
         characters: characters.length > 0 ? [...characters] : undefined,
         sceneCharacters: Object.keys(sceneCharacters).length > 0 ? { ...sceneCharacters } : undefined,
         aspectRatio, voice, captions, music,
+        voiceGenerated: Object.keys(voiceGenerated).length > 0 ? { ...voiceGenerated } : undefined,
       };
       saveProjects([project, ...projects]);
       setCurrentProjectId(newId);
@@ -628,6 +682,11 @@ export default function Home() {
     setToast("Project saved");
     setTimeout(() => setToast(null), 2500);
   }
+
+  // Keep the keyboard shortcut ref in sync with the latest save function.
+  useEffect(() => {
+    saveProjectRef.current = saveCurrentProject;
+  });
 
   function loadProject(project: Project) {
     setStory(project.story || '');
@@ -648,6 +707,14 @@ export default function Home() {
     setSceneStatus({});
     setVoiceStatus({});
     setVoiceAudios({});
+    const vg = project.voiceGenerated && typeof project.voiceGenerated === 'object' ? project.voiceGenerated : {};
+    setVoiceGenerated(vg);
+    // Restore voice status for scenes that had voice generated previously
+    const restoredVoiceStatus: Record<number, "idle" | "generating" | "ready"> = {};
+    for (const [idStr, generated] of Object.entries(vg)) {
+      if (generated) restoredVoiceStatus[Number(idStr)] = "ready";
+    }
+    setVoiceStatus(restoredVoiceStatus);
     setRendering(false);
     setRenderStage('');
     setRenderProgress(0);
@@ -699,15 +766,36 @@ export default function Home() {
         .map((idx) => characters[idx])
         .filter((c): c is Character => !!c && !!c.name?.trim());
 
+      // Ask the Director regeneration planner what to preserve/change.
+      let prompt = scene.visual;
+      try {
+        const sceneIdx = result.scenes.findIndex((s) => s.id === sceneId);
+        const plan = buildMinimalPlan(result.scenes, characters, style);
+        const dirScene = sceneToDirectorScene(scene, sceneIdx, style);
+        const regen = await analyzeRegenerationRequest({
+          scene: dirScene,
+          plan,
+          target: "image",
+          feedback: "Improve the current result while preserving scene continuity.",
+        });
+        console.log(`[Regeneration] target=image reason=${regen.reason}`);
+        if (regen.revisedPrompt) prompt = regen.revisedPrompt;
+      } catch {
+        // Planner is best-effort — continue with original prompt.
+      }
+
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: scene.visual,
+          prompt,
           characters: sceneChars.length > 0 ? sceneChars : undefined,
           sceneTitle: scene.title,
           style,
           sceneBeat: scene.beat,
+          camera: scene.directorCamera,
+          motion: scene.directorMotion,
+          continuityBefore: scene.directorContinuityBefore,
         }),
         signal: controller.signal,
       });
@@ -743,13 +831,34 @@ export default function Home() {
         .map((idx) => characters[idx])
         .filter((c): c is Character => !!c && !!c.name?.trim());
 
+      // Ask the Director regeneration planner what to preserve/change.
+      let prompt = scene.visual;
+      try {
+        const sceneIdx = result.scenes.findIndex((s) => s.id === sceneId);
+        const plan = buildMinimalPlan(result.scenes, characters, style);
+        const dirScene = sceneToDirectorScene(scene, sceneIdx, style);
+        const regen = await analyzeRegenerationRequest({
+          scene: dirScene,
+          plan,
+          target: "video",
+          feedback: "Improve the current result while preserving scene continuity.",
+        });
+        console.log(`[Regeneration] target=video reason=${regen.reason}`);
+        if (regen.revisedPrompt) prompt = regen.revisedPrompt;
+      } catch {
+        // Planner is best-effort — continue with original prompt.
+      }
+
       const body: Record<string, unknown> = {
-        prompt: scene.visual,
+        prompt,
         duration,
         aspectRatio,
         sceneId,
         sceneTitle: scene.title,
         characters: sceneChars.length > 0 ? sceneChars : undefined,
+        camera: scene.directorCamera,
+        motion: scene.directorMotion,
+        continuityBefore: scene.directorContinuityBefore,
       };
       if (sceneImages[sceneId]) body.image = sceneImages[sceneId];
 
@@ -828,15 +937,43 @@ export default function Home() {
 
     setVoiceStatus((c) => ({ ...c, [sceneId]: "generating" }));
     try {
+      // Ask the Director regeneration planner what to preserve/change.
+      let voicePlan = scene.directorVoice;
+      try {
+        const sceneIdx = result.scenes.findIndex((s) => s.id === sceneId);
+        const plan = buildMinimalPlan(result.scenes, characters, style);
+        const dirScene = sceneToDirectorScene(scene, sceneIdx, style);
+        const regen = await analyzeRegenerationRequest({
+          scene: dirScene,
+          plan,
+          target: "voice",
+          feedback: "Improve the current result while preserving scene continuity.",
+        });
+        console.log(`[Regeneration] target=voice reason=${regen.reason}`);
+        // Merge voiceAdjustment into the voicePlan — never rewrite narration.
+        if (regen.voiceAdjustment) {
+          voicePlan = {
+            ...(voicePlan || { voice: "Natural", emotion: "", pace: "", emphasis: "" }),
+            ...(regen.voiceAdjustment.emotion && { emotion: regen.voiceAdjustment.emotion }),
+            ...(regen.voiceAdjustment.pace && { pace: regen.voiceAdjustment.pace }),
+            ...(regen.voiceAdjustment.emphasis && { emphasis: regen.voiceAdjustment.emphasis }),
+            ...(regen.voiceAdjustment.voice && { voice: regen.voiceAdjustment.voice as "Natural" | "Deep" | "Soft" }),
+          };
+        }
+      } catch {
+        // Planner is best-effort — continue with original voicePlan.
+      }
+
       const resp = await fetch("/api/generate-voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ narration: scene.narration, language, voice }),
+        body: JSON.stringify({ narration: scene.narration, language, voice, voicePlan }),
       });
       const data = await resp.json();
       if (resp.ok && data.audio) {
         setVoiceAudios((c) => ({ ...c, [sceneId]: data.audio }));
         setVoiceStatus((c) => ({ ...c, [sceneId]: "ready" }));
+        setVoiceGenerated((c) => ({ ...c, [sceneId]: true }));
       } else {
         throw new Error(data.error || "Voice generation failed.");
       }
@@ -895,7 +1032,7 @@ export default function Home() {
             const voiceResp = await fetch("/api/generate-voice", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ narration: s.narration, language, voice }),
+              body: JSON.stringify({ narration: s.narration, language, voice, voicePlan: s.directorVoice }),
             });
             const voiceData = await voiceResp.json();
             if (voiceResp.ok && voiceData.audio) {
@@ -1784,6 +1921,38 @@ export default function Home() {
                               <span className="text-[11px] font-medium text-amber-400/80">Existing image/video may not match your updated prompt</span>
                             </div>
                             <p className="mt-1 ml-5 text-[10px] text-white/35">Regenerate image and video after saving to reflect changes.</p>
+                          </div>
+                        )}
+
+                        {/* Continuity section */}
+                        {currentScene.directorContinuityBefore && (
+                          <div className="mt-1">
+                            <button onClick={() => setShowContinuity(!showContinuity)} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-white/30 transition-colors hover:text-white/50">
+                              <Icon.Film className="h-2.5 w-2.5" />
+                              Continuity {showContinuity ? '\u25B2' : '\u25BC'}
+                            </button>
+                            {showContinuity && (
+                              <div className="mt-2 space-y-2 rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3">
+                                {currentScene.directorContinuityBefore!.location && (
+                                  <div><span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Location</span><p className="text-[11px] text-white/55">{currentScene.directorContinuityBefore!.location}</p></div>
+                                )}
+                                {currentScene.directorContinuityBefore!.timeOfDay && (
+                                  <div><span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Time of Day</span><p className="text-[11px] text-white/55">{currentScene.directorContinuityBefore!.timeOfDay}</p></div>
+                                )}
+                                {currentScene.directorContinuityBefore!.weather && (
+                                  <div><span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Weather</span><p className="text-[11px] text-white/55">{currentScene.directorContinuityBefore!.weather}</p></div>
+                                )}
+                                {currentScene.directorContinuityBefore!.importantObjects.length > 0 && (
+                                  <div><span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Important Objects</span><div className="mt-1 flex flex-wrap gap-1">{currentScene.directorContinuityBefore!.importantObjects.map((obj) => (<span key={obj} className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] text-white/45">{obj}</span>))}</div></div>
+                                )}
+                                {currentScene.directorContinuityBefore!.previousSceneEnding && (
+                                  <div><span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Previous Scene</span><p className="text-[10px] text-white/40 italic">{currentScene.directorContinuityBefore!.previousSceneEnding}</p></div>
+                                )}
+                                {currentScene.directorContinuityBefore!.characters.length > 0 && (
+                                  <div><span className="text-[9px] font-bold uppercase tracking-wider text-white/25">Characters</span><div className="mt-1 space-y-1">{currentScene.directorContinuityBefore!.characters.map((c) => (<div key={c.name} className="text-[10px]"><span className="font-medium text-white/55">{c.name}:</span> <span className="text-white/35">{c.appearance}</span></div>))}</div></div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
