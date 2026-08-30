@@ -1571,16 +1571,33 @@ export default function Home() {
                         <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
                           <Icon.Image className="h-6 w-6 text-amber-400 animate-pulse" />
                         </div>
-                        <span className="text-[13px] font-semibold text-white/65">Creating visual...</span>
-                        <span className="mt-1 text-[11px] text-white/35">Composing image for Scene {String(activeScene).padStart(2, "0")}</span>
+                        <span className="text-[13px] font-semibold text-white/65">Creating visual for {currentScene.title}</span>
+                        <span className="mt-1.5 text-[11px] text-white/35">Preparing composition and generating your scene image...</span>
+                        <div className="mt-4 flex items-center gap-2 text-[9px]">
+                          <span className="text-emerald-400/60">Scene</span>
+                          <Icon.ArrowRight className="h-2 w-2 text-white/15" />
+                          <span className="text-amber-400/60">Image</span>
+                          <Icon.ArrowRight className="h-2 w-2 text-white/15" />
+                          <span className="text-white/20">Video</span>
+                        </div>
                       </div>
                     ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
                       <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                         <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
                           <Icon.Video className="h-6 w-6 text-violet-400 animate-pulse" />
                         </div>
-                        <span className="text-[13px] font-semibold text-white/65">Creating motion...</span>
-                        <span className="mt-1 text-[11px] text-white/35">This may take a minute. You can navigate to other scenes.</span>
+                        <span className="text-[13px] font-semibold text-white/65">Creating motion for {currentScene.title}</span>
+                        <span className="mt-1.5 text-[11px] text-white/35">Video generation takes longer than image generation.</span>
+                        <span className="mt-0.5 text-[11px] text-white/25">This may take a few minutes. You can navigate to other scenes.</span>
+                        {sceneImages[currentScene.id] && (
+                          <div className="mt-4 flex items-center gap-2 text-[9px]">
+                            <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-400/60">Image</span>
+                            <Icon.ArrowRight className="h-2 w-2 text-white/15" />
+                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-violet-400/60">Video</span>
+                            <Icon.ArrowRight className="h-2 w-2 text-white/15" />
+                            <span className="text-white/20">Voice</span>
+                          </div>
+                        )}
                       </div>
                     ) : currentScene && sceneVideos[currentScene.id] ? (
                       <div className="relative">
@@ -1632,31 +1649,36 @@ export default function Home() {
                         {/* Image button */}
                         <button onClick={() => startImageGeneration(currentScene.id)} disabled={isBusy}
                           className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsImage ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 shadow-[0_2px_16px_-6px_rgba(52,211,153,0.25)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
-                          {isGenImg ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Creating visual...</>) : hasImg ? (<><Icon.Image className="h-4 w-4" />Regenerate Image</>) : (<><Icon.Image className="h-4 w-4" />Generate Image</>)}
+                          {isGenImg ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Generating image for {currentScene.title}...</>) : hasImg ? (<><Icon.Image className="h-4 w-4" />Regenerate Image</>) : (<><Icon.Image className="h-4 w-4" />Generate Image</>)}
                         </button>
                         {!hasImg && !isBusy && <p className="text-center text-[10px] text-white/30">Start here - generate the scene image first</p>}
 
                         {/* Video button - only when image exists or video exists */}
                         {(hasImg || hasVid) && (
-                          <button onClick={() => startVideoGeneration(currentScene.id)} disabled={isBusy || !hasImg}
-                            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsVideo ? 'bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.45)] hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.55)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
-                          {isGenVid ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Creating motion...</>) : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
-                        </button>
+                          <div>
+                            <button onClick={() => startVideoGeneration(currentScene.id)} disabled={isBusy || !hasImg}
+                              className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsVideo ? 'bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.45)] hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.55)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
+                              {isGenVid ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Generating video for {currentScene.title}...</>) : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
+                            </button>
+                            {isGenVid && <p className="mt-1 text-center text-[10px] text-white/25">Video generation takes a few minutes. This is normal.</p>}
+                          </div>
                       )}
                       {hasImg && !hasVid && !isBusy && <p className="text-center text-[10px] text-white/30">Image is ready - generate video next</p>}
 
                         {/* Voice button */}
                         {currentScene.narration?.trim() && (
-                          <div className="flex gap-2">
-                            <button onClick={() => startVoiceGeneration(currentScene.id)} disabled={voiceStatus[currentScene.id] === 'generating'}
-                              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40">
-                              {voiceStatus[currentScene.id] === 'generating' ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : hasVoc ? (<><Icon.Mic className="h-3.5 w-3.5 text-emerald-400" />Regenerate Voice</>) : (<><Icon.Mic className="h-3.5 w-3.5" />Generate Voice</>)}
-                            </button>
-                            {hasVoc && (
-                              <button onClick={() => playVoice(currentScene.id)} className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
-                                <Icon.Play className="h-3.5 w-3.5" />Preview
+                          <div>
+                            <div className="flex gap-2">
+                              <button onClick={() => startVoiceGeneration(currentScene.id)} disabled={voiceStatus[currentScene.id] === 'generating'}
+                                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40">
+                                {voiceStatus[currentScene.id] === 'generating' ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating voice...</>) : hasVoc ? (<><Icon.Mic className="h-3.5 w-3.5 text-emerald-400" />Regenerate Voice</>) : (<><Icon.Mic className="h-3.5 w-3.5" />Generate Voice</>)}
                               </button>
-                            )}
+                              {hasVoc && (
+                                <button onClick={() => playVoice(currentScene.id)} className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
+                                  <Icon.Play className="h-3.5 w-3.5" />Preview
+                                </button>
+                              )}
+                            </div>
                           </div>
                         )}
 
@@ -1687,16 +1709,30 @@ export default function Home() {
 
                   {/* Error card */}
                   {error && (
-                    <div className="rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3">
-                      <div className="mb-1 text-[12px] font-semibold text-red-400">Generation failed</div>
-                      <p className="text-[13px] text-red-300/80">{error}</p>
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-[12px] font-semibold text-red-400">Something went wrong</span>
+                      </div>
+                      <p className="text-[12px] text-red-300/70">{error}</p>
                       {currentScene && (
-                        <div className="mt-2 flex gap-2">
+                        <div className="mt-2.5 flex flex-wrap gap-2">
+                          <button onClick={() => setError('')} className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/70">
+                            Dismiss
+                          </button>
                           {!sceneImages[currentScene.id] && (
-                            <button onClick={() => startImageGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try image again</button>
+                            <button onClick={() => { setError(''); startImageGeneration(currentScene.id); }} className="rounded-lg bg-red-500/10 border border-red-500/15 px-3 py-1.5 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">
+                              Try image again
+                            </button>
                           )}
                           {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && (
-                            <button onClick={() => startVideoGeneration(currentScene.id)} className="rounded-md bg-red-500/10 px-3 py-1 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">Try video again</button>
+                            <button onClick={() => { setError(''); startVideoGeneration(currentScene.id); }} className="rounded-lg bg-red-500/10 border border-red-500/15 px-3 py-1.5 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">
+                              Try video again
+                            </button>
+                          )}
+                          {currentScene.narration?.trim() && voiceStatus[currentScene.id] !== 'ready' && (
+                            <button onClick={() => { setError(''); startVoiceGeneration(currentScene.id); }} className="rounded-lg bg-red-500/10 border border-red-500/15 px-3 py-1.5 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">
+                              Try voice again
+                            </button>
                           )}
                         </div>
                       )}
