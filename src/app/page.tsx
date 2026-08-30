@@ -790,8 +790,6 @@ export default function Home() {
 
   async function startImageGeneration(sceneId: number) {
     if (!result) return;
-    const scene = result.scenes.find((item) => item.id === sceneId);
-    if (!scene) return;
     if (imageAbortRef.current[sceneId]) imageAbortRef.current[sceneId].abort();
     const controller = new AbortController();
     imageAbortRef.current[sceneId] = controller;
@@ -799,18 +797,23 @@ export default function Home() {
     setSceneStatus((c) => ({ ...c, [sceneId]: "image" }));
     setError("");
     try {
-      // Build character data for this scene
-      const sceneCharIndices = sceneCharacters[sceneId] || [];
+      // Use latest-state refs to avoid stale closures.
+      const currentResult = resultRef.current;
+      if (!currentResult) return;
+      const scene = currentResult.scenes.find((s) => s.id === sceneId);
+      if (!scene) return;
+      const sceneCharIndices = sceneCharactersRef.current[sceneId] || [];
       const sceneChars = sceneCharIndices
-        .map((idx) => characters[idx])
+        .map((idx) => charactersRef.current[idx])
         .filter((c): c is Character => !!c && !!c.name?.trim());
+      const currentStyle = styleRef.current;
 
       // Ask the Director regeneration planner what to preserve/change.
       let prompt = scene.visual;
       try {
-        const sceneIdx = result.scenes.findIndex((s) => s.id === sceneId);
-        const plan = buildMinimalPlan(result.scenes, characters, style);
-        const dirScene = sceneToDirectorScene(scene, sceneIdx, style);
+        const sceneIdx = currentResult.scenes.findIndex((s) => s.id === sceneId);
+        const plan = buildMinimalPlan(currentResult.scenes, charactersRef.current, currentStyle);
+        const dirScene = sceneToDirectorScene(scene, sceneIdx, currentStyle);
         const regen = await analyzeRegenerationRequest({
           scene: dirScene,
           plan,
@@ -823,18 +826,20 @@ export default function Home() {
         // Planner is best-effort — continue with original prompt.
       }
 
+      // Re-read latest scene data after async planner call.
+      const latestScene = resultRef.current?.scenes.find((s) => s.id === sceneId) ?? scene;
       const response = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
           characters: sceneChars.length > 0 ? sceneChars : undefined,
-          sceneTitle: scene.title,
-          style,
-          sceneBeat: scene.beat,
-          camera: scene.directorCamera,
-          motion: scene.directorMotion,
-          continuityBefore: scene.directorContinuityBefore,
+          sceneTitle: latestScene.title,
+          style: currentStyle,
+          sceneBeat: latestScene.beat,
+          camera: latestScene.directorCamera,
+          motion: latestScene.directorMotion,
+          continuityBefore: latestScene.directorContinuityBefore,
         }),
         signal: controller.signal,
       });
@@ -967,7 +972,10 @@ export default function Home() {
         });
       });
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
+      if (err instanceof Error && err.name === 'AbortError') {
+        setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
+        return;
+      }
       setError(err instanceof Error ? err.message : "Failed to generate video.");
       setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
     }
