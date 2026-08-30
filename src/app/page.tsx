@@ -597,6 +597,11 @@ export default function Home() {
       visual: scene.visual,
       beat: scene.beat,
       sceneDuration: scene.sceneDuration,
+      directorCamera: scene.directorCamera ? { ...scene.directorCamera } : undefined,
+      directorMotion: scene.directorMotion ? { ...scene.directorMotion } : undefined,
+      directorVoice: scene.directorVoice ? { ...scene.directorVoice } : undefined,
+      directorContinuityBefore: scene.directorContinuityBefore ? { ...scene.directorContinuityBefore } : undefined,
+      directorContinuityAfter: scene.directorContinuityAfter ? { ...scene.directorContinuityAfter } : undefined,
     };
     const newScenes = [...result.scenes];
     newScenes.splice(idx + 1, 0, newScene);
