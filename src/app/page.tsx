@@ -1154,11 +1154,22 @@ export default function Home() {
   }
 
   async function exportVideo() {
-    if (!finalVideo) return;
+    if (!finalVideo) {
+      setError("No video to export. Render a final video first.");
+      return;
+    }
     const safeName = (projectName || "pat-orbit-video").replace(/[^a-zA-Z0-9\s\-_]/g, "").replace(/\s+/g, "-").toLowerCase();
     try {
       const response = await fetch(finalVideo);
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}. The video URL may have expired.`);
+      }
+      const contentType = response.headers.get("content-type") || "";
       const blob = await response.blob();
+      // Validate we got actual video data, not an error page
+      if (blob.size < 1024 && !contentType.includes("video")) {
+        throw new Error("Downloaded file is not a valid video. The video URL may have expired.");
+      }
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
@@ -1169,8 +1180,8 @@ export default function Home() {
       URL.revokeObjectURL(blobUrl);
       setToast("Video exported successfully");
       setTimeout(() => setToast(null), 2500);
-    } catch {
-      setError("Export failed. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Export failed. Please try again.");
     }
   }
 
