@@ -157,40 +157,65 @@ const MUSIC_DESCRIPTIONS: Record<string, string> = {
 /*  Scene Character Picker                                             */
 /* ------------------------------------------------------------------ */
 
-function SceneCharacterPicker({ characters, sceneCharacters, sceneId, onToggle, onManage }: {
+function getInitials(name: string) {
+  return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+}
+
+const CHAR_COLORS = [
+  'bg-emerald-500/20 text-emerald-400',
+  'bg-violet-500/20 text-violet-400',
+  'bg-amber-500/20 text-amber-400',
+  'bg-blue-500/20 text-blue-400',
+  'bg-rose-500/20 text-rose-400',
+  'bg-cyan-500/20 text-cyan-400',
+];
+
+function SceneCharacterPicker({ characters, sceneCharacters, sceneId, result, onToggle, onManage }: {
   characters: Character[];
   sceneCharacters: Record<number, number[]>;
   sceneId: number;
+  result: StoryResult | null;
   onToggle: (idx: number) => void;
   onManage: () => void;
 }) {
   const sceneChars = sceneCharacters[sceneId] || [];
+  const namedChars = characters.filter((c) => c.name?.trim());
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Characters</label>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Characters in this scene</label>
         <button onClick={onManage} className="text-[9px] text-white/35 hover:text-white/55 transition-colors">
-          Manage all
+          {namedChars.length > 0 ? 'Manage' : 'Add characters'}
         </button>
       </div>
-      <div className="flex flex-wrap gap-1.5">
-        {characters.map((c, i) => {
-          if (!c.name?.trim()) return null;
-          const isSelected = sceneChars.includes(i);
-          const selectedCls = isSelected ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400/90' : 'bg-white/[0.03] border border-white/[0.06] text-white/50 hover:bg-white/[0.06] hover:text-white/65';
-          const boxCls = isSelected ? 'border-emerald-500 bg-emerald-500/20' : 'border-white/15 bg-transparent';
-          return (
-            <button key={i} onClick={() => onToggle(i)} className={'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ' + selectedCls}>
-              <span className={'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded border ' + boxCls}>
-                {isSelected && <Icon.Check className="h-2 w-2 text-emerald-400" />}
-              </span>
-              {c.name}
-              {c.appearance ? <span className="hidden sm:inline text-white/30 truncate max-w-[80px]">{c.appearance}</span> : null}
-            </button>
-          );
-        })}
-      </div>
-      <p className="mt-1 text-[9px] text-white/20">Selected characters are included in the AI image and video prompts</p>
+      {namedChars.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {namedChars.map((c, i) => {
+            const realIdx = characters.indexOf(c);
+            const isSelected = sceneChars.includes(realIdx);
+            const usedCount = result ? result.scenes.filter((s) => (sceneCharacters[s.id] || []).includes(realIdx)).length : 0;
+            const colorCls = CHAR_COLORS[realIdx % CHAR_COLORS.length];
+            const selectedCls = isSelected ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400/90' : 'bg-white/[0.03] border border-white/[0.06] text-white/50 hover:bg-white/[0.06] hover:text-white/65';
+            return (
+              <button key={i} onClick={() => onToggle(realIdx)} className={'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ' + selectedCls}>
+                <span className={'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md text-[8px] font-bold ' + colorCls}>
+                  {getInitials(c.name)}
+                </span>
+                <div className="text-left">
+                  <div className="leading-tight">{c.name}</div>
+                  {c.role ? <div className="text-[8px] text-white/25 leading-tight">{c.role}</div> : null}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <button onClick={onManage} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.10] bg-white/[0.02] px-3 py-3 text-[11px] text-white/40 transition-colors hover:border-violet-500/20 hover:bg-violet-500/[0.03] hover:text-white/55">
+          <Icon.Plus className="h-3 w-3" />
+          Add characters to keep appearance consistent
+        </button>
+      )}
+      <p className="mt-1.5 text-[9px] text-white/20">Characters help keep visual appearance consistent across scenes</p>
     </div>
   );
 }
@@ -1818,12 +1843,12 @@ export default function Home() {
                         </div>
 
                         {/* Characters in this scene */}
-                        {characters.length > 0 && (
-                          <SceneCharacterPicker
-                            characters={characters}
-                            sceneCharacters={sceneCharacters}
-                            sceneId={currentScene.id}
-                            onToggle={(idx) => {
+                        {characters.length > 0 && (                           <SceneCharacterPicker
+                             characters={characters}
+                             sceneCharacters={sceneCharacters}
+                             sceneId={currentScene.id}
+                             result={result}
+                             onToggle={(idx) => {
                               const current = sceneCharacters[currentScene.id] || [];
                               const isSelected = current.includes(idx);
                               const next = isSelected ? current.filter((i) => i !== idx) : [...current, idx];
@@ -1867,17 +1892,24 @@ export default function Home() {
                       <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
                         <div className="mb-2 flex items-center justify-between">
                           <span className="text-[11px] font-semibold text-white/65">Characters</span>
-                          <button onClick={() => setShowCharacters(true)} className="text-[9px] text-white/35 hover:text-white/55 transition-colors">Edit</button>
+                          <button onClick={() => setShowCharacters(true)} className="text-[9px] text-white/35 hover:text-white/55 transition-colors">Manage</button>
                         </div>
                         <div className="space-y-1">
                           {characters.filter((c) => c.name?.trim()).map((c, i) => {
                             const realIdx = characters.indexOf(c);
                             const usedInScenes = result.scenes.filter((s) => (sceneCharacters[s.id] || []).includes(realIdx));
+                            const colorCls = CHAR_COLORS[realIdx % CHAR_COLORS.length];
                             return (
-                              <div key={i} className="flex items-center justify-between rounded-lg bg-white/[0.02] px-2 py-1.5">
-                                <span className="text-[11px] font-medium text-white/60 truncate">{c.name}</span>
-                                <span className={`text-[9px] font-medium ${usedInScenes.length > 0 ? 'text-emerald-400/60' : 'text-white/25'}`}>
-                                  {usedInScenes.length > 0 ? `${usedInScenes.length}s` : '--'}
+                              <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-2.5 py-1.5">
+                                <span className={'flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md text-[8px] font-bold ' + colorCls}>
+                                  {getInitials(c.name)}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-[11px] font-medium text-white/65 truncate block">{c.name}</span>
+                                  {c.role ? <span className="text-[9px] text-white/30 truncate block">{c.role}</span> : null}
+                                </div>
+                                <span className={`text-[9px] font-medium ${usedInScenes.length > 0 ? 'text-emerald-400/60' : 'text-white/20'}`}>
+                                  {usedInScenes.length > 0 ? `${usedInScenes.length} scene${usedInScenes.length !== 1 ? 's' : ''}` : 'unused'}
                                 </span>
                               </div>
                             );
@@ -2379,29 +2411,93 @@ export default function Home() {
         {/* Character editor modal */}
         {showCharacters && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/[0.10] bg-[#111218] p-6 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[16px] font-semibold text-white/90">Character Consistency</h3>
-                <button onClick={() => setShowCharacters(false)} className="text-white/40 hover:text-white/70"><Icon.X /></button>
+            <div className="mx-4 w-full max-w-lg rounded-2xl border border-white/[0.10] bg-[#111218] shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4">
+                <div>
+                  <h3 className="text-[15px] font-semibold text-white/90">Characters</h3>
+                  <p className="mt-0.5 text-[11px] text-white/40">Characters help keep visual appearance consistent across scenes.</p>
+                </div>
+                <button onClick={() => setShowCharacters(false)} aria-label="Close" className="flex h-7 w-7 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70"><Icon.X /></button>
               </div>
-              <p className="text-[12px] text-white/50 mb-4">Define characters to keep them visually consistent across scenes.</p>
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {characters.map((c, i) => (
-                  <div key={i} className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <input value={c.name} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], name: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Name" className="bg-transparent text-[13px] font-medium text-white/80 outline-none flex-1" />
-                      <button onClick={() => { setCharacters(characters.filter((_, j) => j !== i)); setSaved(false); }} className="text-white/30 hover:text-red-400"><Icon.Trash /></button>
+
+              {/* Character list */}
+              <div className="max-h-[55vh] overflow-y-auto px-6 py-4 space-y-3">
+                {characters.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-white/[0.10] bg-white/[0.015] py-8 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.04]">
+                      <Icon.User className="h-5 w-5 text-white/25" />
                     </div>
-                    <input value={c.appearance} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], appearance: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Appearance (e.g. brown hair, green eyes)" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
-                    <input value={c.role} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], role: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Role in story" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
-                    <input value={c.description} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], description: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Additional description (optional)" className="w-full bg-transparent text-[12px] text-white/60 outline-none" />
+                    <p className="text-[13px] font-medium text-white/55">No characters yet</p>
+                    <p className="mt-1 text-[11px] text-white/30">Add characters to keep them visually consistent across all scenes.</p>
                   </div>
-                ))}
+                )}
+                {characters.map((c, i) => {
+                  const realIdx = i;
+                  const usedInScenes = result ? result.scenes.filter((s) => (sceneCharacters[s.id] || []).includes(realIdx)) : [];
+                  const colorCls = CHAR_COLORS[realIdx % CHAR_COLORS.length];
+                  return (
+                    <div key={i} className="rounded-xl border border-white/[0.08] bg-white/[0.025] overflow-hidden transition-all hover:border-white/[0.12]">
+                      {/* Card header */}
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <span className={'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-[11px] font-bold ' + colorCls}>
+                          {c.name?.trim() ? getInitials(c.name) : <Icon.User className="h-4 w-4 text-white/30" />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <input value={c.name} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], name: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Character name" className="w-full bg-transparent text-[13px] font-semibold text-white/85 outline-none placeholder:text-white/25" />
+                          <div className="flex items-center gap-2">
+                            {c.role ? <span className="text-[10px] text-white/40">{c.role}</span> : <span className="text-[10px] text-white/20">No role set</span>}
+                            <span className="text-[9px] text-white/15">|</span>
+                            <span className={`text-[9px] font-medium ${usedInScenes.length > 0 ? 'text-emerald-400/60' : 'text-white/20'}`}>
+                              {usedInScenes.length > 0 ? `Used in ${usedInScenes.length} scene${usedInScenes.length !== 1 ? 's' : ''}` : 'Not in any scene'}
+                            </span>
+                          </div>
+                        </div>
+                        <button onClick={() => { setCharacters(characters.filter((_, j) => j !== i)); setSaved(false); }} aria-label={'Delete ' + (c.name || 'character')} className="flex h-6 w-6 items-center justify-center rounded-md text-white/25 transition-colors hover:bg-red-500/10 hover:text-red-400/80">
+                          <Icon.Trash />
+                        </button>
+                      </div>
+                      {/* Card fields */}
+                      <div className="grid grid-cols-2 gap-2 border-t border-white/[0.04] px-4 py-2.5">
+                        <div>
+                          <label className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-white/25">Role</label>
+                          <input value={c.role} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], role: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="e.g. Explorer, Villain" className="w-full rounded-md border border-white/[0.06] bg-[#0c0d12] px-2 py-1.5 text-[11px] text-white/70 outline-none transition-colors focus:border-white/[0.15] placeholder:text-white/15" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-white/25">Appearance</label>
+                          <input value={c.appearance} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], appearance: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="e.g. Brown hair, blue jacket" className="w-full rounded-md border border-white/[0.06] bg-[#0c0d12] px-2 py-1.5 text-[11px] text-white/70 outline-none transition-colors focus:border-white/[0.15] placeholder:text-white/15" />
+                        </div>
+                      </div>
+                      <div className="border-t border-white/[0.04] px-4 py-2.5">
+                        <label className="mb-1 block text-[8px] font-bold uppercase tracking-wider text-white/25">Description</label>
+                        <input value={c.description} onChange={(e) => { const next = [...characters]; next[i] = { ...next[i], description: e.target.value }; setCharacters(next); setSaved(false); }} placeholder="Personality, background (optional)" className="w-full rounded-md border border-white/[0.06] bg-[#0c0d12] px-2 py-1.5 text-[11px] text-white/70 outline-none transition-colors focus:border-white/[0.15] placeholder:text-white/15" />
+                      </div>
+                      {usedInScenes.length > 0 && (
+                        <div className="border-t border-white/[0.04] bg-white/[0.015] px-4 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {usedInScenes.map((s) => {
+                              const sIdx = result ? result.scenes.findIndex((sc) => sc.id === s.id) : -1;
+                              return (
+                                <span key={s.id} className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400/60">
+                                  Scene {(sIdx >= 0 ? sIdx + 1 : s.id).toString().padStart(2, '0')}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <button onClick={() => { setCharacters([...characters, { name: "", description: "", appearance: "", role: "" }]); setSaved(false); }} className="mt-4 flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
-                <Icon.Plus />Add character
-              </button>
-              <button onClick={() => setShowCharacters(false)} className="mt-3 w-full rounded-lg bg-white/[0.08] px-4 py-2 text-[12px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90">Done</button>
+
+              {/* Footer */}
+              <div className="border-t border-white/[0.06] px-6 py-3">
+                <button onClick={() => { setCharacters([...characters, { name: "", description: "", appearance: "", role: "" }]); setSaved(false); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/[0.10] bg-white/[0.02] px-4 py-2.5 text-[12px] font-medium text-white/50 transition-all hover:border-violet-500/20 hover:bg-violet-500/[0.03] hover:text-white/65">
+                  <Icon.Plus className="h-3.5 w-3.5" />Add character
+                </button>
+                <button onClick={() => setShowCharacters(false)} className="mt-2 w-full rounded-xl bg-white/[0.08] px-4 py-2.5 text-[12px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90">Done</button>
+              </div>
             </div>
           </div>
         )}
