@@ -371,6 +371,13 @@ export default function Home() {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const saveProjectRef = useRef<() => void>(() => {});
 
+  /* Latest-state refs — used by async functions to avoid stale closures */
+  const resultRef = useRef(result);
+  const sceneImagesRef = useRef(sceneImages);
+  const sceneCharactersRef = useRef(sceneCharacters);
+  const charactersRef = useRef(characters);
+  const styleRef = useRef(style);
+
   /* Abort controllers */
   const storyAbortRef = useRef<AbortController | null>(null);
   const imageAbortRef = useRef<Record<number, AbortController>>({});
@@ -386,6 +393,15 @@ export default function Home() {
       pollIntervalsRef.current = [];
     };
   }, []);
+
+  /* Keep latest-state refs in sync for async functions */
+  useEffect(() => {
+    resultRef.current = result;
+    sceneImagesRef.current = sceneImages;
+    sceneCharactersRef.current = sceneCharacters;
+    charactersRef.current = characters;
+    styleRef.current = style;
+  });
 
   /* Close settings dropdown on outside click */
   useEffect(() => {
@@ -817,26 +833,29 @@ export default function Home() {
 
   async function startVideoGeneration(sceneId: number) {
     if (!result) return;
-    const scene = result.scenes.find((item) => item.id === sceneId);
-    if (!scene) return;
     if (videoAbortRef.current[sceneId]) videoAbortRef.current[sceneId].abort();
 
     setSceneStatus((c) => ({ ...c, [sceneId]: "video" }));
     setError("");
 
     try {
-      // Build character data for this scene
-      const sceneCharIndices = sceneCharacters[sceneId] || [];
+      // Snapshot current state at call time for character/planner data.
+      const currentResult = resultRef.current;
+      if (!currentResult) return;
+      const scene = currentResult.scenes.find((s) => s.id === sceneId);
+      if (!scene) return;
+      const sceneCharIndices = sceneCharactersRef.current[sceneId] || [];
       const sceneChars = sceneCharIndices
-        .map((idx) => characters[idx])
+        .map((idx) => charactersRef.current[idx])
         .filter((c): c is Character => !!c && !!c.name?.trim());
+      const currentStyle = styleRef.current;
 
       // Ask the Director regeneration planner what to preserve/change.
       let prompt = scene.visual;
       try {
-        const sceneIdx = result.scenes.findIndex((s) => s.id === sceneId);
-        const plan = buildMinimalPlan(result.scenes, characters, style);
-        const dirScene = sceneToDirectorScene(scene, sceneIdx, style);
+        const sceneIdx = currentResult.scenes.findIndex((s) => s.id === sceneId);
+        const plan = buildMinimalPlan(currentResult.scenes, charactersRef.current, currentStyle);
+        const dirScene = sceneToDirectorScene(scene, sceneIdx, currentStyle);
         const regen = await analyzeRegenerationRequest({
           scene: dirScene,
           plan,
@@ -849,15 +868,11 @@ export default function Home() {
         // Planner is best-effort — continue with original prompt.
       }
 
-      // Re-read the latest scene data after the async planner call to avoid
-      // using stale state if the user edited the scene during planning.
-      const latestScene = result.scenes.find((s) => s.id === sceneId) ?? scene;
-      let capturedImage: string | undefined;
-      // Use functional setState to read the latest image snapshot at job-creation time.
-      setSceneImages((latest) => {
-        if (latest[sceneId]) capturedImage = latest[sceneId];
-        return latest; // no mutation — read-only
-      });
+      // Read the LATEST scene + image from refs AFTER the async planner call.
+      // This ensures user edits or image regeneration during planning are picked up.
+      const latestResult = resultRef.current ?? currentResult;
+      const latestScene = latestResult.scenes.find((s) => s.id === sceneId) ?? scene;
+      const latestImage = sceneImagesRef.current[sceneId];
       const body: Record<string, unknown> = {
         prompt,
         duration,
@@ -869,7 +884,7 @@ export default function Home() {
         motion: latestScene.directorMotion,
         continuityBefore: latestScene.directorContinuityBefore,
       };
-      if (capturedImage) body.image = capturedImage;
+      if (latestImage) body.image = latestImage;
 
       const createResp = await fetch("/api/jobs/video", {
         method: "POST",
