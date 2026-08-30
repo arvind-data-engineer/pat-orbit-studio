@@ -42,6 +42,10 @@ export interface JobData {
   /** Character consistency */
   characters?: Array<{ name: string; description?: string; appearance?: string; role?: string }>;
   sceneTitle?: string;
+  /** Director plan fields */
+  camera?: { shotType?: string; angle?: string; movement?: string; framing?: string };
+  motion?: { subjectMovement?: string; environmentMovement?: string; intensity?: string };
+  continuityBefore?: { characters: { name: string; appearance: string }[]; location: string; timeOfDay: string; weather: string; importantObjects: string[] };
   createdAt: string;
   updatedAt: string;
   error?: string;

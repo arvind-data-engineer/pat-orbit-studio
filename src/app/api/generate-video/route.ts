@@ -10,13 +10,16 @@ export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
-    const { prompt, image, duration, aspectRatio, characters, sceneTitle } = await request.json() as {
+    const { prompt, image, duration, aspectRatio, characters, sceneTitle, camera, motion, continuityBefore } = await request.json() as {
       prompt?: string;
       image?: string;
       duration?: string;
       aspectRatio?: string;
       characters?: Array<{ name: string; description?: string; appearance?: string; role?: string }>;
       sceneTitle?: string;
+      camera?: { shotType?: string; angle?: string; movement?: string; framing?: string };
+      motion?: { subjectMovement?: string; environmentMovement?: string; intensity?: string };
+      continuityBefore?: { characters: { name: string; appearance: string }[]; location: string; timeOfDay: string; weather: string; importantObjects: string[] };
     };
 
     if (!prompt || !prompt.trim()) {
@@ -57,6 +60,52 @@ export async function POST(request: Request) {
     }
     if (sceneTitle) {
       videoPrompt = `Title: ${sceneTitle}. ${videoPrompt}`;
+    }
+
+    // Use Director camera plan for video motion guidance
+    if (camera) {
+      const camParts: string[] = [];
+      if (camera.shotType) camParts.push(`${camera.shotType} shot`);
+      if (camera.angle) camParts.push(`${camera.angle} angle`);
+      if (camera.movement && camera.movement !== 'static') camParts.push(`${camera.movement} camera movement`);
+      if (camParts.length > 0) {
+        videoPrompt += `\n\nCamera direction: ${camParts.join(', ')}.`;
+      }
+    }
+
+    // Use Director motion plan for movement guidance
+    if (motion) {
+      const motionParts: string[] = [];
+      if (motion.subjectMovement && motion.subjectMovement !== 'none') {
+        motionParts.push(`Subject: ${motion.subjectMovement}`);
+      }
+      if (motion.environmentMovement && motion.environmentMovement !== 'none') {
+        motionParts.push(`Environment: ${motion.environmentMovement}`);
+      }
+      if (motion.intensity && motion.intensity !== 'subtle') {
+        motionParts.push(`Intensity: ${motion.intensity}`);
+      }
+      if (motionParts.length > 0) {
+        videoPrompt += `\n\nMotion direction: ${motionParts.join('. ')}.`;
+      }
+    }
+
+    // Use Director continuity data for consistent video generation
+    if (continuityBefore) {
+      const continuityParts: string[] = [];
+      if (continuityBefore.location) continuityParts.push(`Location: ${continuityBefore.location}`);
+      if (continuityBefore.timeOfDay) continuityParts.push(`Time of day: ${continuityBefore.timeOfDay}`);
+      if (continuityBefore.weather) continuityParts.push(`Weather: ${continuityBefore.weather}`);
+      if (continuityBefore.characters.length > 0) {
+        const charStates = continuityBefore.characters.map((c) => `${c.name}: ${c.appearance}`).join('; ');
+        continuityParts.push(`Character appearance: ${charStates}`);
+      }
+      if (continuityBefore.importantObjects.length > 0) {
+        continuityParts.push(`Important objects: ${continuityBefore.importantObjects.join(', ')}`);
+      }
+      if (continuityParts.length > 0) {
+        videoPrompt += `\n\nContinuity (preserve from previous scene): ${continuityParts.join('. ')}.`;
+      }
     }
 
     const params: Record<string, unknown> = {

@@ -21,7 +21,7 @@ const LANG_MAP: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
-    const { narration, language, voice } = await request.json();
+    const { narration, language, voice, voicePlan } = await request.json();
 
     if (!narration || !narration.trim()) {
       return NextResponse.json(
@@ -30,13 +30,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const voiceName = VOICE_MAP[voice] || VOICE_MAP["Natural"];
+    // Director voice plan can override the default voice selection
+    const voiceName = VOICE_MAP[voicePlan?.voice] || VOICE_MAP[voice] || VOICE_MAP["Natural"];
     const langCode = LANG_MAP[language] || "en-US";
+
+    // Build enhanced narration with Director voice guidance
+    let enhancedNarration = narration.trim();
+    if (voicePlan) {
+      const directives: string[] = [];
+      if (voicePlan.emotion) directives.push(`Emotion: ${voicePlan.emotion}`);
+      if (voicePlan.pace) directives.push(`Pace: ${voicePlan.pace}`);
+      if (voicePlan.emphasis) directives.push(`Emphasis: ${voicePlan.emphasis}`);
+      if (directives.length > 0) {
+        enhancedNarration = `[${directives.join("; ")}]\n${enhancedNarration}`;
+      }
+    }
 
     /* Use Gemini generateContent with audio response modality for TTS */
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: narration.trim(),
+      contents: enhancedNarration,
       config: {
         responseModalities: ["audio"],
         speechConfig: {
@@ -70,9 +83,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate voice.",
+          error instanceof Error ? error.message : "Failed to generate voice.",
       },
       { status: 500 }
     );

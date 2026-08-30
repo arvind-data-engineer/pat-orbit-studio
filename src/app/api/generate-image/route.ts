@@ -15,12 +15,15 @@ type CharacterInfo = {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { prompt, characters, sceneTitle, style, sceneBeat } = body as {
+    const { prompt, characters, sceneTitle, style, sceneBeat, camera, motion, continuityBefore } = body as {
       prompt?: string;
       characters?: CharacterInfo[];
       sceneTitle?: string;
       style?: string;
       sceneBeat?: string;
+      camera?: { shotType?: string; angle?: string; movement?: string; framing?: string };
+      motion?: { subjectMovement?: string; environmentMovement?: string; intensity?: string };
+      continuityBefore?: { characters: { name: string; appearance: string }[]; location: string; timeOfDay: string; weather: string; importantObjects: string[] };
     };
 
     if (!prompt || !prompt.trim()) {
@@ -53,6 +56,52 @@ export async function POST(request: Request) {
       enhancedPrompt += `\n\nEmotional tone: ${sceneBeat.trim()}.`;
     }
 
+    // Use Director camera plan for enhanced composition guidance
+    if (camera) {
+      const camParts: string[] = [];
+      if (camera.shotType) camParts.push(`${camera.shotType} shot`);
+      if (camera.angle) camParts.push(`${camera.angle} angle`);
+      if (camera.framing) camParts.push(`${camera.framing} framing`);
+      if (camParts.length > 0) {
+        enhancedPrompt += `\n\nCamera: ${camParts.join(", ")}.`;
+      }
+    }
+
+    // Use Director motion plan for subject/environment guidance
+    if (motion) {
+      const motionParts: string[] = [];
+      if (motion.subjectMovement && motion.subjectMovement !== "none") {
+        motionParts.push(`Subject movement: ${motion.subjectMovement}`);
+      }
+      if (motion.environmentMovement && motion.environmentMovement !== "none") {
+        motionParts.push(`Environment movement: ${motion.environmentMovement}`);
+      }
+      if (motion.intensity && motion.intensity !== "subtle") {
+        motionParts.push(`Motion intensity: ${motion.intensity}`);
+      }
+      if (motionParts.length > 0) {
+        enhancedPrompt += `\n\n${motionParts.join(". ")}.`;
+      }
+    }
+
+    // Use Director continuity data for consistent visuals
+    if (continuityBefore) {
+      const continuityParts: string[] = [];
+      if (continuityBefore.location) continuityParts.push(`Location: ${continuityBefore.location}`);
+      if (continuityBefore.timeOfDay) continuityParts.push(`Time of day: ${continuityBefore.timeOfDay}`);
+      if (continuityBefore.weather) continuityParts.push(`Weather: ${continuityBefore.weather}`);
+      if (continuityBefore.characters.length > 0) {
+        const charStates = continuityBefore.characters.map((c) => `${c.name}: ${c.appearance}`).join('; ');
+        continuityParts.push(`Character appearance: ${charStates}`);
+      }
+      if (continuityBefore.importantObjects.length > 0) {
+        continuityParts.push(`Important objects in scene: ${continuityBefore.importantObjects.join(', ')}`);
+      }
+      if (continuityParts.length > 0) {
+        enhancedPrompt += `\n\nContinuity (preserve from previous scene): ${continuityParts.join('. ')}.`;
+      }
+    }
+
     if (style && style.trim()) {
       enhancedPrompt += `\n\nVisual style: ${style.trim()}. Cinematic composition, high quality, detailed, professional photography.`;
     } else {
@@ -81,9 +130,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate image.",
+          error instanceof Error ? error.message : "Failed to generate image.",
       },
       { status: 500 }
     );

@@ -66,6 +66,50 @@ export const generateVideoJob = inngest.createFunction(
       videoPrompt = `Title: ${job.sceneTitle}. ${videoPrompt}`;
     }
 
+    // Use Director camera/motion plans for enhanced video generation
+    if (job.camera) {
+      const camParts: string[] = [];
+      if (job.camera.shotType) camParts.push(`${job.camera.shotType} shot`);
+      if (job.camera.angle) camParts.push(`${job.camera.angle} angle`);
+      if (job.camera.movement && job.camera.movement !== 'static') camParts.push(`${job.camera.movement} camera movement`);
+      if (camParts.length > 0) {
+        videoPrompt += `\n\nCamera direction: ${camParts.join(', ')}.`;
+      }
+    }
+    if (job.motion) {
+      const motionParts: string[] = [];
+      if (job.motion.subjectMovement && job.motion.subjectMovement !== 'none') {
+        motionParts.push(`Subject: ${job.motion.subjectMovement}`);
+      }
+      if (job.motion.environmentMovement && job.motion.environmentMovement !== 'none') {
+        motionParts.push(`Environment: ${job.motion.environmentMovement}`);
+      }
+      if (job.motion.intensity && job.motion.intensity !== 'subtle') {
+        motionParts.push(`Intensity: ${job.motion.intensity}`);
+      }
+      if (motionParts.length > 0) {
+        videoPrompt += `\n\nMotion direction: ${motionParts.join('. ')}.`;
+      }
+    }
+
+    // Use Director continuity data for consistent video generation
+    if (job.continuityBefore) {
+      const continuityParts: string[] = [];
+      if (job.continuityBefore.location) continuityParts.push(`Location: ${job.continuityBefore.location}`);
+      if (job.continuityBefore.timeOfDay) continuityParts.push(`Time of day: ${job.continuityBefore.timeOfDay}`);
+      if (job.continuityBefore.weather) continuityParts.push(`Weather: ${job.continuityBefore.weather}`);
+      if (job.continuityBefore.characters.length > 0) {
+        const charStates = job.continuityBefore.characters.map((c) => `${c.name}: ${c.appearance}`).join('; ');
+        continuityParts.push(`Character appearance: ${charStates}`);
+      }
+      if (job.continuityBefore.importantObjects.length > 0) {
+        continuityParts.push(`Important objects: ${job.continuityBefore.importantObjects.join(', ')}`);
+      }
+      if (continuityParts.length > 0) {
+        videoPrompt += `\n\nContinuity (preserve from previous scene): ${continuityParts.join('. ')}.`;
+      }
+    }
+
     const params: Record<string, unknown> = {
       model: "veo-2.0-generate-001",
       prompt: videoPrompt,
