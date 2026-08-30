@@ -1003,23 +1003,6 @@ export default function Home() {
 
   const currentScene = result?.scenes.find((s) => s.id === activeScene) || null;
 
-  function getStatusLabel(sceneId: number) {
-    const st = sceneStatus[sceneId];
-    if (st === "image" || st === "video") return "Generating";
-    if (sceneVideos[sceneId]) return "Video ready";
-    if (sceneImages[sceneId]) return "Image ready";
-    return "Not started";
-  }
-
-  function getStatusColor(sceneId: number) {
-    const st = sceneStatus[sceneId];
-    if (st === "image") return "bg-amber-500/15 text-amber-400";
-    if (st === "video") return "bg-violet-500/15 text-violet-400";
-    if (sceneVideos[sceneId]) return "bg-blue-500/15 text-blue-400";
-    if (sceneImages[sceneId]) return "bg-emerald-500/15 text-emerald-400";
-    return "bg-white/[0.06] text-white/55";
-  }
-
   function getStatusDotColor(sceneId: number) {
     const st = sceneStatus[sceneId];
     if (st === "image") return "bg-amber-400";
@@ -1077,7 +1060,7 @@ export default function Home() {
                   <Icon.Folder className="text-white/55" />
                   {saved && !hasUnsavedChanges ? "Saved" : "Save"}
                 </button>
-                <button onClick={finalVideo ? exportVideo : undefined} className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white/80">
+                <button onClick={exportVideo} disabled={!finalVideo} className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed">
                   <Icon.Download className="text-white/65" />
                   Export
                 </button>
@@ -1116,8 +1099,8 @@ export default function Home() {
               {result && (
                 <button onClick={() => { document.getElementById("timeline")?.scrollIntoView({ behavior: "smooth" }); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Timeline</button>
               )}
-              {result && (
-                <button onClick={() => { finalVideo && exportVideo(); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Export</button>
+              {result && finalVideo && (
+                <button onClick={() => { exportVideo(); setMobileNavOpen(false); }} className="rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-white/65 transition-colors hover:bg-white/[0.05] hover:text-white/80">Export</button>
               )}
             </div>
           </div>
@@ -1414,7 +1397,7 @@ export default function Home() {
                     <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-all active:scale-[0.98] ${hasUnsavedChanges ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25' : saved && !hasUnsavedChanges ? 'border border-white/[0.08] bg-white/[0.04] text-emerald-400/70' : 'border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white/80'}`}>
                       <Icon.Folder className="text-white/55" />{saved && !hasUnsavedChanges ? "Saved" : "Save"}
                     </button>
-                    <button onClick={finalVideo ? exportVideo : undefined} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98]">
+                    <button onClick={exportVideo} disabled={!finalVideo} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none">
                       <Icon.Download className="text-black/60" />Export
                     </button>
                   </div>
