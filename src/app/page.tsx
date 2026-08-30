@@ -1994,123 +1994,155 @@ export default function Home() {
                     </div>
 
                     {/* Render Panel */}
-                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <Icon.Sparkles className="h-3.5 w-3.5 text-white/50" />
-                        <span className="text-[13px] font-semibold text-white/85">Final Video</span>
-                      </div>
+                    {(() => {
+                      const narrationScenes = result.scenes.filter((s) => s.narration?.trim()).length;
+                      const allVideosReady = totalVideosGenerated >= result.scenes.length;
+                      const allVoiceReady = totalVoiceReady >= narrationScenes;
+                      const missingItems: string[] = [];
+                      if (!allVideosReady) missingItems.push(`${result.scenes.length - totalVideosGenerated} scene video${result.scenes.length - totalVideosGenerated !== 1 ? 's' : ''}`);
+                      if (!allVoiceReady && narrationScenes > 0) missingItems.push(`${narrationScenes - totalVoiceReady} voice narration${narrationScenes - totalVoiceReady !== 1 ? 's' : ''}`);
+                      const renderFullyReady = allVideosReady && allVoiceReady;
 
-                      {/* Readiness checklist */}
-                      <div className="mb-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-white/35">Scenes</div>
-                          <div className={`mt-0.5 text-[13px] font-semibold ${totalVideosGenerated >= result.scenes.length ? 'text-emerald-400' : 'text-white/60'}`}>{totalVideosGenerated} / {result.scenes.length}</div>
-                        </div>
-                        <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-white/35">Voice</div>
-                          <div className={`mt-0.5 text-[13px] font-semibold ${totalVoiceReady >= result.scenes.filter(s => s.narration?.trim()).length ? 'text-emerald-400' : 'text-white/60'}`}>{totalVoiceReady} / {result.scenes.filter(s => s.narration?.trim()).length}</div>
-                        </div>
-                      </div>
-                      <div className="mb-3 flex items-center gap-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-white/40">Music:</span>
-                          <span className="text-[10px] font-medium text-white/60">{music}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-white/40">Captions:</span>
-                          <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/40'}`}>{captions ? 'ON' : 'OFF'}</span>
-                        </div>
-                      </div>
-
-                      {/* Status-specific display */}
-                      {rendering && renderStage ? (
-                        <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-3">
-                          <div className="flex items-center gap-2">
-                            <Icon.Spinner className="h-3.5 w-3.5 animate-spin text-blue-400" />
-                            <span className="text-[12px] font-medium text-blue-400">{renderStage}</span>
-                          </div>
-                          {renderProgress > 0 && renderProgress < 100 && (
-                            <div className="mt-2">
-                              <div className="h-1.5 overflow-hidden rounded-full bg-blue-500/10">
-                                <div className="h-full rounded-full bg-blue-400 transition-all duration-500" style={{ width: `${renderProgress}%` }} />
+                      /* Stage-specific rendering display */
+                      if (rendering && renderStage) {
+                        return (
+                          <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.04] p-4">
+                            <div className="mb-3 flex items-center gap-2">
+                              <Icon.Sparkles className="h-3.5 w-3.5 text-blue-400" />
+                              <span className="text-[13px] font-semibold text-white/85">Rendering Final Video</span>
+                            </div>
+                            <div className="rounded-lg border border-blue-500/15 bg-[#0c0d12] px-4 py-4">
+                              <div className="flex items-center gap-3">
+                                <Icon.Spinner className="h-5 w-5 animate-spin text-blue-400" />
+                                <div>
+                                  <div className="text-[13px] font-medium text-blue-400">{renderStage}</div>
+                                  <div className="mt-0.5 text-[11px] text-white/35">Scene {String(activeScene).padStart(2, '0')} &middot; {aspectRatio}</div>
+                                </div>
                               </div>
-                              <span className="mt-1 block text-[10px] text-white/35">{renderProgress}% complete</span>
+                              {renderProgress > 0 && renderProgress < 100 && (
+                                <div className="mt-4">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-[10px] text-white/35">Progress</span>
+                                    <span className="text-[10px] font-semibold text-blue-400/80">{renderProgress}%</span>
+                                  </div>
+                                  <div className="h-2 overflow-hidden rounded-full bg-blue-500/10">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-700" style={{ width: `${renderProgress}%` }} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      /* Complete — final video ready */
+                      if (finalVideo && !rendering) {
+                        return (
+                          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+                            <div className="mb-3 flex items-center gap-2">
+                              <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
+                              <span className="text-[13px] font-semibold text-emerald-400">Final Video Ready</span>
+                            </div>
+                            <video src={finalVideo} controls className="w-full rounded-lg bg-black" />
+                            <div className="mt-3 flex items-center gap-3">
+                              <button onClick={exportVideo} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-600 px-4 py-3 text-[13px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(52,211,153,0.4)] transition-all hover:shadow-[0_6px_28px_-4px_rgba(52,211,153,0.5)] active:scale-[0.985]">
+                                <Icon.Download />Export Video
+                              </button>
+                              <button onClick={startRender} className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[13px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.985]">
+                                Re-render
+                              </button>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-white/35">
+                              <span>{result.scenes.length} scenes</span>
+                              <span>&middot;</span>
+                              <span>{duration}</span>
+                              <span>&middot;</span>
+                              <span>{aspectRatio}</span>
+                              <span>&middot;</span>
+                              <span>{voice}</span>
+                              <span>&middot;</span>
+                              <span>{captions ? 'Captions ON' : 'Captions OFF'}</span>
+                              <span>&middot;</span>
+                              <span>{music}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      /* Default — readiness checklist + CTA */
+                      return (
+                        <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
+                          <div className="mb-3 flex items-center gap-2">
+                            <Icon.Sparkles className="h-3.5 w-3.5 text-white/50" />
+                            <span className="text-[13px] font-semibold text-white/85">Final Video</span>
+                            {renderFullyReady && <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400">READY</span>}
+                          </div>
+
+                          {/* Readiness checklist */}
+                          <div className="mb-3 space-y-1.5">
+                            <div className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-3 py-2">
+                              {allVideosReady ? (
+                                <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
+                              ) : (
+                                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/20 text-[8px] font-bold text-white/40">{totalVideosGenerated}</span>
+                              )}
+                              <span className="text-[12px] text-white/70">Scene videos</span>
+                              <span className={`ml-auto text-[12px] font-semibold ${allVideosReady ? 'text-emerald-400' : 'text-white/50'}`}>{totalVideosGenerated} / {result.scenes.length}</span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-3 py-2">
+                              {allVoiceReady ? (
+                                <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
+                              ) : narrationScenes > 0 ? (
+                                <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/20 text-[8px] font-bold text-white/40">{totalVoiceReady}</span>
+                              ) : (
+                                <Icon.Check className="h-3.5 w-3.5 text-emerald-400/40" />)}
+                              <span className="text-[12px] text-white/70">Voice narration</span>
+                              <span className={`ml-auto text-[12px] font-semibold ${allVoiceReady ? 'text-emerald-400' : 'text-white/50'}`}>{narrationScenes > 0 ? `${totalVoiceReady} / ${narrationScenes}` : 'None needed'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-3 py-2">
+                              <Icon.Check className="h-3.5 w-3.5 text-emerald-400/60" />
+                              <span className="text-[12px] text-white/70">Music</span>
+                              <span className="ml-auto text-[12px] font-semibold text-white/50">{music}</span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-lg bg-white/[0.02] px-3 py-2">
+                              <Icon.Check className="h-3.5 w-3.5 text-emerald-400/60" />
+                              <span className="text-[12px] text-white/70">Captions</span>
+                              <span className={`ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/40'}`}>{captions ? 'ON' : 'OFF'}</span>
+                            </div>
+                          </div>
+
+                          {/* What's missing */}
+                          {!renderFullyReady && missingItems.length > 0 && (
+                            <div className="mb-3 rounded-lg border border-amber-500/10 bg-amber-500/[0.03] px-3 py-2">
+                              <div className="text-[10px] font-medium text-amber-400/70">
+                                Missing: {missingItems.join(', ')}
+                              </div>
                             </div>
                           )}
-                        </div>
-                      ) : finalVideo ? (
-                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
-                          <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
-                          <div>
-                            <span className="text-[11px] font-semibold text-emerald-400/90">Final video ready</span>
-                            <p className="text-[10px] text-white/40">Export your MP4</p>
-                          </div>
-                        </div>
-                      ) : renderReady ? (
-                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
-                          <Icon.Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                          <span className="text-[11px] font-semibold text-emerald-400/90">All scene videos ready</span>
-                        </div>
-                      ) : (
-                        <div className="mb-3">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                            <div className="h-full rounded-full bg-white/20 transition-all" style={{ width: `${(totalVideosGenerated / result.scenes.length) * 100}%` }} />
-                          </div>
-                        </div>
-                      )}
 
-                      <button onClick={finalVideo ? exportVideo : startRender} disabled={rendering || (!finalVideo && !renderReady)} className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-3 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none">
-                        {rendering ? (
-                          <span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-3.5 w-3.5" />Rendering... {renderProgress}%</span>
-                        ) : finalVideo ? (
-                          <span className="flex items-center justify-center gap-2"><Icon.Download />Export Video</span>
-                        ) : renderReady ? (
-                          <span className="flex items-center justify-center gap-2"><Icon.Sparkles />Render Final Video</span>
-                        ) : "Render Final Video"}
-                      </button>
+                          {/* CTA button */}
+                          <button onClick={startRender} disabled={!renderFullyReady} className={`w-full rounded-xl px-4 py-3.5 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none ${renderFullyReady ? 'bg-gradient-to-b from-white to-white/90 text-black shadow-[0_4px_20px_-4px_rgba(255,255,255,0.25)] hover:shadow-[0_6px_28px_-4px_rgba(255,255,255,0.35)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/40'}`}>
+                            {renderFullyReady ? (
+                              <span className="flex items-center justify-center gap-2"><Icon.Sparkles className="h-4 w-4" />Render Final Video</span>
+                            ) : (
+                              <span className="flex items-center justify-center gap-2">Render Final Video</span>
+                            )}
+                          </button>
 
-                      {!renderReady && !rendering && !finalVideo && (
-                        <p className="mt-2 text-center text-[11px] text-white/35">
-                          Generate all {result.scenes.length} scene videos to render.
-                        </p>
-                      )}
-                    </div>
+                          {!renderFullyReady && !rendering && (
+                            <p className="mt-2 text-center text-[10px] text-white/25">
+                              {missingItems.length > 0 ? `Generate ${missingItems.join(' and ')} before rendering.` : 'Complete all scene productions to render.'}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>)}
                 </div>
               </div>
             </div>
 
-            {/* ===== FINAL VIDEO ===== */}
-            {finalVideo && (
-              <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-5">
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Icon.Check className="h-4 w-4 text-emerald-400" />
-                      <span className="text-[15px] font-semibold text-emerald-400">Your video is ready</span>
-                    </div>
-                    <p className="mt-1 text-[12px] text-white/55">Your complete AI-generated video is ready to export.</p>
-                  </div>
-                  <button onClick={exportVideo} className="flex items-center gap-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/20 px-4 py-2 text-[13px] font-semibold text-emerald-400 transition-all hover:bg-emerald-500/25 active:scale-[0.98]">
-                    <Icon.Download />Export Video
-                  </button>
-                </div>
-                <video src={finalVideo} controls className="w-full max-w-2xl rounded-xl bg-black" />
-                <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-white/50">
-                  <span>{result.scenes.length} scenes</span>
-                  <span>&middot;</span>
-                  <span>{duration}</span>
-                  <span>&middot;</span>
-                  <span>{aspectRatio}</span>
-                  <span>&middot;</span>
-                  <span>{voice}</span>
-                  <span>&middot;</span>
-                  <span>Captions {captions ? "ON" : "OFF"}</span>
-                  <span>&middot;</span>
-                  <span>{music}</span>
-                </div>
-              </div>
-            )}
+
 
             {/* ===== TIMELINE ===== */}
             <div id="timeline" className="mt-6 rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
