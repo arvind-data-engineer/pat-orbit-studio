@@ -247,12 +247,35 @@ export const renderVideoJob = inngest.createFunction(
         inputFiles.push(filePath);
       }
 
-      /* 3. Generate voice audio */
+      /* 3. Voice audio — reuse existing or generate */
       const voiceFiles: string[] = [];
       for (let i = 0; i < render.scenes.length; i++) {
         const s = render.scenes[i];
         if (!s.narration || !s.narration.trim()) continue;
 
+        const audioPath = join(tempDir, `voice_${String(i + 1).padStart(2, "0")}.wav`);
+
+        // Reuse pre-generated voice audio if available from the frontend.
+        const existingAudio = render.voiceAudios?.[s.id];
+        if (existingAudio && typeof existingAudio === "string") {
+          try {
+            const commaIdx = existingAudio.indexOf(",");
+            if (commaIdx !== -1) {
+              const base64Data = existingAudio.substring(commaIdx + 1);
+              const audioBuffer = Buffer.from(base64Data, "base64");
+              if (audioBuffer.length > 0) {
+                await writeFile(audioPath, audioBuffer);
+                voiceFiles[i] = audioPath;
+                console.log(`[inngest/render] Reused existing voice for scene ${i + 1}`);
+                continue;
+              }
+            }
+          } catch {
+            // Fall through to generate fresh voice.
+          }
+        }
+
+        // Generate fresh voice audio.
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const voiceMap: Record<string, string> = { Natural: "Aoede", Deep: "Charon", Soft: "Kore" };
         const langMap: Record<string, string> = { Hindi: "hi-IN", Hinglish: "hi-IN", English: "en-US" };
@@ -276,7 +299,6 @@ export const renderVideoJob = inngest.createFunction(
           for (const part of parts) {
             if (part.inlineData?.data && part.inlineData?.mimeType) {
               const audioBuffer = Buffer.from(part.inlineData.data, "base64");
-              const audioPath = join(tempDir, `voice_${String(i + 1).padStart(2, "0")}.wav`);
               await writeFile(audioPath, audioBuffer);
               voiceFiles[i] = audioPath;
               break;
