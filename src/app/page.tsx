@@ -753,13 +753,27 @@ export default function Home() {
 
   function duplicateProject(project: Project) {
     const dup: Project = {
-      ...project,
       id: crypto.randomUUID(),
       title: project.title + " (Copy)",
+      story: project.story,
+      language: project.language,
+      style: project.style,
+      duration: project.duration,
+      result: {
+        ...project.result,
+        scenes: project.result.scenes.map((s) => ({ ...s })),
+      },
       createdAt: new Date().toISOString(),
       sceneImages: project.sceneImages ? { ...project.sceneImages } : undefined,
-      sceneVideos: undefined,
-      finalVideoUrl: null,
+      sceneVideos: project.sceneVideos ? { ...project.sceneVideos } : undefined,
+      finalVideoUrl: project.finalVideoUrl ?? null,
+      characters: project.characters ? project.characters.map((c) => ({ ...c })) : undefined,
+      sceneCharacters: project.sceneCharacters ? { ...project.sceneCharacters } : undefined,
+      aspectRatio: project.aspectRatio,
+      voice: project.voice,
+      captions: project.captions,
+      music: project.music,
+      voiceGenerated: project.voiceGenerated ? { ...project.voiceGenerated } : undefined,
     };
     saveProjects([dup, ...projects]);
     setToast("Project duplicated");
