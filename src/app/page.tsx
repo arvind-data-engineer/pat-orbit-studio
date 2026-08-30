@@ -610,6 +610,10 @@ export default function Home() {
     if (sceneCharacters[sceneId]) {
       setSceneCharacters((prev) => ({ ...prev, [newId]: [...(sceneCharacters[sceneId] || [])] }));
     }
+    // Copy voice generation status so duplicate doesn't needlessly regenerate
+    if (voiceGenerated[sceneId]) {
+      setVoiceGenerated((prev) => ({ ...prev, [newId]: true }));
+    }
     setActiveScene(newId);
     setSaved(false);
   }
