@@ -849,18 +849,27 @@ export default function Home() {
         // Planner is best-effort — continue with original prompt.
       }
 
+      // Re-read the latest scene data after the async planner call to avoid
+      // using stale state if the user edited the scene during planning.
+      const latestScene = result.scenes.find((s) => s.id === sceneId) ?? scene;
+      let capturedImage: string | undefined;
+      // Use functional setState to read the latest image snapshot at job-creation time.
+      setSceneImages((latest) => {
+        if (latest[sceneId]) capturedImage = latest[sceneId];
+        return latest; // no mutation — read-only
+      });
       const body: Record<string, unknown> = {
         prompt,
         duration,
         aspectRatio,
         sceneId,
-        sceneTitle: scene.title,
+        sceneTitle: latestScene.title,
         characters: sceneChars.length > 0 ? sceneChars : undefined,
-        camera: scene.directorCamera,
-        motion: scene.directorMotion,
-        continuityBefore: scene.directorContinuityBefore,
+        camera: latestScene.directorCamera,
+        motion: latestScene.directorMotion,
+        continuityBefore: latestScene.directorContinuityBefore,
       };
-      if (sceneImages[sceneId]) body.image = sceneImages[sceneId];
+      if (capturedImage) body.image = capturedImage;
 
       const createResp = await fetch("/api/jobs/video", {
         method: "POST",
