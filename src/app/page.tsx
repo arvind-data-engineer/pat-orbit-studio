@@ -2317,51 +2317,58 @@ export default function Home() {
         )}
 
         {/* ===== PROJECTS ===== */}
-        <div id="projects" className="mx-auto mt-14 max-w-5xl">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-white">Projects</h2>
-              <p className="mt-0.5 text-[13px] text-white/60">Your video projects</p>
+        <div id="projects" className="mx-auto mt-16 max-w-5xl">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Projects</h2>
+                <p className="mt-1 text-[13px] text-white/45">Your video library</p>
+              </div>
+              <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-5 py-2.5 text-[13px] font-semibold text-black shadow-[0_2px_12px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_20px_-4px_rgba(255,255,255,0.3)] active:scale-[0.98]">
+                <Icon.Plus className="h-3.5 w-3.5" />New Video
+              </button>
             </div>
-            <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex items-center gap-1.5 rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-2 text-[12px] font-medium text-white/70 transition-all hover:bg-white/[0.08] hover:text-white/90 active:scale-[0.98]">
-              <span className="text-[16px] leading-none">+</span> New Project
-            </button>
           </div>
 
+          {/* Search + Filters + Stats */}
           {projects.length > 0 && (
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex gap-2">
-                {[
-                  { label: "TOTAL", value: projects.length },
-                  { label: "COMPLETED", value: projects.filter(p => (p.sceneImages ? Object.keys(p.sceneImages).length : 0) >= 5).length },
-                  { label: "IN PROGRESS", value: projects.filter(p => (p.sceneImages ? Object.keys(p.sceneImages).length : 0) < 5).length },
-                ].map((stat) => (
-                  <div key={stat.label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-white/40">{stat.label}</div>
-                    <div className="text-[14px] font-semibold text-white/80">{stat.value}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search projects..." className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[12px] text-white/80 outline-none placeholder:text-white/35 focus:border-white/[0.15]" />
-                <div className="flex gap-1">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <svg className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                  <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search projects..." className="h-9 w-52 rounded-lg border border-white/[0.08] bg-white/[0.03] pl-8 pr-3 text-[12px] text-white/80 outline-none placeholder:text-white/30 focus:border-white/[0.15] focus:bg-white/[0.05] transition-all" />
+                </div>
+                {/* Filters */}
+                <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
                   {(["all", "completed", "in-progress"] as const).map((f) => (
-                    <button key={f} onClick={() => setProjectFilter(f)} className={`rounded-lg px-3 py-2 text-[11px] font-medium transition-all ${projectFilter === f ? "bg-white/[0.10] text-white/90" : "text-white/45 hover:text-white/65"}`}>{f === "all" ? "All" : f === "completed" ? "Completed" : "In Progress"}</button>
+                    <button key={f} onClick={() => setProjectFilter(f)} className={`rounded-md px-3 py-1.5 text-[11px] font-medium transition-all ${projectFilter === f ? 'bg-white/[0.08] text-white/90' : 'text-white/40 hover:text-white/55'}`}>{f === 'all' ? 'All' : f === 'completed' ? 'Done' : 'Active'}</button>
                   ))}
                 </div>
+              </div>
+              {/* Stats */}
+              <div className="flex items-center gap-3 text-[11px] text-white/40">
+                <span>{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+                <span className="text-white/15">|</span>
+                <span>{projects.filter((p) => { const ic = p.sceneImages ? Object.keys(p.sceneImages).length : 0; const vc = p.sceneVideos ? Object.keys(p.sceneVideos).length : 0; return ic >= 5 && vc >= 5; }).length} completed</span>
               </div>
             </div>
           )}
 
+          {/* Empty state */}
           {projects.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent p-16 text-center sm:p-20">
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent p-12 text-center sm:p-16">
+              <div className="pointer-events-none absolute inset-0 -z-10">
+                <div className="absolute left-1/2 top-0 h-[200px] w-[400px] -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-500/[0.03] to-transparent blur-3xl" />
+              </div>
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
                 <Icon.Film className="h-7 w-7 text-white/25" />
               </div>
               <h3 className="text-[16px] font-semibold text-white/70">No videos yet</h3>
-              <p className="mx-auto mt-2 max-w-[280px] text-[13px] leading-relaxed text-white/40">Create your first AI video and it will appear here. Start with a story idea.</p>
-              <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="mt-6 inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.08] px-5 py-2.5 text-[13px] font-medium text-emerald-400/90 transition-all hover:bg-emerald-500/[0.14] hover:text-emerald-300 active:scale-[0.98]">
-                <Icon.Plus className="h-3.5 w-3.5" />Create your first video
+              <p className="mx-auto mt-2 max-w-[300px] text-[13px] leading-relaxed text-white/35">Your completed videos will appear here. Create your first one with a simple idea.</p>
+              <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-5 py-2.5 text-[13px] font-semibold text-black shadow-[0_2px_12px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_20px_-4px_rgba(255,255,255,0.3)] active:scale-[0.98]">
+                <Icon.Sparkles className="h-3.5 w-3.5" />Create your first video
               </button>
             </div>
           ) : (() => {
@@ -2370,7 +2377,7 @@ export default function Home() {
               const imageCount = p.sceneImages ? Object.keys(p.sceneImages).length : 0;
               const videoCount = p.sceneVideos ? Object.keys(p.sceneVideos).length : 0;
               const isComplete = imageCount >= 5 && videoCount >= 5;
-              const matchesFilter = projectFilter === "all" || (projectFilter === "completed" && isComplete) || (projectFilter === "in-progress" && !isComplete);
+              const matchesFilter = projectFilter === 'all' || (projectFilter === 'completed' && isComplete) || (projectFilter === 'in-progress' && !isComplete);
               return matchesSearch && matchesFilter;
             });
 
@@ -2378,13 +2385,13 @@ export default function Home() {
               return (
                 <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-10 text-center">
                   <div className="text-[14px] font-medium text-white/55">No projects found</div>
-                  <button onClick={() => { setSearchQuery(""); setProjectFilter("all"); }} className="mt-3 text-[12px] text-emerald-400/70 hover:text-emerald-400">Clear search</button>
+                  <button onClick={() => { setSearchQuery(''); setProjectFilter('all'); }} className="mt-3 text-[12px] text-emerald-400/70 hover:text-emerald-400">Clear search</button>
                 </div>
               );
             }
 
             return (
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((project) => {
                   const imageCount = project.sceneImages ? Object.keys(project.sceneImages).length : 0;
                   const videoCount = project.sceneVideos ? Object.keys(project.sceneVideos).length : 0;
@@ -2393,79 +2400,86 @@ export default function Home() {
                   const hasFinalVideo = !!project.finalVideoUrl;
                   const isComplete = imageCount >= 5 && videoCount >= 5;
                   const firstImage = project.sceneImages ? Object.values(project.sceneImages)[0] : null;
-                  const totalDur = scenes.reduce((sum: number, s: { sceneDuration?: string }) => sum + (parseInt(s.sceneDuration || "10") || 10), 0) || 50;
+                  const totalDur = scenes.reduce((sum: number, s: { sceneDuration?: string }) => sum + (parseInt(s.sceneDuration || '10') || 10), 0) || 50;
+                  const scenesReady = Math.min(imageCount, videoCount);
                   return (
-                    <div key={project.id} className="group rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.03] hover:-translate-y-0.5 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]">
+                    <div key={project.id} className="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.02] transition-all duration-300 hover:border-white/[0.15] hover:bg-white/[0.03] hover:-translate-y-0.5 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]">
+                      {/* Thumbnail */}
                       <button onClick={() => loadProject(project)} className="block w-full text-left">
-                        <div className="relative overflow-hidden">
-                          <div className="aspect-video bg-[#0c0d12]">
-                            {firstImage ? (
-                              <img src={firstImage} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center">
-                                <Icon.Film className="h-8 w-8 text-white/10" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.10] opacity-0 transition-all group-hover:opacity-100 backdrop-blur-sm">
-                              <Icon.Play className="ml-0.5 h-4 w-4 text-white/90" />
-                            </div>
-                          </div>
-                          <div className="absolute left-2 top-2">
-                            <span className={`rounded-md px-2 py-0.5 text-[9px] font-bold tracking-wide ${isComplete ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/20 text-amber-400 border border-amber-500/20"}`}>{isComplete ? "COMPLETED" : "IN PROGRESS"}</span>
-                          </div>
-                          {hasFinalVideo && (
-                            <div className="absolute right-2 top-2">
-                              <span className="rounded-md bg-violet-500/20 border border-violet-500/20 px-2 py-0.5 text-[9px] font-bold tracking-wide text-violet-400">FINAL VIDEO</span>
+                        <div className="relative aspect-video overflow-hidden bg-[#0c0d12]">
+                          {firstImage ? (
+                            <img src={firstImage} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <Icon.Film className="h-8 w-8 text-white/10" />
                             </div>
                           )}
+                          {/* Gradient overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                          {/* Play overlay on hover */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/[0.12] opacity-0 backdrop-blur-sm transition-all duration-300 group-hover:opacity-100 group-hover:scale-100 scale-90">
+                              <Icon.Play className="ml-0.5 h-5 w-5 text-white/90" />
+                            </div>
+                          </div>
+                          {/* Status badge */}
+                          <div className="absolute left-3 top-3">
+                            <span className={`rounded-md px-2 py-0.5 text-[9px] font-bold tracking-wide backdrop-blur-sm ${isComplete ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/25' : 'bg-amber-500/25 text-amber-400 border border-amber-500/20'}`}>{isComplete ? 'COMPLETED' : 'IN PROGRESS'}</span>
+                          </div>
+                          {hasFinalVideo && (
+                            <div className="absolute right-3 top-3">
+                              <span className="rounded-md bg-violet-500/25 border border-violet-500/25 px-2 py-0.5 text-[9px] font-bold tracking-wide text-violet-400 backdrop-blur-sm">FINAL VIDEO</span>
+                            </div>
+                          )}
+                          {/* Progress on thumbnail */}
+                          <div className="absolute bottom-3 left-3 right-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/20">
+                                <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${((imageCount + videoCount) / 10) * 100}%` }} />
+                              </div>
+                              <span className="text-[9px] font-semibold text-white/70">{scenesReady}/5</span>
+                            </div>
+                          </div>
                         </div>
                       </button>
 
-                      <div className="p-4">
+                      {/* Card body */}
+                      <div className="p-3.5">
                         <button onClick={() => loadProject(project)} className="block w-full text-left">
-                          <div className="truncate text-[14px] font-semibold text-white/85 group-hover:text-white">{project.title}</div>
+                          <div className="truncate text-[13px] font-semibold text-white/85 group-hover:text-white transition-colors">{project.title}</div>
                         </button>
-                        <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/45">
+                        <div className="mt-1.5 flex items-center gap-2 text-[10px] text-white/40">
                           <span>{project.style}</span>
-                          <span className="text-white/20">|</span>
+                          <span className="text-white/15">|</span>
                           <span>{totalDur}s</span>
-                          <span className="text-white/20">|</span>
+                          <span className="text-white/15">|</span>
                           <span>{project.language}</span>
                         </div>
 
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400/70" />
-                            <span className="text-[10px] text-white/50">{imageCount} img</span>
+                        {/* Progress dots */}
+                        <div className="mt-3 flex items-center gap-1.5">
+                          <div className="flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <div key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i < scenesReady ? 'bg-emerald-400' : 'bg-white/[0.08]'}`} />
+                            ))}
                           </div>
-                          <div className="flex items-center gap-1">
-                            <div className="h-1.5 w-1.5 rounded-full bg-blue-400/70" />
-                            <span className="text-[10px] text-white/50">{videoCount} vid</span>
-                          </div>
-                          <div className="ml-auto text-[10px] text-white/35">{sceneCount} scenes</div>
+                          <span className="text-[9px] text-white/30 ml-1">{scenesReady}/5 scenes</span>
                         </div>
 
-                        <div className="mt-2.5">
-                          <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
-                            <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${((imageCount + videoCount) / 10) * 100}%` }} />
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-2 border-t border-white/[0.06] pt-3">
-                          <button onClick={() => loadProject(project)} className="flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-3 py-1.5 text-[11px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90 active:scale-[0.98]">
-                            <Icon.Folder className="text-white/50" />Open
+                        {/* Actions */}
+                        <div className="mt-3 flex items-center gap-2 border-t border-white/[0.05] pt-3">
+                          <button onClick={() => loadProject(project)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/[0.08] py-2 text-[11px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white/90 active:scale-[0.98]">
+                            <Icon.Folder className="h-3 w-3 text-white/50" />Open
                           </button>
-                          <button onClick={() => duplicateProject(project)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:bg-white/[0.06] hover:text-white/65 active:scale-[0.98]">
-                            <Icon.Copy2 />Duplicate
+                          <button onClick={() => duplicateProject(project)} aria-label="Duplicate" className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 transition-all hover:bg-white/[0.06] hover:text-white/55">
+                            <Icon.Copy2 />
                           </button>
-                          <div className="ml-auto">
-                            {project.createdAt && <span className="text-[10px] text-white/30">{new Date(project.createdAt).toLocaleDateString()}</span>}
-                          </div>
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(project.id); }} aria-label="Delete project" className="flex h-6 w-6 items-center justify-center rounded-md text-white/30 transition-all hover:bg-red-500/10 hover:text-red-400/80">
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(project.id); }} aria-label="Delete" className="flex h-8 w-8 items-center justify-center rounded-lg text-white/25 transition-all hover:bg-red-500/10 hover:text-red-400/70">
                             <Icon.Trash />
                           </button>
+                          <div className="ml-auto">
+                            {project.createdAt && <span className="text-[9px] text-white/25">{new Date(project.createdAt).toLocaleDateString()}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
