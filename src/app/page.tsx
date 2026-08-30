@@ -1113,34 +1113,70 @@ export default function Home() {
             {/* ===== CREATE SCREEN ===== */}
             <div className="relative">
               <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute left-1/2 top-0 h-[300px] w-[500px] -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-500/[0.03] to-transparent blur-3xl" />
+                <div className="absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-500/[0.04] to-transparent blur-3xl" />
               </div>
 
-              {/* Hero - compact */}
-              <div className="mb-6 text-center">
-                <h1 className="text-[32px] font-bold tracking-tight sm:text-[40px] text-white">
-                  Create your next <span className="italic bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent">video</span>
-                </h1>
-                <p className="mt-1.5 text-[13px] text-white/40">Story, scenes, visuals, voice and final video.</p>
-              </div>
+              {/* Hero: Cinematic preview + title */}
+              <div className="mx-auto max-w-4xl">
+                {/* Title */}
+                <div className="mb-5 text-center">
+                  <h1 className="text-[36px] font-bold tracking-tight sm:text-[48px] text-white">
+                    Create your next <span className="italic bg-gradient-to-r from-purple-400 to-fuchsia-400 bg-clip-text text-transparent">video</span>
+                  </h1>
+                  <p className="mt-2 text-[14px] text-white/40">One idea. Full cinematic production.</p>
+                </div>
 
-              {/* Main layout */}
-              <div className="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[1fr_320px]">
-                {/* LEFT */}
-                <div className="space-y-3">
-
-                  {/* Idea + Create CTA (primary flow, no scrolling needed) */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-5">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-white/85">What do you want to create?</span>
-                      <span className="ml-auto rounded-md bg-purple-500/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-purple-400/70">AI POWERED</span>
+                {/* Cinematic preview area */}
+                <div className="relative mx-auto mb-8 max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_8px_60px_-12px_rgba(139,92,246,0.15)]">
+                  <div className="relative aspect-video overflow-hidden">
+                    {/* Animated cinematic gradient background */}
+                    <div className="absolute inset-0">
+                      <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-purple-900/30 via-violet-900/20 to-fuchsia-900/30" style={{ animationDuration: '4s' }} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#08090c] via-transparent to-[#08090c]/50" />
+                      {/* Simulated film frames */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex gap-3 opacity-20">
+                          {[1,2,3,4,5].map(n => (
+                            <div key={n} className={`h-20 w-32 rounded-lg border border-white/10 bg-white/[0.03] ${n === 3 ? 'scale-110 border-purple-500/20' : ''}`} />
+                          ))}
+                        </div>
+                      </div>
+                      {/* Play button center */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.08] backdrop-blur-sm border border-white/[0.10]">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="white" opacity="0.6"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        </div>
+                      </div>
+                      {/* Film strip top/bottom */}
+                      <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-black/40 to-transparent">
+                        <div className="flex items-center gap-1 px-4 py-2">
+                          {Array.from({length: 12}).map((_, i) => (
+                            <div key={i} className="h-3 w-4 rounded-sm bg-white/[0.06]" />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/40 to-transparent">
+                        <div className="flex items-center gap-1 px-4 py-2">
+                          {Array.from({length: 12}).map((_, i) => (
+                            <div key={i} className="h-3 w-4 rounded-sm bg-white/[0.06]" />
+                          ))}
+                        </div>
+                      </div>
                     </div>
+                    {/* Subtle glow */}
+                    <div className="absolute inset-0 shadow-[inset_0_0_60px_rgba(139,92,246,0.05)]" />
+                  </div>
+                </div>
+
+                {/* Idea input + CTA (secondary to the preview) */}
+                <div className="mx-auto max-w-2xl">
+                  <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-5">
                     <div className="relative group">
                       <div className="absolute -inset-px rounded-xl bg-gradient-to-b from-purple-500/[0.08] to-transparent opacity-0 transition-opacity group-focus-within:opacity-100" />
                       <textarea
                         value={story}
                         onChange={(e) => { setStory(e.target.value); setError(""); }}
-                        placeholder="A young boy discovers a mysterious portal beneath his school and enters a glowing world..."
+                        placeholder="Describe your video idea..."
                         rows={3}
                         maxLength={1500}
                         className="relative w-full resize-none rounded-xl border border-white/[0.10] bg-[#0a0b0f] p-4 text-[15px] leading-7 text-white outline-none transition-all placeholder:text-white/20 focus:border-purple-500/30 focus:shadow-[0_0_20px_-8px_rgba(139,92,246,0.1)]"
@@ -1156,12 +1192,12 @@ export default function Home() {
                         </button>
                       ))}
                     </div>
-                    {/* Create Video + loading in same card */}
+                    {/* Create Video CTA */}
                     <div className="mt-4">
                       <button onClick={generateStory} disabled={!story.trim() || loading} className="w-full rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-3.5 text-[14px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.4)] transition-all hover:shadow-[0_8px_30px_-4px_rgba(139,92,246,0.5)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
                         {loading ? (<span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-4 w-4 animate-spin" />Creating...</span>) : (<span className="flex items-center justify-center gap-2"><Icon.Sparkles className="h-4 w-4" />Create Video</span>)}
                       </button>
-                      <p className="mt-2 text-center text-[11px] text-white/25">AI will create your story, scenes, visuals, voice and video.</p>
+                      <p className="mt-2 text-center text-[11px] text-white/25">AI will create your story, scenes, visuals, voice and final video.</p>
                     </div>
                     {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2 text-[12px] text-red-300/90">{error}</div>}
                     {loading && (
@@ -1177,200 +1213,70 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+              </div>
 
-                  {/* Visual Style - compact row */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                    <div className="mb-2.5 flex items-center gap-2">
-                      <Icon.Image className="h-3 w-3 text-white/35" />
-                      <span className="text-[11px] font-semibold text-white/75">Visual Style</span>
+              {/* Settings row */}
+              <div className="mx-auto mt-4 max-w-2xl">
+                <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div>
+                      <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Language</label>
+                      <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
+                        <option>Hindi</option><option>Hinglish</option><option>English</option>
+                      </select>
                     </div>
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {["Cinematic", "Cartoon", "Anime", "Realistic", "3D"].map((s) => {
-                        const isActive = style === s;
-                        const thumbGradients: Record<string, string> = {
-                          Cinematic: "from-amber-800/40 via-orange-700/30 to-amber-900/40",
-                          Cartoon: "from-emerald-700/40 via-teal-600/30 to-emerald-800/40",
-                          Anime: "from-pink-700/40 via-rose-600/30 to-pink-800/40",
-                          Realistic: "from-blue-800/40 via-slate-600/30 to-blue-900/40",
-                          "3D": "from-violet-700/40 via-indigo-600/30 to-violet-800/40",
-                        };
-                        return (
-                          <button key={s} onClick={() => setStyle(s)} className={`group relative overflow-hidden rounded-xl border transition-all ${isActive ? 'border-purple-500/40 shadow-[0_0_12px_-4px_rgba(139,92,246,0.3)]' : 'border-white/[0.06] hover:border-white/[0.12]'}`}>
-                            <div className={`aspect-[4/3] bg-gradient-to-br ${thumbGradients[s] || thumbGradients.Cinematic} flex items-center justify-center`}>
-                              {s === 'Cinematic' && <Icon.Film className="h-5 w-5 text-amber-300/50" />}
-                              {s === 'Cartoon' && <Icon.Sparkles className="h-5 w-5 text-emerald-300/50" />}
-                              {s === 'Anime' && <Icon.Wand className="h-5 w-5 text-pink-300/50" />}
-                              {s === 'Realistic' && <Icon.Image className="h-5 w-5 text-blue-300/50" />}
-                              {s === '3D' && <Icon.Video className="h-5 w-5 text-violet-300/50" />}
-                            </div>
-                            <div className={`px-1.5 py-1.5 text-center text-[9px] font-medium ${isActive ? 'bg-purple-500/10 text-white/90' : 'bg-white/[0.02] text-white/50'}`}>{s}</div>
-                            {isActive && <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-purple-500 to-fuchsia-500" />}
-                          </button>
-                        );
-                      })}
+                    <div>
+                      <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Style</label>
+                      <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
+                        <option>Cinematic</option><option>Cartoon</option><option>Anime</option><option>Realistic</option><option>3D</option>
+                      </select>
                     </div>
-                  </div>
-
-                  {/* Video Format - compact row */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                    <div className="mb-2.5 flex items-center gap-2">
-                      <Icon.Square className="h-3 w-3 text-white/35" />
-                      <span className="text-[11px] font-semibold text-white/75">Video Format</span>
+                    <div>
+                      <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Duration</label>
+                      <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
+                        <option>30s</option><option>60s</option><option>90s</option>
+                      </select>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { ratio: "9:16", label: "9:16", sub: "Shorts / Reels", frame: <div className="mx-auto h-10 w-6 rounded-sm border-2 border-white/20" /> },
-                        { ratio: "16:9", label: "16:9", sub: "YouTube / Film", frame: <div className="mx-auto h-7 w-12 rounded-sm border-2 border-white/20" /> },
-                        { ratio: "1:1", label: "1:1", sub: "Social / Square", frame: <div className="mx-auto h-9 w-9 rounded-sm border-2 border-white/20" /> },
-                      ].map((f) => {
-                        const isActive = aspectRatio === f.ratio;
-                        return (
-                          <button key={f.ratio} onClick={() => setAspectRatio(f.ratio)} className={`group rounded-xl border p-2.5 text-center transition-all ${isActive ? 'border-purple-500/40 bg-purple-500/10' : 'border-white/[0.06] hover:border-white/[0.12]'}`}>
-                            {f.frame}
-                            <div className={`mt-1.5 text-[10px] font-semibold ${isActive ? 'text-white/90' : 'text-white/50'}`}>{f.label}</div>
-                            <div className="text-[7px] text-white/25">{f.sub}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Customize your video (collapsible) */}
-                  {(() => {
-                    const [customOpen, setCustomOpen] = useState(false);
-                    return (
-                      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-                        <button onClick={() => setCustomOpen(!customOpen)} className="flex w-full items-center justify-between p-4 transition-colors hover:bg-white/[0.02]">
-                          <div className="flex items-center gap-2">
-                            <Icon.Settings className="h-3 w-3 text-white/35" />
-                            <span className="text-[12px] font-semibold text-white/70">Customize your video</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] text-white/25">{language} / {duration} / {voice}</span>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-white/25 transition-transform ${customOpen ? 'rotate-180' : ''}`}><path d="M6 9l6 6 6-6" /></svg>
-                          </div>
-                        </button>
-                        {customOpen && (
-                          <div className="border-t border-white/[0.04] p-4 pt-3 space-y-3">
-                            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                              <div>
-                                <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Language</label>
-                                <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
-                                  <option>Hindi</option><option>Hinglish</option><option>English</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Duration</label>
-                                <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
-                                  <option>30s</option><option>60s</option><option>90s</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Voice</label>
-                                <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
-                                  <option>Natural</option><option>Deep</option><option>Soft</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Music</label>
-                                <select value={music} onChange={(e) => setMusic(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
-                                  <option>None</option><option>Ambient</option><option>Cinematic</option><option>Emotional</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <button onClick={() => setCaptions(!captions)} className="flex items-center gap-1.5 text-[11px] text-white/40 transition-colors hover:text-white/55">
-                                <span className={`h-3 w-3 rounded border transition-colors ${captions ? 'border-emerald-500/40 bg-emerald-500/15' : 'border-white/15'}`}>{captions && <Icon.Check className="h-2 w-2 text-emerald-400 m-px" />}</span>
-                                Captions
-                                <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/40'}`}>{captions ? 'ON' : 'OFF'}</span>
-                              </button>
-                              <button onClick={() => setShowCharacters(true)} className="flex items-center gap-1.5 text-[11px] text-white/40 transition-colors hover:text-violet-400/60">
-                                <Icon.User className="h-3 w-3" />
-                                Characters
-                                <span className="text-[9px] text-white/20">(optional)</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Quick Start */}
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <Icon.Zap className="h-3 w-3 text-white/30" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Quick Start</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                      {TEMPLATES.map((t) => (
-                        <button key={t.label} onClick={() => {
-                          setStory(t.text);
-                          setStyle(t.style);
-                          setDuration(t.duration);
-                          setAspectRatio(t.aspectRatio);
-                          setError("");
-                        }} className="group overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] text-left transition-all hover:border-purple-500/20 hover:bg-purple-500/[0.03] hover:-translate-y-0.5">
-                          <div className="h-0.5 w-full bg-gradient-to-r from-purple-500/20 via-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <div className="p-2.5">
-                            <div className="flex items-start gap-2">
-                              <span className="text-[14px] leading-none">{t.icon}</span>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-[11px] font-semibold text-white/75 group-hover:text-white/90 transition-colors">{t.label}</div>
-                                <div className="mt-0.5 text-[9px] text-white/30 group-hover:text-white/45 transition-colors leading-snug">{t.desc}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* RIGHT - Live Preview Panel */}
-                <div className="hidden lg:block">
-                  <div className="sticky top-24 space-y-4">
-                    {/* Live Preview */}
-                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <Icon.Play className="h-3 w-3 text-white/35" />
-                        <span className="text-[11px] font-semibold text-white/75">Preview</span>
-                        <span className="ml-auto text-[9px] text-white/20">{style} / {aspectRatio}</span>
-                      </div>
-                      <div className="relative aspect-video overflow-hidden rounded-xl border border-white/[0.06] bg-[#0c0d12]">
-                        <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br ${style === 'Cinematic' ? 'from-amber-900/20 to-orange-900/10' : style === 'Anime' ? 'from-pink-900/20 to-rose-900/10' : style === 'Realistic' ? 'from-blue-900/20 to-slate-900/10' : style === '3D' ? 'from-violet-900/20 to-indigo-900/10' : 'from-emerald-900/20 to-teal-900/10'}`}>
-                          <div className="text-center">
-                            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.08]">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="white" opacity="0.4"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                            </div>
-                            <div className="text-[10px] text-white/20">Your video preview will appear here</div>
-                          </div>
-                        </div>
-                        <div className="absolute inset-0 border border-white/[0.04]" />
-                      </div>
-                      <div className="mt-2.5 flex items-center gap-3">
-                        {[{ l: "Visuals", i: <Icon.Image className="h-2 w-2" /> }, { l: "Voice", i: <Icon.Mic className="h-2 w-2" /> }, { l: "Music", i: <Icon.Music className="h-2 w-2" /> }].map((f) => (
-                          <div key={f.l} className="flex items-center gap-1 text-[8px] text-white/25">{f.i}{f.l}</div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* How it works - compact */}
-                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-                      <h3 className="mb-2.5 text-[11px] font-semibold text-white/65">How it works</h3>
-                      <div className="flex items-center gap-1">
-                        {[{ n: "1", label: "Story", color: "emerald" }, { n: "2", label: "Visuals", color: "blue" }, { n: "3", label: "Motion", color: "violet" }, { n: "4", label: "Voice", color: "amber" }, { n: "5", label: "Render", color: "emerald" }].map((s, i) => (
-                          <div key={s.n} className="flex items-center gap-1 flex-1">
-                            <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded ${s.color === 'emerald' ? 'bg-emerald-500/10 text-emerald-400' : s.color === 'blue' ? 'bg-blue-500/10 text-blue-400' : s.color === 'violet' ? 'bg-violet-500/10 text-violet-400' : 'bg-amber-500/10 text-amber-400'} text-[8px] font-bold`}>{s.n}</div>
-                            <span className="text-[9px] text-white/40 truncate">{s.label}</span>
-                            {i < 4 && <div className="mx-0.5 h-px flex-1 bg-white/[0.06]" />}
-                          </div>
-                        ))}
-                      </div>
+                    <div>
+                      <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Voice</label>
+                      <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/70 outline-none focus:border-white/[0.15]">
+                        <option>Natural</option><option>Deep</option><option>Soft</option>
+                      </select>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Quick Start templates */}
+              <div className="mx-auto mt-4 max-w-3xl">
+                <div className="mb-2 flex items-center gap-2">
+                  <Icon.Zap className="h-3 w-3 text-white/30" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">Quick Start</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {TEMPLATES.map((t) => (
+                    <button key={t.label} onClick={() => {
+                      setStory(t.text);
+                      setStyle(t.style);
+                      setDuration(t.duration);
+                      setAspectRatio(t.aspectRatio);
+                      setError("");
+                    }} className="group overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015] text-left transition-all hover:border-purple-500/20 hover:bg-purple-500/[0.03] hover:-translate-y-0.5">
+                      <div className="h-0.5 w-full bg-gradient-to-r from-purple-500/20 via-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="p-2.5">
+                        <div className="flex items-start gap-2">
+                          <span className="text-[14px] leading-none">{t.icon}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-semibold text-white/75 group-hover:text-white/90 transition-colors">{t.label}</div>
+                            <div className="mt-0.5 text-[9px] text-white/30 group-hover:text-white/45 transition-colors leading-snug">{t.desc}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             </div>
           </>
         ) : (
