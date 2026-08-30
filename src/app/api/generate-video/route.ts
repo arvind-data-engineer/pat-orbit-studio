@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { uploadToBlob } from "@/lib/blob";
+import { useLocalEngine } from "@/lib/video/engine";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -29,6 +30,42 @@ export async function POST(request: Request) {
       );
     }
 
+    // ── Local engine path ──────────────────────────────────────────
+    if (useLocalEngine()) {
+      const { localVideoEngine } = await import("@/lib/video/engines/local");
+      const durationMatch = duration?.match(/(\d+)/);
+      const { jobId: localJobId } = await localVideoEngine.generate({
+        prompt: prompt.trim(),
+        image: image || undefined,
+        duration: durationMatch ? parseInt(durationMatch[1], 10) : undefined,
+        aspectRatio: aspectRatio || undefined,
+        sceneTitle: sceneTitle || undefined,
+        characters: characters || undefined,
+        camera: camera && camera.shotType && camera.angle && camera.movement && camera.framing
+          ? camera as { shotType: string; angle: string; movement: string; framing: string }
+          : undefined,
+        motion: motion && motion.subjectMovement && motion.environmentMovement && motion.intensity
+          ? motion as { subjectMovement: string; environmentMovement: string; intensity: 'subtle' | 'moderate' | 'dramatic' }
+          : undefined,
+        continuity: continuityBefore || undefined,
+      });
+      // Poll until completed or failed
+      const MAX_POLLS = 60;
+      const POLL_MS = 5_000;
+      for (let i = 0; i < MAX_POLLS; i++) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+        const st = await localVideoEngine.getStatus(localJobId);
+        if (st.status === "completed" && st.videoUrl) {
+          return NextResponse.json({ videoUrl: st.videoUrl });
+        }
+        if (st.status === "failed") {
+          return NextResponse.json({ error: st.error || "Local video generation failed." }, { status: 500 });
+        }
+      }
+      return NextResponse.json({ error: "Local video generation timed out." }, { status: 504 });
+    }
+
+    // ── Veo (default) path ─────────────────────────────────────────
     const config: Record<string, unknown> = {
       numberOfVideos: 1,
     };

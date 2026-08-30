@@ -83,7 +83,33 @@ To use a custom cache directory:
 export VIDEO_ENGINE_CACHE_DIR=/path/to/models
 ```
 
-## Running the Local Inference Server
+## Configuring PAT Orbit to Use the Local Engine
+
+Add these environment variables to your `.env.local` (or Vercel Production environment):
+
+```bash
+# Switch from Veo (default) to local engine
+VIDEO_ENGINE=local
+
+# URL of the local Python inference server
+LOCAL_VIDEO_ENGINE_URL=http://localhost:8000
+```
+
+When `VIDEO_ENGINE=veo` or is not set, PAT Orbit uses the existing Gemini/Veo path.
+
+When `VIDEO_ENGINE=local`, all video generation routes through the local SVD server.
+
+### Quick Start
+
+```bash
+# Terminal 1 — Start the local video engine
+python src/lib/video/engines/server.py
+
+# Terminal 2 — Start PAT Orbit (with VIDEO_ENGINE=local)
+VIDEO_ENGINE=local npm run dev
+```
+
+### Running the Local Inference Server
 
 ```bash
 # Default (auto-detect device, port 8000)
@@ -100,13 +126,21 @@ The server will start and listen on `http://0.0.0.0:8000`.
 
 ## Environment Variables
 
+### PAT Orbit (Next.js)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VIDEO_ENGINE` | `veo` | Provider selection: `veo` or `local` |
+| `LOCAL_VIDEO_ENGINE_URL` | `http://localhost:8000` | URL of the local inference server |
+
+### Python Inference Server
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VIDEO_ENGINE_PORT` | `8000` | Server port |
 | `VIDEO_ENGINE_DEVICE` | auto-detect | Inference device: `cuda`, `mps`, `cpu` |
 | `VIDEO_ENGINE_MODEL` | `stabilityai/stable-video-diffusion-img2vid-xt` | HuggingFace model ID |
 | `VIDEO_ENGINE_CACHE_DIR` | `~/.cache/huggingface` | Model weights cache directory |
-| `LOCAL_VIDEO_ENGINE_URL` | `http://localhost:8000` | URL used by the Next.js adapter |
 
 ## How PAT Orbit Communicates with the Local Engine
 

@@ -24,6 +24,7 @@
  */
 
 import type { VideoEngine } from "./types";
+import { localVideoEngine } from "./engines/local";
 
 // Re-export all types so consumers can import from this module.
 export type {
@@ -78,4 +79,30 @@ export function hasEngine(name: string): boolean {
 /** List all registered engine names. */
 export function listEngines(): string[] {
   return Array.from(engines.keys());
+}
+
+// ── Provider Selection ──────────────────────────────────────────────
+
+/**
+ * Check whether the local video engine is selected via environment.
+ * Returns true when VIDEO_ENGINE=local.
+ * Defaults to false (Veo is the default provider).
+ */
+export function useLocalEngine(): boolean {
+  return (process.env.VIDEO_ENGINE || "veo").toLowerCase() === "local";
+}
+
+/**
+ * Get the active engine based on VIDEO_ENGINE env var.
+ * Returns the local engine adapter when VIDEO_ENGINE=local,
+ * or null when using the default Veo/Gemini path.
+ *
+ * The null case means callers should fall through to the existing
+ * Veo implementation — no engine abstraction needed.
+ */
+export function getActiveEngine(): VideoEngine | null {
+  if (useLocalEngine()) {
+    return localVideoEngine;
+  }
+  return null;
 }
