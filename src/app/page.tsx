@@ -154,6 +154,48 @@ const MUSIC_DESCRIPTIONS: Record<string, string> = {
 };
 
 /* ------------------------------------------------------------------ */
+/*  Scene Character Picker                                             */
+/* ------------------------------------------------------------------ */
+
+function SceneCharacterPicker({ characters, sceneCharacters, sceneId, onToggle, onManage }: {
+  characters: Character[];
+  sceneCharacters: Record<number, number[]>;
+  sceneId: number;
+  onToggle: (idx: number) => void;
+  onManage: () => void;
+}) {
+  const sceneChars = sceneCharacters[sceneId] || [];
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Characters</label>
+        <button onClick={onManage} className="text-[9px] text-white/35 hover:text-white/55 transition-colors">
+          Manage all
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {characters.map((c, i) => {
+          if (!c.name?.trim()) return null;
+          const isSelected = sceneChars.includes(i);
+          const selectedCls = isSelected ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400/90' : 'bg-white/[0.03] border border-white/[0.06] text-white/50 hover:bg-white/[0.06] hover:text-white/65';
+          const boxCls = isSelected ? 'border-emerald-500 bg-emerald-500/20' : 'border-white/15 bg-transparent';
+          return (
+            <button key={i} onClick={() => onToggle(i)} className={'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ' + selectedCls}>
+              <span className={'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded border ' + boxCls}>
+                {isSelected && <Icon.Check className="h-2 w-2 text-emerald-400" />}
+              </span>
+              {c.name}
+              {c.appearance ? <span className="hidden sm:inline text-white/30 truncate max-w-[80px]">{c.appearance}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-1 text-[9px] text-white/20">Selected characters are included in the AI image and video prompts</p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -191,6 +233,47 @@ export default function Home() {
   const [showCharacters, setShowCharacters] = useState(false);
   const [sceneCharacters, setSceneCharacters] = useState<Record<number, number[]>>({});
   const [expandedPrompts, setExpandedPrompts] = useState(false);
+
+  /* Scene editing state */
+  const [isEditingScene, setIsEditingScene] = useState(false);
+  const [sceneDraft, setSceneDraft] = useState<{ title: string; narration: string; visual: string; beat: string; sceneDuration: string } | null>(null);
+
+  function beginEditScene(scene: Scene) {
+    setSceneDraft({ title: scene.title, narration: scene.narration, visual: scene.visual, beat: scene.beat || '', sceneDuration: scene.sceneDuration || '' });
+    setIsEditingScene(true);
+  }
+
+  function saveEditScene() {
+    if (!sceneDraft || !currentScene) return;
+    updateScene(currentScene.id, 'title', sceneDraft.title);
+    updateScene(currentScene.id, 'narration', sceneDraft.narration);
+    updateScene(currentScene.id, 'visual', sceneDraft.visual);
+    updateScene(currentScene.id, 'beat', sceneDraft.beat);
+    updateScene(currentScene.id, 'sceneDuration', sceneDraft.sceneDuration);
+    setIsEditingScene(false);
+    setSceneDraft(null);
+  }
+
+  function cancelEditScene() {
+    setIsEditingScene(false);
+    setSceneDraft(null);
+  }
+
+  function updateDraft(field: string, value: string) {
+    if (!sceneDraft) return;
+    setSceneDraft({ ...sceneDraft, [field]: value });
+  }
+
+  /* Check if scene has stale generated assets */
+  function hasStaleAssets(sceneId: number): boolean {
+    if (!sceneDraft) return false;
+    const orig = result?.scenes.find(s => s.id === sceneId);
+    if (!orig) return false;
+    const visualChanged = orig.visual !== sceneDraft.visual;
+    const beatChanged = (orig.beat || '') !== sceneDraft.beat;
+    return (visualChanged || beatChanged) && (!!sceneImages[sceneId] || !!sceneVideos[sceneId]);
+  }
+
 
   /* Render state */
   const [finalVideo, setFinalVideo] = useState<string | null>(null);
@@ -282,10 +365,10 @@ export default function Home() {
 
       if (result) {
         const currentIdx = result.scenes.findIndex((s) => s.id === activeScene);
-        if (e.key === 'ArrowLeft' && currentIdx > 0) { e.preventDefault(); setActiveScene(result.scenes[currentIdx - 1].id); }
-        if (e.key === 'ArrowRight' && currentIdx < result.scenes.length - 1) { e.preventDefault(); setActiveScene(result.scenes[currentIdx + 1].id); }
-        if (e.key === 'Home') { e.preventDefault(); setActiveScene(result.scenes[0].id); }
-        if (e.key === 'End') { e.preventDefault(); setActiveScene(result.scenes[result.scenes.length - 1].id); }
+        if (e.key === 'ArrowLeft' && currentIdx > 0) { e.preventDefault(); switchScene(result.scenes[currentIdx - 1].id); }
+        if (e.key === 'ArrowRight' && currentIdx < result.scenes.length - 1) { e.preventDefault(); switchScene(result.scenes[currentIdx + 1].id); }
+        if (e.key === 'Home') { e.preventDefault(); switchScene(result.scenes[0].id); }
+        if (e.key === 'End') { e.preventDefault(); switchScene(result.scenes[result.scenes.length - 1].id); }
       }
 
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -295,7 +378,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, showCharacters]);
+  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, showCharacters, isEditingScene]);
 
   function saveProjects(nextProjects: Project[]) {
     setProjects(nextProjects);
@@ -389,6 +472,11 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function switchScene(sceneId: number) {
+    if (isEditingScene) cancelEditScene();
+    setActiveScene(sceneId);
   }
 
   function moveScene(sceneId: number, direction: -1 | 1) {
@@ -1293,6 +1381,7 @@ export default function Home() {
                     <input value={projectName} onChange={(e) => { setProjectName(e.target.value); setSaved(false); }} className="w-full bg-transparent text-2xl font-bold tracking-tight outline-none sm:text-3xl text-white" />
                     <div className="mt-1 flex items-center gap-2">
                       <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">Editing project</span>
+                      {hasUnsavedChanges && <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-400/70"><span className="h-1 w-1 rounded-full bg-amber-400 animate-pulse" />Unsaved changes</span>}
                       {saved && !hasUnsavedChanges && <span className="text-[11px] text-white/40">Last saved just now</span>}
                     </div>
                   </div>
@@ -1347,7 +1436,7 @@ export default function Home() {
                       const isComplete = hasImage && hasVideo && hasVoice;
                       const isActive = activeScene === scene.id;
                       return (
-                        <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                        <button key={scene.id} onClick={() => switchScene(scene.id)}
                           title={`Scene ${sceneIdx + 1}: ${scene.title} - ${isComplete ? 'Complete' : hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
                           className={`relative flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-all duration-200 ${isActive ? 'bg-white/[0.08] text-white border border-white/[0.15] shadow-[0_0_12px_-4px_rgba(52,211,153,0.15)]' : 'bg-white/[0.03] text-white/50 border border-white/[0.06] hover:bg-white/[0.06]'}`}>
                           <span className={`flex h-4 w-4 items-center justify-center rounded text-[8px] font-bold ${isActive ? 'bg-emerald-500/20 text-emerald-400' : isComplete ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-white/[0.06] text-white/40'}`}>
@@ -1380,7 +1469,7 @@ export default function Home() {
                         const isComplete = hasImage && hasVideo && hasVoice;
                         const isActive = activeScene === scene.id;
                         return (
-                          <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                          <button key={scene.id} onClick={() => switchScene(scene.id)}
                             className={`group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 ${isActive ? "bg-white/[0.06] border border-white/[0.10] shadow-[0_2px_12px_-4px_rgba(0,0,0,0.3)]" : "border border-transparent hover:bg-white/[0.03]"}`}>
                             <div className="relative h-10 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.04]">
                               {hasImage ? (
@@ -1421,8 +1510,7 @@ export default function Home() {
 
                 {/* CENTER -- Preview */}
                 <div className="space-y-3">                   <div className="flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
-                    {result.scenes.map((scene, sceneIdx) => (
-                      <button key={scene.id} onClick={() => setActiveScene(scene.id)}
+                    {result.scenes.map((scene, sceneIdx) => (                        <button key={scene.id} onClick={() => switchScene(scene.id)}
                         className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all ${activeScene === scene.id ? "bg-white/[0.1] text-white border border-white/[0.15]" : "bg-white/[0.03] text-white/65 border border-transparent"}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${getStatusDotColor(scene.id)}`} />
                         {String(sceneIdx + 1).padStart(2, '0')}
@@ -1594,136 +1682,183 @@ export default function Home() {
                 {/* RIGHT -- Details + Settings */}
                 <div className="space-y-3">
                   {currentScene && (<>
-                    {/* Scene title */}
-                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                      <div className="mb-2.5 flex items-center gap-1.5">
-                        <Icon.Image className="h-3 w-3 text-white/40" />
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/60">Scene</label>
-                      </div>
-                      <input value={currentScene.title} onChange={(e) => updateScene(currentScene.id, "title", e.target.value)} className="w-full rounded-lg border border-white/[0.10] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition-all focus:border-white/[0.20]" />
-                      {/* Scene metadata - editable */}
-                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-violet-400/60" />
-                          <input value={currentScene.beat || ''} onChange={(e) => updateScene(currentScene.id, 'beat', e.target.value)} placeholder="Beat" className="w-24 bg-transparent text-[10px] font-medium text-violet-400/70 outline-none placeholder:text-white/20" />
+                    {/* Scene editor panel */}
+                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/[0.06] text-[10px] font-bold text-white/50">{String(result.scenes.findIndex((s) => s.id === currentScene.id) + 1).padStart(2, '0')}</span>
+                          <span className="text-[12px] font-semibold text-white/80">Scene Editor</span>
+                          {isEditingScene && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-bold text-amber-400">EDITING</span>}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-blue-400/60" />
-                          <input value={currentScene.sceneDuration || ''} onChange={(e) => updateScene(currentScene.id, 'sceneDuration', e.target.value)} placeholder="10" className="w-10 bg-transparent text-[10px] font-medium text-blue-400/70 outline-none placeholder:text-white/20" />
-                          <span className="text-[10px] text-blue-400/40">s</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/60" />
-                          <span className="text-[10px] font-medium text-emerald-400/70">Scene {result.scenes.findIndex((s) => s.id === currentScene.id) + 1} of {result.scenes.length}</span>
-                        </div>
-                        <button onClick={() => duplicateScene(currentScene.id)} className="flex items-center gap-1 rounded border border-white/[0.06] px-2 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
-                          <Icon.Copy2 />Duplicate
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Narration */}
-                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <Icon.Mic className="h-3 w-3 text-white/40" />
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-white/60">Narration</label>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => copyToClipboard(currentScene.narration, "narration")} aria-label="Copy narration" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/65">
-                            {copiedField === "narration" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
+                          <button onClick={() => duplicateScene(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-medium text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/70">
+                            <Icon.Copy2 />Duplicate
                           </button>
+                          {!isEditingScene && (
+                            <button onClick={() => beginEditScene(currentScene)} className="flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.08] px-2.5 py-1.5 text-[10px] font-medium text-emerald-400/80 transition-colors hover:bg-emerald-500/[0.15]">
+                              <Icon.Wand className="h-3 w-3" />Edit Scene
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <textarea value={currentScene.narration} onChange={(e) => updateScene(currentScene.id, "narration", e.target.value)} rows={5} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/80 outline-none transition-all focus:border-white/[0.20]" />
-                      {/* Per-scene voice */}
-                      <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3">
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            {voiceStatus[currentScene.id] === 'generating' ? (
-                              <Icon.Spinner className="h-3 w-3 animate-spin text-amber-400" />
+
+                      <div className="p-4 space-y-4">
+                        {/* Title */}
+                        <div>
+                          <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/40">Title</label>
+                          {isEditingScene ? (
+                            <input value={sceneDraft?.title ?? ''} onChange={(e) => updateDraft('title', e.target.value)} className="w-full rounded-lg border border-white/[0.12] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition-all focus:border-emerald-500/30" />
+                          ) : (
+                            <div className="rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2.5 text-[14px] font-medium text-white/80">{currentScene.title}</div>
+                          )}
+                        </div>
+
+                        {/* Beat + Duration */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/40">Emotional Beat</label>
+                            {isEditingScene ? (
+                              <input value={sceneDraft?.beat ?? ''} onChange={(e) => updateDraft('beat', e.target.value)} placeholder="e.g. Curiosity, Tension" className="w-full rounded-lg border border-white/[0.12] bg-[#0c0d12] px-3 py-2 text-[12px] text-violet-400/80 outline-none transition-all focus:border-violet-500/30 placeholder:text-white/20" />
                             ) : (
-                              <Icon.Mic className="h-3 w-3 text-white/50" />
+                              <div className="rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2 text-[12px] text-violet-400/70">{currentScene.beat || <span className="text-white/20">Not set</span>}</div>
                             )}
-                            <span className="text-[11px] font-medium text-white/70">Voice Narration</span>
                           </div>
-                          {voiceStatus[currentScene.id] === 'ready' && (
-                            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400/70">READY</span>
-                          )}
-                          {voiceStatus[currentScene.id] === 'generating' && (
-                            <span className="flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold text-amber-400/70"><Icon.Spinner className="h-2 w-2 animate-spin" />GENERATING</span>
-                          )}
+                          <div>
+                            <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/40">Duration (sec)</label>
+                            {isEditingScene ? (
+                              <input value={sceneDraft?.sceneDuration ?? ''} onChange={(e) => updateDraft('sceneDuration', e.target.value)} placeholder="10" className="w-full rounded-lg border border-white/[0.12] bg-[#0c0d12] px-3 py-2 text-[12px] text-blue-400/80 outline-none transition-all focus:border-blue-500/30 placeholder:text-white/20" />
+                            ) : (
+                              <div className="rounded-lg border border-white/[0.06] bg-[#0c0d12] px-3 py-2 text-[12px] text-blue-400/70">{currentScene.sceneDuration ? `~${currentScene.sceneDuration}s` : <span className="text-white/20">Not set</span>}</div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => startVoiceGeneration(currentScene.id)} disabled={voiceStatus[currentScene.id] === "generating" || !currentScene.narration?.trim()}
-                            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40">
-                            {voiceStatus[currentScene.id] === "generating" ? (<><Icon.Spinner className="h-3 w-3 animate-spin" />Generating...</>) : voiceStatus[currentScene.id] === "ready" ? (<><Icon.Mic className="h-3 w-3 text-emerald-400" />Regenerate</>) : (<><Icon.Mic className="h-3 w-3" />Generate voice</>)}
+
+                        {/* Narration */}
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Narration</label>
+                            {!isEditingScene && (
+                              <button onClick={() => copyToClipboard(currentScene.narration, 'narration')} aria-label="Copy narration" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
+                                {copiedField === 'narration' ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
+                              </button>
+                            )}
+                          </div>
+                          {isEditingScene ? (
+                            <textarea value={sceneDraft?.narration ?? ''} onChange={(e) => updateDraft('narration', e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.12] bg-[#0c0d12] p-3 text-[13px] leading-6 text-white/80 outline-none transition-all focus:border-emerald-500/30" />
+                          ) : (
+                            <div className="rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3 text-[13px] leading-6 text-white/70 whitespace-pre-wrap max-h-40 overflow-y-auto">{currentScene.narration || <span className="text-white/20">No narration</span>}</div>
+                          )}
+                          {/* Voice controls */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <button onClick={() => startVoiceGeneration(currentScene.id)} disabled={voiceStatus[currentScene.id] === 'generating' || !currentScene.narration?.trim()}
+                              className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40">
+                              {voiceStatus[currentScene.id] === 'generating' ? (<><Icon.Spinner className="h-3 w-3 animate-spin" />Generating...</>) : voiceStatus[currentScene.id] === 'ready' ? (<><Icon.Mic className="h-3 w-3 text-emerald-400" />Regenerate</>) : (<><Icon.Mic className="h-3 w-3" />Generate voice</>)}
+                            </button>
+                            {voiceStatus[currentScene.id] === 'ready' && (<>
+                              <button onClick={() => playVoice(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
+                                <Icon.Play className="h-3 w-3" />Preview
+                              </button>
+                              <button onClick={stopVoice} className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>Stop
+                              </button>
+                            </>)}
+                            {voiceStatus[currentScene.id] === 'ready' && <span className="ml-auto rounded bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold text-emerald-400/70">VOICE READY</span>}
+                          </div>
+                        </div>
+
+                        {/* Visual Prompt */}
+                        <div>
+                          <div className="mb-1.5 flex items-center justify-between">
+                            <div>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Visual Prompt</label>
+                              <p className="text-[9px] text-white/25 mt-0.5">Controls the generated image and video for this scene</p>
+                            </div>
+                            {!isEditingScene && (
+                              <button onClick={() => copyToClipboard(currentScene.visual, 'visual')} aria-label="Copy visual prompt" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
+                                {copiedField === 'visual' ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
+                              </button>
+                            )}
+                          </div>
+                          {isEditingScene ? (
+                            <textarea value={sceneDraft?.visual ?? ''} onChange={(e) => updateDraft('visual', e.target.value)} rows={3} className="w-full resize-y rounded-lg border border-white/[0.12] bg-[#0c0d12] p-3 text-[13px] leading-6 text-white/75 outline-none transition-all focus:border-emerald-500/30" />
+                          ) : (
+                            <div className="rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3 text-[13px] leading-6 text-white/65 whitespace-pre-wrap max-h-32 overflow-y-auto">{currentScene.visual || <span className="text-white/20">No visual prompt</span>}</div>
+                          )}
+                          {/* AI Visual Prompt Preview toggle */}
+                          <button onClick={() => setExpandedPrompts(!expandedPrompts)} className="mt-1.5 flex items-center gap-1.5 text-[9px] text-white/30 transition-colors hover:text-white/50">
+                            <Icon.Wand className="h-2.5 w-2.5" />
+                            {expandedPrompts ? 'Hide' : 'Show'} full AI prompt with characters & style
                           </button>
-                          {voiceStatus[currentScene.id] === "ready" && (
-                            <button onClick={() => playVoice(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
-                              <Icon.Play className="h-3 w-3" />Preview
-                            </button>
+                          {expandedPrompts && (
+                            <div className="mt-2 rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3">
+                              <p className="text-[10px] leading-relaxed text-white/50 whitespace-pre-wrap break-words">
+                                {(() => {
+                                  const sceneCharIndices = sceneCharacters[currentScene.id] || [];
+                                  const sceneChars = sceneCharIndices.map((idx) => characters[idx]).filter((c) => !!c?.name?.trim());
+                                  let fullPrompt = (isEditingScene ? sceneDraft?.visual : currentScene.visual) || '';
+                                  if (sceneChars.length > 0) {
+                                    const charDesc = sceneChars.map((c) => {
+                                      const parts = [c.name];
+                                      if (c.appearance) parts.push(`Appearance: ${c.appearance}`);
+                                      if (c.role) parts.push(`Role: ${c.role}`);
+                                      return parts.join(' - ');
+                                    });
+                                    fullPrompt = `Characters: ${charDesc.join('; ')}\n\nScene: ${fullPrompt}`;
+                                  }
+                                  const beat = isEditingScene ? sceneDraft?.beat : currentScene.beat;
+                                  if (beat) fullPrompt += `\n\nEmotional tone: ${beat}.`;
+                                  if (style) fullPrompt += `\n\nStyle: ${style}. Cinematic, high quality.`;
+                                  else fullPrompt += '\n\nCinematic, high quality.';
+                                  return fullPrompt;
+                                })()}
+                              </p>
+                            </div>
                           )}
-                          {voiceStatus[currentScene.id] === "ready" && (
-                            <button onClick={stopVoice} className="flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
-                              <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>Stop
+                        </div>
+
+                        {/* Characters in this scene */}
+                        {characters.length > 0 && (
+                          <SceneCharacterPicker
+                            characters={characters}
+                            sceneCharacters={sceneCharacters}
+                            sceneId={currentScene.id}
+                            onToggle={(idx) => {
+                              const current = sceneCharacters[currentScene.id] || [];
+                              const isSelected = current.includes(idx);
+                              const next = isSelected ? current.filter((i) => i !== idx) : [...current, idx];
+                              setSceneCharacters((prev) => ({ ...prev, [currentScene.id]: next }));
+                              setSaved(false);
+                            }}
+                            onManage={() => setShowCharacters(!showCharacters)}
+                          />
+                        )}
+
+                        {/* Stale asset warning */}
+                        {isEditingScene && hasStaleAssets(currentScene.id) && (
+                          <div className="rounded-lg border border-amber-500/15 bg-amber-500/[0.05] px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-amber-400/80">!</span>
+                              <span className="text-[11px] font-medium text-amber-400/80">Existing image/video may not match your updated prompt</span>
+                            </div>
+                            <p className="mt-1 ml-5 text-[10px] text-white/35">Regenerate image and video after saving to reflect changes.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Save/Cancel bar */}
+                      {isEditingScene && (
+                        <div className="flex items-center justify-between border-t border-white/[0.06] bg-white/[0.015] px-4 py-2.5">
+                          <span className="text-[10px] text-white/35">Changes are local until saved</span>
+                          <div className="flex items-center gap-2">
+                            <button onClick={cancelEditScene} className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/55 transition-colors hover:bg-white/[0.08] hover:text-white/75">
+                              Cancel
                             </button>
-                          )}
+                            <button onClick={saveEditScene} className="rounded-lg bg-emerald-500/15 border border-emerald-500/25 px-4 py-1.5 text-[11px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/25 active:scale-[0.98]">
+                              Save Changes
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Visual prompt */}
-                    <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <Icon.Sparkles className="h-3 w-3 text-white/40" />
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-white/60">Visual Prompt</label>
-                        </div>
-                        <button onClick={() => copyToClipboard(currentScene.visual, "visual")} aria-label="Copy visual prompt" className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/65">
-                          {copiedField === "visual" ? <><Icon.Check className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Icon.Copy /><span>Copy</span></>}
-                        </button>
-                      </div>
-                      <textarea value={currentScene.visual} onChange={(e) => updateScene(currentScene.id, "visual", e.target.value)} rows={4} className="w-full resize-y rounded-lg border border-white/[0.10] bg-[#0c0d12] p-3 text-[14px] leading-7 text-white/75 outline-none transition-all focus:border-white/[0.20]" />
-                    </div>
-
-                    {/* Characters - Per Scene Selection */}
-                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Icon.User className="text-white/60" />
-                          <span className="text-[12px] font-semibold text-white/80">Characters in this scene</span>
-                        </div>
-                        <button onClick={() => setShowCharacters(!showCharacters)} className="text-[10px] text-white/45 hover:text-white/65 transition-colors">
-                          {showCharacters ? "Hide" : "Edit"}
-                        </button>
-                      </div>
-                      {characters.length > 0 ? (
-                        <div className="space-y-1">
-                          {characters.map((c, i) => {
-                            if (!c.name?.trim()) return null;
-                            const isSelected = (sceneCharacters[currentScene.id] || []).includes(i);
-                            return (
-                              <label key={i} className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[11px] cursor-pointer transition-all ${isSelected ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-white/[0.03] border border-transparent hover:bg-white/[0.05]'}`}>
-                                <input type="checkbox" checked={isSelected} onChange={() => {
-                                  const current = sceneCharacters[currentScene.id] || [];
-                                  const next = isSelected ? current.filter((idx) => idx !== i) : [...current, i];
-                                  setSceneCharacters((prev) => ({ ...prev, [currentScene.id]: next }));
-                                  setSaved(false);
-                                }} className="sr-only" />
-                                <div className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border ${isSelected ? 'border-emerald-500 bg-emerald-500/20' : 'border-white/20 bg-transparent'}`}>
-                                  {isSelected && <Icon.Check className="h-2.5 w-2.5 text-emerald-400" />}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className="font-medium text-white/75">{c.name}</span>
-                                  {c.appearance && <span className="ml-1.5 text-white/40">{c.appearance}</span>}
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-white/45">Add characters to keep visuals consistent across scenes.</p>
                       )}
                     </div>
 
@@ -1748,44 +1883,6 @@ export default function Home() {
                             );
                           })}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Visual Prompt Transparency */}
-                    {currentScene && (
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-                        <button onClick={() => setExpandedPrompts(!expandedPrompts)} className="flex w-full items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Icon.Wand className="h-3.5 w-3.5 text-white/50" />
-                            <span className="text-[12px] font-semibold text-white/80">AI Visual Prompt</span>
-                          </div>
-                          <span className="text-[10px] text-white/40">{expandedPrompts ? 'Hide' : 'Show full prompt'}</span>
-                        </button>
-                        {expandedPrompts && (
-                          <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#0c0d12] p-3">
-                            <p className="text-[11px] leading-relaxed text-white/60 whitespace-pre-wrap break-words">
-                              {(() => {
-                                const sceneCharIndices = sceneCharacters[currentScene.id] || [];
-                                const sceneChars = sceneCharIndices.map((idx) => characters[idx]).filter((c): c is Character => !!c?.name?.trim());
-                                let fullPrompt = currentScene.visual.trim();
-                                if (sceneChars.length > 0) {
-                                  const charDesc = sceneChars.map((c) => {
-                                    const parts = [c.name];
-                                    if (c.appearance) parts.push(`Appearance: ${c.appearance}`);
-                                    if (c.role) parts.push(`Role: ${c.role}`);
-                                    if (c.description) parts.push(`Description: ${c.description}`);
-                                    return parts.join(' - ');
-                                  });
-                                  fullPrompt = `Characters: ${charDesc.join('; ')}\n\nScene: ${fullPrompt}`;
-                                }
-                                if (currentScene.beat) fullPrompt += `\n\nEmotional tone: ${currentScene.beat}.`;
-                                if (style) fullPrompt += `\n\nStyle: ${style}. Cinematic, high quality.`;
-                                else fullPrompt += '\n\nCinematic, high quality.';
-                                return fullPrompt;
-                              })()}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     )}
 
@@ -1990,7 +2087,7 @@ export default function Home() {
 
                   return (
                     <div key={scene.id}
-                      onClick={() => setActiveScene(scene.id)}
+                      onClick={() => switchScene(scene.id)}
                       className={`group relative flex items-center rounded-xl border transition-all duration-150 cursor-pointer overflow-hidden ${isActive ? 'border-emerald-500/25 bg-emerald-500/[0.04] shadow-[0_2px_16px_-6px_rgba(0,0,0,0.3)]' : isComplete ? 'border-white/[0.06] bg-white/[0.015] hover:bg-white/[0.025]' : 'border-white/[0.05] bg-white/[0.01] hover:bg-white/[0.025]'}`}>
 
                       {/* Scene number */}
@@ -2105,11 +2202,11 @@ export default function Home() {
                   })()}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { const idx = result.scenes.findIndex((s) => s.id === activeScene); if (idx > 0) setActiveScene(result.scenes[idx - 1].id); }} disabled={result.scenes.findIndex((s) => s.id === activeScene) <= 0}
+                  <button onClick={() => { const idx = result.scenes.findIndex((s) => s.id === activeScene); if (idx > 0) switchScene(result.scenes[idx - 1].id); }} disabled={result.scenes.findIndex((s) => s.id === activeScene) <= 0}
                     className="flex h-6 w-6 items-center justify-center rounded border border-white/[0.06] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-20">
                     <Icon.ArrowLeft className="h-3 w-3" />
                   </button>
-                  <button onClick={() => { const idx = result.scenes.findIndex((s) => s.id === activeScene); if (idx < result.scenes.length - 1) setActiveScene(result.scenes[idx + 1].id); }} disabled={result.scenes.findIndex((s) => s.id === activeScene) >= result.scenes.length - 1}
+                  <button onClick={() => { const idx = result.scenes.findIndex((s) => s.id === activeScene); if (idx < result.scenes.length - 1) switchScene(result.scenes[idx + 1].id); }} disabled={result.scenes.findIndex((s) => s.id === activeScene) >= result.scenes.length - 1}
                     className="flex h-6 w-6 items-center justify-center rounded border border-white/[0.06] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/70 disabled:opacity-20">
                     <Icon.ArrowRight className="h-3 w-3" />
                   </button>
