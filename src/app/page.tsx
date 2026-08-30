@@ -1308,8 +1308,8 @@ export default function Home() {
 
                 {/* Progress bar */}
                 {/* Workflow progress bar */}
-                <div className="mb-3">
-                  <div className="flex items-center gap-0 overflow-x-auto">
+                <div className="mb-4">
+                  <div className="flex items-center gap-0">
                     {([
                       { label: "IDEA", done: true },
                       { label: "STORY", done: true },
@@ -1322,21 +1322,15 @@ export default function Home() {
                       const isActive = !step.done && (i === 0 || arr[i - 1].done);
                       return (
                         <div key={step.label} className="flex items-center flex-1 min-w-0">
-                          <div className={`flex flex-1 flex-col items-center gap-1 ${step.done ? 'opacity-100' : isActive ? 'opacity-100' : 'opacity-40'}`}>
-                            <div className="flex items-center justify-center">
-                              <div className={`h-[3px] flex-1 rounded-full transition-all duration-300 ${step.done ? 'bg-emerald-500/60' : isActive ? 'bg-emerald-500/30' : 'bg-white/[0.06]'}`} />
+                          <div className={`flex flex-1 items-center gap-1.5 ${step.done || isActive ? 'opacity-100' : 'opacity-35'}`}>
+                            <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-[9px] font-bold transition-all ${step.done ? 'bg-emerald-500/20 text-emerald-400' : isActive ? 'bg-emerald-500/10 text-emerald-400/70 animate-pulse' : 'bg-white/[0.06] text-white/30'}`}>
+                              {step.done ? <Icon.Check className="h-2.5 w-2.5" /> : i + 1}
                             </div>
-                            <div className="flex items-center gap-1">
-                              {step.done ? (
-                                <Icon.Check className="h-[9px] w-[9px] text-emerald-400" />
-                              ) : isActive ? (
-                                <span className="h-[7px] w-[7px] rounded-full bg-emerald-400/60 animate-pulse" />
-                              ) : (
-                                <span className="h-[7px] w-[7px] rounded-full bg-white/[0.10]" />
-                              )}
-                              <span className={`text-[8px] font-bold tracking-wider whitespace-nowrap ${step.done ? 'text-emerald-400/80' : isActive ? 'text-emerald-400/60' : 'text-white/35'}`}>{step.label}</span>
-                            </div>
+                            <span className={`text-[9px] font-semibold tracking-wide whitespace-nowrap ${step.done ? 'text-emerald-400/80' : isActive ? 'text-emerald-400/55' : 'text-white/30'}`}>{step.label}</span>
                           </div>
+                          {i < arr.length - 1 && (
+                            <div className={`mx-1 h-px flex-shrink-0 ${step.done ? 'bg-emerald-500/40' : 'bg-white/[0.08]'}`} style={{ width: '12px' }} />
+                          )}
                         </div>
                       );
                     })}
@@ -1344,17 +1338,23 @@ export default function Home() {
                 </div>
 
                 {/* Scene circles */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">Scenes</span>
-                  <div className="flex gap-1.5">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-2">
                     {result.scenes.map((scene, sceneIdx) => {
                       const hasVideo = !!sceneVideos[scene.id];
                       const hasImage = !!sceneImages[scene.id];
+                      const hasVoice = voiceStatus[scene.id] === 'ready';
+                      const isComplete = hasImage && hasVideo && hasVoice;
+                      const isActive = activeScene === scene.id;
                       return (
                         <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                          title={`Scene ${sceneIdx + 1}: ${hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
-                          className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold transition-all duration-200 ${activeScene === scene.id ? 'ring-2 ring-emerald-400/50 ring-offset-1 ring-offset-[#08090c]' : ''} ${hasVideo ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : hasImage ? 'bg-emerald-500/10 text-emerald-400/60 border border-emerald-500/20' : 'bg-white/[0.04] text-white/50 border border-white/[0.06]'}`}>
-                          {hasVideo ? <Icon.Check className="h-3 w-3" /> : String(sceneIdx + 1).padStart(2, '0')}
+                          title={`Scene ${sceneIdx + 1}: ${scene.title} - ${isComplete ? 'Complete' : hasVideo ? 'Video ready' : hasImage ? 'Image ready' : 'Not started'}`}
+                          className={`relative flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-all duration-200 ${isActive ? 'bg-white/[0.08] text-white border border-white/[0.15] shadow-[0_0_12px_-4px_rgba(52,211,153,0.15)]' : 'bg-white/[0.03] text-white/50 border border-white/[0.06] hover:bg-white/[0.06]'}`}>
+                          <span className={`flex h-4 w-4 items-center justify-center rounded text-[8px] font-bold ${isActive ? 'bg-emerald-500/20 text-emerald-400' : isComplete ? 'bg-emerald-500/10 text-emerald-400/60' : 'bg-white/[0.06] text-white/40'}`}>
+                            {isComplete ? <Icon.Check className="h-2 w-2" /> : sceneIdx + 1}
+                          </span>
+                          <span className="hidden sm:inline truncate max-w-[80px] text-[10px]">{scene.title}</span>
+                          {isActive && <div className="absolute -bottom-1.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full bg-emerald-400" />}
                         </button>
                       );
                     })}
@@ -1371,46 +1371,45 @@ export default function Home() {
                       <span className="text-[11px] font-bold uppercase tracking-widest text-white/60">Scenes</span>
                       <span className="rounded bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-semibold text-white/40">{result.scenes.length}</span>
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       {result.scenes.map((scene, sceneIdx) => {
                         const hasVideo = !!sceneVideos[scene.id];
                         const hasImage = !!sceneImages[scene.id];
                         const hasVoice = voiceStatus[scene.id] === 'ready';
                         const isGenerating = sceneStatus[scene.id] === 'image' || sceneStatus[scene.id] === 'video';
                         const isComplete = hasImage && hasVideo && hasVoice;
+                        const isActive = activeScene === scene.id;
                         return (
                           <button key={scene.id} onClick={() => setActiveScene(scene.id)}
-                            className={`group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-all duration-150 ${activeScene === scene.id ? "bg-white/[0.07] border border-white/[0.10]" : "border border-transparent hover:bg-white/[0.03]"}`}>
-                            <div className="relative h-9 w-12 flex-shrink-0 overflow-hidden rounded-md bg-white/[0.04]">
+                            className={`group flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-all duration-150 ${isActive ? "bg-white/[0.06] border border-white/[0.10] shadow-[0_2px_12px_-4px_rgba(0,0,0,0.3)]" : "border border-transparent hover:bg-white/[0.03]"}`}>
+                            <div className="relative h-10 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-white/[0.04]">
                               {hasImage ? (
                                 <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
                               ) : (
                                 <div className="flex h-full items-center justify-center">
-                                  <span className="text-[9px] font-bold text-white/40">{String(sceneIdx + 1).padStart(2, '0')}</span>
-                                </div>
-                              )}
-                              {hasVideo && (
-                                <div className="absolute right-0.5 top-0.5 flex h-3 w-3 items-center justify-center rounded-sm bg-blue-500/90">
-                                  <svg width="5" height="5" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                                  <span className="text-[10px] font-bold text-white/30">{String(sceneIdx + 1).padStart(2, '0')}</span>
                                 </div>
                               )}
                               {isGenerating && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                  <Icon.Spinner className="h-3 w-3 animate-spin text-white/80" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                                  <Icon.Spinner className="h-3.5 w-3.5 animate-spin text-white" />
                                 </div>
                               )}
+                              {isActive && <div className="absolute inset-0 border-2 border-emerald-400/40 rounded-lg" />}
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-[8px] font-bold ${activeScene === scene.id ? 'text-emerald-400' : 'text-white/30'}`}>{String(sceneIdx + 1).padStart(2, '0')}</span>
-                                <span className="truncate text-[11px] font-medium text-white/75">{scene.title}</span>
+                                <span className={`text-[9px] font-bold ${isActive ? 'text-emerald-400' : 'text-white/25'}`}>{String(sceneIdx + 1).padStart(2, '0')}</span>
+                                <span className={`truncate text-[11px] font-medium ${isActive ? 'text-white/90' : 'text-white/65'}`}>{scene.title}</span>
                               </div>
-                              <div className="mt-1 flex items-center gap-1">
-                                {hasImage && <span className="text-[7px] font-bold text-emerald-400/60">IMG</span>}
-                                {hasVideo && <span className="text-[7px] font-bold text-blue-400/60">VID</span>}
-                                {hasVoice && <span className="text-[7px] font-bold text-violet-400/60">VOC</span>}
-                                {isComplete && <span className="text-[7px] font-bold text-emerald-400">DONE</span>}
-                                {!hasImage && !hasVideo && !hasVoice && <span className="text-[7px] text-white/20">empty</span>}
+                              <div className="mt-1 flex items-center gap-1.5">
+                                {hasImage && <span className="text-[7px] font-bold text-emerald-400/70">IMG</span>}
+                                {!hasImage && <span className="text-[7px] text-white/15">IMG</span>}
+                                {hasVideo && <span className="text-[7px] font-bold text-blue-400/70">VID</span>}
+                                {!hasVideo && <span className="text-[7px] text-white/15">VID</span>}
+                                {hasVoice && <span className="text-[7px] font-bold text-violet-400/70">VOC</span>}
+                                {!hasVoice && <span className="text-[7px] text-white/15">VOC</span>}
+                                {isComplete && <span className="ml-auto text-[7px] font-bold text-emerald-400/80">DONE</span>}
                               </div>
                             </div>
                           </button>
@@ -1433,83 +1432,42 @@ export default function Home() {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-[12px] font-bold uppercase tracking-wider text-white/70">Scene {String(activeScene).padStart(2, "0")}</span>
-                      {currentScene?.beat && (<>
-                        <span className="text-[11px] text-white/45">&middot;</span>
-                        <span className="text-[11px] text-violet-400/60">{currentScene.beat}</span>
-                      </>)}
-                      {currentScene?.sceneDuration && (<>
-                        <span className="text-[11px] text-white/45">&middot;</span>
-                        <span className="text-[11px] text-blue-400/50">~{currentScene.sceneDuration}s</span>
-                      </>)}
+                      <span className="text-[13px] font-bold tracking-tight text-white/85">Scene {String(activeScene).padStart(2, "0")}</span>
+                      <span className="text-[13px] text-white/40">&middot;</span>
+                      <span className="text-[13px] font-medium text-white/65 truncate max-w-[200px]">{currentScene?.title}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {currentScene && (
-                        <>
-                          {/* Production status badges */}
-                          {(sceneCharacters[currentScene.id] || []).length > 0 && (
-                            <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-400/70">CHARS</span>
-                          )}
-                          {sceneStatus[currentScene.id] === 'image' && (
-                            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-400/70">GENERATING</span>
-                          )}
-                          {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && sceneStatus[currentScene.id] !== 'video' && (
-                            <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400/70">IMAGE READY</span>
-                          )}
-                          {sceneStatus[currentScene.id] === 'video' && (
-                            <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-400/70">VIDEO GEN</span>
-                          )}
-                          {sceneVideos[currentScene.id] && (
-                            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-400/70">VIDEO READY</span>
-                          )}
-                          {voiceStatus[currentScene.id] === 'ready' && (
-                            <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-400/70">VOICE</span>
-                          )}
-                          {/* Scene complete indicator */}
-                          {sceneImages[currentScene.id] && sceneVideos[currentScene.id] && voiceStatus[currentScene.id] === 'ready' && (
-                            <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">SCENE READY</span>
-                          )}
-                        </>
-                      )}
+                      {currentScene && (() => {
+                        const hasImg = !!sceneImages[currentScene.id];
+                        const hasVid = !!sceneVideos[currentScene.id];
+                        const hasVoc = voiceStatus[currentScene.id] === 'ready';
+                        const isGen = sceneStatus[currentScene.id] === 'image' || sceneStatus[currentScene.id] === 'video';
+                        if (hasImg && hasVid && hasVoc) return <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-400">COMPLETE</span>;
+                        if (isGen) return <span className="flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-400"><Icon.Spinner className="h-2 w-2 animate-spin" />GENERATING</span>;
+                        if (hasVid) return <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold text-blue-400">VIDEO READY</span>;
+                        if (hasImg) return <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-400">IMAGE READY</span>;
+                        return <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[9px] font-bold text-white/35">NOT STARTED</span>;
+                      })()}
                     </div>
                   </div>
 
                   {/* Preview card */}
                   <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0d12] shadow-[0_4px_40px_-12px_rgba(0,0,0,0.5)]">
                     {currentScene && sceneStatus[currentScene.id] === "image" ? (
-                      <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
-                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
-                          <Icon.Image className="h-7 w-7 text-amber-400 animate-pulse" />
+                      <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-amber-500/10">
+                          <Icon.Image className="h-6 w-6 text-amber-400 animate-pulse" />
                         </div>
-                        <span className="text-[14px] font-semibold text-white/70">Creating visual...</span>
-                        <span className="mt-1.5 text-[11px] text-white/40">AI is composing the image for Scene {String(activeScene).padStart(2, '0')}</span>
-                        {/* Skeleton grid effect */}
-                        <div className="mt-5 flex gap-1.5">
-                          {[0,1,2,3,4].map(n => (
-                            <div key={n} className={`h-8 w-10 rounded border ${n === activeScene - 1 ? 'border-amber-500/30 bg-amber-500/[0.06] animate-pulse' : 'border-white/[0.04] bg-white/[0.01]'}`} />
-                          ))}
-                        </div>
+                        <span className="text-[13px] font-semibold text-white/65">Creating visual...</span>
+                        <span className="mt-1 text-[11px] text-white/35">Composing image for Scene {String(activeScene).padStart(2, "0")}</span>
                       </div>
                     ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
-                      <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
-                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
-                          <Icon.Video className="h-7 w-7 text-violet-400 animate-pulse" />
+                      <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
+                          <Icon.Video className="h-6 w-6 text-violet-400 animate-pulse" />
                         </div>
-                        <span className="text-[14px] font-semibold text-white/70">Creating motion...</span>
-                        <span className="mt-1.5 text-[11px] text-white/40">Scene {String(activeScene).padStart(2, '0')} is being animated. This may take a minute.</span>
-                        {/* Image-to-video workflow indicator */}
-                        <div className="mt-5 flex items-center gap-2">
-                          <div className="flex h-8 w-10 items-center justify-center rounded border border-emerald-500/20 bg-emerald-500/[0.06]">
-                            <Icon.Image className="h-3 w-3 text-emerald-400/70" />
-                          </div>
-                          <div className="flex items-center gap-0.5">
-                            <div className="h-px w-3 bg-violet-400/30" />
-                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-violet-400/50"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                          </div>
-                          <div className="flex h-8 w-10 items-center justify-center rounded border border-violet-500/20 bg-violet-500/[0.06] animate-pulse">
-                            <Icon.Video className="h-3 w-3 text-violet-400/70" />
-                          </div>
-                        </div>
+                        <span className="text-[13px] font-semibold text-white/65">Creating motion...</span>
+                        <span className="mt-1 text-[11px] text-white/35">This may take a minute. You can navigate to other scenes.</span>
                       </div>
                     ) : currentScene && sceneVideos[currentScene.id] ? (
                       <div className="relative">
@@ -1518,100 +1476,101 @@ export default function Home() {
                     ) : currentScene && sceneImages[currentScene.id] ? (
                       <div className="relative">
                         <img src={sceneImages[currentScene.id]} alt={currentScene.title} className="aspect-video w-full object-cover" />
-                        {/* Image-to-video prompt overlay */}
-                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">IMAGE READY</span>
-                                <div className="flex items-center gap-0.5">
-                                  <div className="h-px w-4 bg-white/20" />
-                                  <Icon.ArrowRight className="h-2.5 w-2.5 text-white/30" />
-                                </div>
-                                <span className="text-[9px] font-medium text-white/50">Generate Motion</span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-white/40">Scene {String(activeScene).padStart(2, '0')}</span>
+                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-400">IMAGE READY</span>
+                            <Icon.ArrowRight className="h-2.5 w-2.5 text-white/25" />
+                            <span className="text-[10px] font-medium text-white/45">Generate motion below</span>
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex aspect-video flex-col items-center justify-center" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
-                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
-                          <Icon.Image className="h-7 w-7 text-white/30" />
+                      <div className="flex aspect-video flex-col items-center justify-center" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
+                          <Icon.Image className="h-6 w-6 text-white/20" />
                         </div>
-                        <span className="text-[14px] font-semibold text-white/55">Scene {String(activeScene).padStart(2, '0')} is ready to visualize</span>
-                        <span className="mt-1.5 max-w-xs text-center text-[12px] leading-5 text-white/40">Generate an image to bring this scene to life.</span>
-                        {/* Workflow pipeline visual */}
-                        <div className="mt-6 flex items-center gap-2">
-                          {['Scene', 'Image', 'Video'].map((step, i) => (
-                            <div key={step} className="flex items-center gap-1.5">
-                              <div className={`flex h-6 w-6 items-center justify-center rounded border ${i === 0 ? 'border-emerald-500/25 bg-emerald-500/[0.08] text-emerald-400/80' : 'border-white/[0.06] bg-white/[0.02] text-white/25'}`}>
-                                <span className="text-[8px] font-bold">{i === 0 ? '1' : i === 1 ? '2' : '3'}</span>
-                              </div>
-                              <span className={`text-[9px] font-medium ${i === 0 ? 'text-emerald-400/60' : 'text-white/25'}`}>{step}</span>
-                              {i < 2 && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/15"><path d="M5 12h14M12 5l7 7-7 7" /></svg>}
-                            </div>
-                          ))}
+                        <span className="text-[13px] font-semibold text-white/50">Scene {String(activeScene).padStart(2, "0")} — ready to visualize</span>
+                        <span className="mt-1 max-w-xs text-center text-[11px] text-white/30">Generate an image to bring this scene to life.</span>
+                        <div className="mt-4 flex items-center gap-1.5 text-[9px] text-white/20">
+                          <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-400/50">1. Image</span>
+                          <Icon.ArrowRight className="h-2 w-2" />
+                          <span className="text-white/20">2. Video</span>
+                          <Icon.ArrowRight className="h-2 w-2" />
+                          <span className="text-white/20">3. Voice</span>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Generation actions */}
-                  {currentScene && (
-                    <div className="space-y-2">
-                      {/* Image generation */}
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => startImageGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "image" || sceneStatus[currentScene.id] === "video"}
-                          className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.08] px-4 py-2.5 text-[12px] font-semibold text-emerald-400/90 transition-all hover:bg-emerald-500/[0.15] hover:text-emerald-300 active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                          {sceneStatus[currentScene.id] === "image" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating visual...</>) : sceneImages[currentScene.id] ? (<>Regenerate Image</>) : (<>Generate Image</>)}
+                  {currentScene && (() => {
+                    const hasImg = !!sceneImages[currentScene.id];
+                    const hasVid = !!sceneVideos[currentScene.id];
+                    const isGenImg = sceneStatus[currentScene.id] === 'image';
+                    const isGenVid = sceneStatus[currentScene.id] === 'video';
+                    const isBusy = isGenImg || isGenVid;
+                    const hasVoc = voiceStatus[currentScene.id] === 'ready';
+                    const needsImage = !hasImg && !hasVid && !isBusy;
+                    const needsVideo = hasImg && !hasVid && !isBusy;
+                    const needsVoice = !hasVoc && currentScene.narration?.trim();
+                    const isComplete = hasImg && hasVid && hasVoc;
+                    return (
+                      <div className="space-y-2">
+                        {/* Image button */}
+                        <button onClick={() => startImageGeneration(currentScene.id)} disabled={isBusy}
+                          className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsImage ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 shadow-[0_2px_16px_-6px_rgba(52,211,153,0.25)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
+                          {isGenImg ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Creating visual...</>) : hasImg ? (<><Icon.Image className="h-4 w-4" />Regenerate Image</>) : (<><Icon.Image className="h-4 w-4" />Generate Image</>)}
                         </button>
-                        {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && sceneStatus[currentScene.id] !== 'video' && (
-                          <span className="flex items-center gap-1 text-[10px] text-emerald-400/60"><Icon.Check className="h-3 w-3" />Ready</span>
+                        {!hasImg && !isBusy && <p className="text-center text-[10px] text-white/30">Start here - generate the scene image first</p>}
+
+                        {/* Video button - only when image exists or video exists */}
+                        {(hasImg || hasVid) && (
+                          <button onClick={() => startVideoGeneration(currentScene.id)} disabled={isBusy || !hasImg}
+                            className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsVideo ? 'bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.45)] hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.55)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
+                          {isGenVid ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Creating motion...</>) : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
+                        </button>
+                      )}
+                      {hasImg && !hasVid && !isBusy && <p className="text-center text-[10px] text-white/30">Image is ready - generate video next</p>}
+
+                        {/* Voice button */}
+                        {currentScene.narration?.trim() && (
+                          <div className="flex gap-2">
+                            <button onClick={() => startVoiceGeneration(currentScene.id)} disabled={voiceStatus[currentScene.id] === 'generating'}
+                              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 active:scale-[0.98] disabled:opacity-40">
+                              {voiceStatus[currentScene.id] === 'generating' ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Generating...</>) : hasVoc ? (<><Icon.Mic className="h-3.5 w-3.5 text-emerald-400" />Regenerate Voice</>) : (<><Icon.Mic className="h-3.5 w-3.5" />Generate Voice</>)}
+                            </button>
+                            {hasVoc && (
+                              <button onClick={() => playVoice(currentScene.id)} className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-[12px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80">
+                                <Icon.Play className="h-3.5 w-3.5" />Preview
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Next-step hint */}
+                        {needsImage && !isBusy && (
+                          <div className="flex items-center justify-center gap-2 rounded-lg border border-emerald-500/[0.08] bg-emerald-500/[0.03] px-3 py-2">
+                            <Icon.Sparkles className="h-3 w-3 text-emerald-400/50" />
+                            <span className="text-[10px] font-medium text-emerald-400/60">Recommended: Generate image for this scene</span>
+                          </div>
+                        )}
+                        {needsVideo && !isBusy && (
+                          <div className="flex items-center justify-center gap-2 rounded-lg border border-violet-500/[0.08] bg-violet-500/[0.03] px-3 py-2">
+                            <Icon.Video className="h-3 w-3 text-violet-400/50" />
+                            <span className="text-[10px] font-medium text-violet-400/60">Recommended: Generate video from this scene image</span>
+                          </div>
+                        )}
+                        {isComplete && (
+                          <div className="flex items-center justify-center gap-2 rounded-lg border border-emerald-500/[0.08] bg-emerald-500/[0.03] px-3 py-2">
+                            <Icon.Check className="h-3 w-3 text-emerald-400/60" />
+                            <span className="text-[10px] font-medium text-emerald-400/60">Scene complete - move to next scene or render</span>
+                          </div>
                         )}
                       </div>
+                    );
+                  })()}
 
-                      {/* Video generation - only show when image exists or video exists */}
-                      {(sceneImages[currentScene.id] || sceneVideos[currentScene.id]) && (
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => startVideoGeneration(currentScene.id)} disabled={sceneStatus[currentScene.id] === "video" || sceneStatus[currentScene.id] === "image"}
-                            className="flex items-center gap-2 rounded-lg bg-gradient-to-b from-white to-white/90 px-4 py-2.5 text-[12px] font-semibold text-black shadow-[0_2px_12px_-3px_rgba(255,255,255,0.15)] transition-all hover:shadow-[0_4px_20px_-3px_rgba(255,255,255,0.25)] active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100">
-                            {sceneStatus[currentScene.id] === "video" ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating motion...</>) : sceneVideos[currentScene.id] ? (<>Regenerate Video</>) : (<>Generate Video</>)}
-                          </button>
-                          {sceneVideos[currentScene.id] && (
-                            <span className="flex items-center gap-1 text-[10px] text-blue-400/60"><Icon.Check className="h-3 w-3" />Ready</span>
-                          )}
-                        </div>
-                      )}
 
-                      {/* Workflow visual when image exists but no video */}
-                      {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && sceneStatus[currentScene.id] !== 'video' && sceneStatus[currentScene.id] !== 'image' && (
-                        <div className="flex items-center justify-center gap-3 rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">IMAGE</span>
-                            <div className="flex items-center gap-0.5">
-                              <div className="h-px w-4 bg-violet-400/30" />
-                              <span className="text-[9px] text-white/30">Generate Motion</span>
-                              <div className="h-px w-4 bg-violet-400/30" />
-                            </div>
-                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-bold text-violet-400/50">VIDEO</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Next-step guidance */}
-                  {currentScene && !sceneStatus[currentScene.id] && (
-                    <div className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-3 py-2">
-                      <p className="text-[11px] text-white/55">
-                        {!sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Start by generating the scene image, then create video from it."}
-                        {sceneImages[currentScene.id] && !sceneVideos[currentScene.id] && "Image ready. Generate a video to complete this scene."}
-                        {sceneVideos[currentScene.id] && "Scene complete. Navigate to the next scene or render your final video."}
-                      </p>
-                    </div>
-                  )}
 
                   {/* Error card */}
                   {error && (
@@ -1770,28 +1729,25 @@ export default function Home() {
 
                     {/* Character Consistency Summary */}
                     {characters.length > 0 && result && (
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
-                        <div className="mb-2 text-[12px] font-semibold text-white/80">Character Consistency</div>
-                        <div className="space-y-1.5">
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-white/65">Characters</span>
+                          <button onClick={() => setShowCharacters(true)} className="text-[9px] text-white/35 hover:text-white/55 transition-colors">Edit</button>
+                        </div>
+                        <div className="space-y-1">
                           {characters.filter((c) => c.name?.trim()).map((c, i) => {
                             const realIdx = characters.indexOf(c);
                             const usedInScenes = result.scenes.filter((s) => (sceneCharacters[s.id] || []).includes(realIdx));
                             return (
-                              <div key={i} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-2.5 py-1.5">
-                                <div className="min-w-0">
-                                  <span className="text-[11px] font-medium text-white/70">{c.name}</span>
-                                  {c.role && <span className="ml-1.5 text-[10px] text-white/40">{c.role}</span>}
-                                </div>
-                                <span className={`text-[10px] font-medium ${usedInScenes.length > 0 ? 'text-emerald-400/70' : 'text-white/35'}`}>
-                                  {usedInScenes.length > 0 ? `Used in ${usedInScenes.length} scene${usedInScenes.length !== 1 ? 's' : ''}` : 'Not assigned'}
+                              <div key={i} className="flex items-center justify-between rounded-lg bg-white/[0.02] px-2 py-1.5">
+                                <span className="text-[11px] font-medium text-white/60 truncate">{c.name}</span>
+                                <span className={`text-[9px] font-medium ${usedInScenes.length > 0 ? 'text-emerald-400/60' : 'text-white/25'}`}>
+                                  {usedInScenes.length > 0 ? `${usedInScenes.length}s` : '--'}
                                 </span>
                               </div>
                             );
                           })}
                         </div>
-                        <button onClick={() => setShowCharacters(true)} className="mt-2 text-[10px] text-white/40 hover:text-white/60 transition-colors">
-                          Edit characters
-                        </button>
                       </div>
                     )}
 
@@ -1874,102 +1830,71 @@ export default function Home() {
 
                     {/* Render Panel */}
                     <div className="rounded-xl border border-white/[0.10] bg-white/[0.025] p-4">
-                      <div className="mb-3">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Icon.Sparkles className="h-3.5 w-3.5 text-white/50" />
                         <span className="text-[13px] font-semibold text-white/85">Final Video</span>
                       </div>
 
-                      {/* Render readiness checklist */}
-                      <div className="mb-3 space-y-2">
-                        {/* Scenes */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {totalVideosGenerated >= result.scenes.length ? (
-                              <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
-                            ) : (
-                              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/20">
-                                <span className="text-[7px] font-bold text-white/40">{totalVideosGenerated}</span>
-                              </span>
-                            )}
-                            <span className="text-[11px] font-medium text-white/70">Scenes</span>
-                          </div>
-                          <span className={`text-[11px] font-semibold ${totalVideosGenerated >= result.scenes.length ? 'text-emerald-400/80' : 'text-white/55'}`}>{totalVideosGenerated} / {result.scenes.length}</span>
+                      {/* Readiness checklist */}
+                      <div className="mb-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-white/35">Scenes</div>
+                          <div className={`mt-0.5 text-[13px] font-semibold ${totalVideosGenerated >= result.scenes.length ? 'text-emerald-400' : 'text-white/60'}`}>{totalVideosGenerated} / {result.scenes.length}</div>
                         </div>
-                        {/* Voice */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {totalVoiceReady >= result.scenes.filter(s => s.narration?.trim()).length ? (
-                              <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
-                            ) : (
-                              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white/20">
-                                <span className="text-[7px] font-bold text-white/40">{totalVoiceReady}</span>
-                              </span>
-                            )}
-                            <span className="text-[11px] font-medium text-white/70">Voice</span>
-                          </div>
-                          <span className={`text-[11px] font-semibold ${totalVoiceReady >= result.scenes.filter(s => s.narration?.trim()).length ? 'text-emerald-400/80' : 'text-white/55'}`}>{totalVoiceReady} / {result.scenes.filter(s => s.narration?.trim()).length}</span>
+                        <div className="rounded-lg bg-white/[0.03] px-2.5 py-2">
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-white/35">Voice</div>
+                          <div className={`mt-0.5 text-[13px] font-semibold ${totalVoiceReady >= result.scenes.filter(s => s.narration?.trim()).length ? 'text-emerald-400' : 'text-white/60'}`}>{totalVoiceReady} / {result.scenes.filter(s => s.narration?.trim()).length}</div>
                         </div>
-                        {/* Music */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
-                            <span className="text-[11px] font-medium text-white/70">Music</span>
-                          </div>
-                          <span className="text-[11px] font-semibold text-white/55">{music}</span>
+                      </div>
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-white/40">Music:</span>
+                          <span className="text-[10px] font-medium text-white/60">{music}</span>
                         </div>
-                        {/* Captions */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
-                            <span className="text-[11px] font-medium text-white/70">Captions</span>
-                          </div>
-                          <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/50'}`}>{captions ? 'ON' : 'OFF'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-white/40">Captions:</span>
+                          <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${captions ? 'bg-white text-black' : 'bg-white/[0.06] text-white/40'}`}>{captions ? 'ON' : 'OFF'}</span>
                         </div>
                       </div>
 
-                      {/* Progress bar */}
-                      <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                        <div className={`h-full rounded-full transition-all duration-500 ${renderProgress === 100 ? 'bg-emerald-400' : rendering ? 'bg-blue-400' : renderReady ? 'bg-emerald-500/60' : 'bg-white/20'}`} style={{ width: `${rendering || finalVideo ? (renderProgress || (totalVideosGenerated / result.scenes.length) * 100) : (totalVideosGenerated / result.scenes.length) * 100}%` }} />
-                      </div>
-
-                      {/* Ready indicator */}
-                      {renderReady && !rendering && !finalVideo && (
-                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
-                          <Icon.Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                          <div>
-                            <span className="text-[11px] font-semibold text-emerald-400/90">Ready to render</span>
-                            <p className="text-[10px] text-white/40">All scene videos are generated</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {rendering && renderStage && (
-                        <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2.5">
+                      {/* Status-specific display */}
+                      {rendering && renderStage ? (
+                        <div className="mb-3 rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-3">
                           <div className="flex items-center gap-2">
-                            <Icon.Spinner className="h-3 w-3 animate-spin text-blue-400" />
-                            <span className="text-[11px] font-medium text-blue-400">{renderStage}</span>
+                            <Icon.Spinner className="h-3.5 w-3.5 animate-spin text-blue-400" />
+                            <span className="text-[12px] font-medium text-blue-400">{renderStage}</span>
                           </div>
                           {renderProgress > 0 && renderProgress < 100 && (
                             <div className="mt-2">
-                              <div className="h-1 overflow-hidden rounded-full bg-blue-500/10">
+                              <div className="h-1.5 overflow-hidden rounded-full bg-blue-500/10">
                                 <div className="h-full rounded-full bg-blue-400 transition-all duration-500" style={{ width: `${renderProgress}%` }} />
                               </div>
-                              <span className="mt-1 block text-[9px] text-white/35">{renderProgress}% complete</span>
+                              <span className="mt-1 block text-[10px] text-white/35">{renderProgress}% complete</span>
                             </div>
                           )}
                         </div>
-                      )}
-
-                      {finalVideo && !rendering && (
+                      ) : finalVideo ? (
                         <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
                           <Icon.Check className="h-3.5 w-3.5 text-emerald-400" />
                           <div>
                             <span className="text-[11px] font-semibold text-emerald-400/90">Final video ready</span>
-                            <p className="text-[10px] text-white/40">Export your video as MP4</p>
+                            <p className="text-[10px] text-white/40">Export your MP4</p>
+                          </div>
+                        </div>
+                      ) : renderReady ? (
+                        <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-2.5">
+                          <Icon.Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                          <span className="text-[11px] font-semibold text-emerald-400/90">All scene videos ready</span>
+                        </div>
+                      ) : (
+                        <div className="mb-3">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                            <div className="h-full rounded-full bg-white/20 transition-all" style={{ width: `${(totalVideosGenerated / result.scenes.length) * 100}%` }} />
                           </div>
                         </div>
                       )}
 
-                      <button onClick={finalVideo ? exportVideo : startRender} disabled={rendering || (!finalVideo && !renderReady)} className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-3 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none">
+                      <button onClick={finalVideo ? exportVideo : startRender} disabled={rendering || (!finalVideo && !renderReady)} className="w-full rounded-xl bg-gradient-to-b from-white to-white/90 px-4 py-3 text-[13px] font-semibold text-black shadow-[0_2px_16px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_24px_-4px_rgba(255,255,255,0.3)] active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none">
                         {rendering ? (
                           <span className="flex items-center justify-center gap-2"><Icon.Spinner className="h-3.5 w-3.5" />Rendering... {renderProgress}%</span>
                         ) : finalVideo ? (
@@ -1979,9 +1904,11 @@ export default function Home() {
                         ) : "Render Final Video"}
                       </button>
 
-                      <p className="mt-2 text-center text-[11px] text-white/40">
-                        {!renderReady ? `${result.scenes.length - totalVideosGenerated} scene${result.scenes.length - totalVideosGenerated === 1 ? '' : 's'} need${result.scenes.length - totalVideosGenerated === 1 ? 's' : ''} video generation before rendering.` : finalVideo ? 'Download your final MP4 video.' : 'Your video is ready to export.'}
-                      </p>
+                      {!renderReady && !rendering && !finalVideo && (
+                        <p className="mt-2 text-center text-[11px] text-white/35">
+                          Generate all {result.scenes.length} scene videos to render.
+                        </p>
+                      )}
                     </div>
                   </>)}
                 </div>
@@ -2056,7 +1983,7 @@ export default function Home() {
                   const hasVideo = !!sceneVideos[scene.id];
                   const hasImage = !!sceneImages[scene.id];
                   const hasVoice = voiceStatus[scene.id] === 'ready';
-                  const isComplete = hasImage && hasVideo;
+                  const isComplete = hasImage && hasVideo && hasVoice;
                   const isActive = activeScene === scene.id;
                   const isFirst = sceneIdx === 0;
                   const isLast = sceneIdx === result.scenes.length - 1;
@@ -2064,76 +1991,66 @@ export default function Home() {
                   return (
                     <div key={scene.id}
                       onClick={() => setActiveScene(scene.id)}
-                      className={`group relative flex items-stretch rounded-lg border transition-all duration-150 cursor-pointer ${isActive ? 'border-emerald-500/25 bg-emerald-500/[0.04]' : isComplete ? 'border-emerald-500/8 bg-emerald-500/[0.015] hover:bg-emerald-500/[0.03]' : 'border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03]'}`}>
-
-                      {/* Reorder controls */}
-                      <div className="flex flex-col justify-center gap-0.5 border-r border-white/[0.04] px-1">
-                        <button onClick={(e) => { e.stopPropagation(); moveScene(scene.id, -1); }} disabled={isFirst}
-                          aria-label="Move scene left"
-                          className="flex h-5 w-5 items-center justify-center rounded text-white/25 transition-colors hover:bg-white/[0.06] hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 15l-6-6-6 6" /></svg>
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); moveScene(scene.id, 1); }} disabled={isLast}
-                          aria-label="Move scene right"
-                          className="flex h-5 w-5 items-center justify-center rounded text-white/25 transition-colors hover:bg-white/[0.06] hover:text-white/60 disabled:opacity-20 disabled:cursor-not-allowed">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" /></svg>
-                        </button>
-                      </div>
+                      className={`group relative flex items-center rounded-xl border transition-all duration-150 cursor-pointer overflow-hidden ${isActive ? 'border-emerald-500/25 bg-emerald-500/[0.04] shadow-[0_2px_16px_-6px_rgba(0,0,0,0.3)]' : isComplete ? 'border-white/[0.06] bg-white/[0.015] hover:bg-white/[0.025]' : 'border-white/[0.05] bg-white/[0.01] hover:bg-white/[0.025]'}`}>
 
                       {/* Scene number */}
-                      <div className="flex w-8 flex-shrink-0 items-center justify-center border-r border-white/[0.04]">
-                        <span className={`text-[12px] font-bold ${isActive ? 'text-emerald-400/80' : 'text-white/25'}`}>{String(sceneIdx + 1).padStart(2, '0')}</span>
+                      <div className="flex w-10 flex-shrink-0 items-center justify-center">
+                        <span className={`text-[12px] font-bold ${isActive ? 'text-emerald-400' : 'text-white/25'}`}>{String(sceneIdx + 1).padStart(2, '0')}</span>
                       </div>
 
                       {/* Thumbnail */}
-                      <div className="relative h-12 w-16 flex-shrink-0 overflow-hidden border-r border-white/[0.04]">
+                      <div className="relative h-10 w-14 flex-shrink-0 overflow-hidden rounded-md">
                         {hasImage ? (
                           <img src={sceneImages[scene.id]} alt="" className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex h-full items-center justify-center bg-white/[0.02]">
-                            <Icon.Image className="h-4 w-4 text-white/15" />
+                          <div className="flex h-full items-center justify-center bg-white/[0.04]">
+                            <Icon.Image className="h-3.5 w-3.5 text-white/15" />
                           </div>
                         )}
                         {hasVideo && (
-                          <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded bg-blue-500/90">
-                            <svg width="7" height="7" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          <div className="absolute right-0.5 top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-500/90">
+                            <svg width="6" height="6" viewBox="0 0 24 24" fill="white"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                           </div>
                         )}
-                        {isActive && <div className="absolute inset-0 border-2 border-emerald-400/30" />}
                       </div>
 
                       {/* Scene info */}
-                      <div className="flex-1 px-3 py-1.5">
+                      <div className="flex-1 px-3 py-1.5 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`text-[12px] font-semibold ${isActive ? 'text-white/90' : 'text-white/70'}`}>{scene.title}</span>
-                          {scene.beat && <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[8px] font-bold text-violet-400/60">{scene.beat}</span>}
-                          {scene.sceneDuration && <span className="text-[9px] text-white/30">~{scene.sceneDuration}s</span>}
-                        </div>
-                      </div>                      {/* Status indicators */}
-                      <div className="flex items-center gap-2 border-l border-white/[0.04] px-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[8px] font-bold ${hasImage ? 'text-emerald-400/70' : 'text-white/20'}`}>{hasImage ? 'IMG' : ''}</span>
-                          <span className={`text-[8px] font-bold ${hasVideo ? 'text-blue-400/70' : 'text-white/20'}`}>{hasVideo ? 'VID' : ''}</span>
-                          <span className={`text-[8px] font-bold ${hasVoice ? 'text-violet-400/70' : 'text-white/20'}`}>{hasVoice ? 'VOC' : ''}</span>
-                          {!hasImage && !hasVideo && !hasVoice && <span className="text-[8px] text-white/15">--</span>}
+                          <span className={`truncate text-[12px] font-semibold ${isActive ? 'text-white/90' : 'text-white/65'}`}>{scene.title}</span>
+                          {scene.beat && <span className="hidden sm:inline-flex rounded bg-violet-500/10 px-1.5 py-0.5 text-[8px] font-bold text-violet-400/60 flex-shrink-0">{scene.beat}</span>}
                         </div>
                       </div>
 
-                      {/* Complete badge */}
-                      {isComplete && hasVoice && (
-                        <div className="flex items-center border-l border-white/[0.04] px-3">
-                          <span className="rounded bg-emerald-500/15 px-2 py-1 text-[9px] font-bold text-emerald-400">COMPLETE</span>
-                        </div>
-                      )}
+                      {/* Status indicators */}
+                      <div className="flex items-center gap-1.5 border-l border-white/[0.04] px-3">
+                        <span className={`text-[8px] font-bold ${hasImage ? 'text-emerald-400/70' : 'text-white/15'}`}>IMG</span>
+                        <span className={`text-[8px] font-bold ${hasVideo ? 'text-blue-400/70' : 'text-white/15'}`}>VID</span>
+                        <span className={`text-[8px] font-bold ${hasVoice ? 'text-violet-400/70' : 'text-white/15'}`}>VOC</span>
+                      </div>
 
-                      {/* Duplicate button */}
-                      <div className="flex items-center border-l border-white/[0.04] px-1.5">
-                        <button onClick={(e) => { e.stopPropagation(); duplicateScene(scene.id); }}
-                          aria-label="Duplicate scene"
-                          className="flex h-6 w-6 items-center justify-center rounded text-white/20 transition-colors hover:bg-white/[0.06] hover:text-white/50">
+                      {/* Reorder + duplicate */}
+                      <div className="flex items-center gap-0.5 border-l border-white/[0.04] px-1.5">
+                        <button onClick={(e) => { e.stopPropagation(); moveScene(scene.id, -1); }} disabled={isFirst}
+                          aria-label="Move up" className="flex h-5 w-5 items-center justify-center rounded text-white/20 transition-colors hover:bg-white/[0.06] hover:text-white/50 disabled:opacity-15">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 15l-6-6-6 6" /></svg>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); moveScene(scene.id, 1); }} disabled={isLast}
+                          aria-label="Move down" className="flex h-5 w-5 items-center justify-center rounded text-white/20 transition-colors hover:bg-white/[0.06] hover:text-white/50 disabled:opacity-15">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6" /></svg>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); duplicateScene(scene.id); }} aria-label="Duplicate"
+                          className="flex h-5 w-5 items-center justify-center rounded text-white/15 transition-colors hover:bg-white/[0.06] hover:text-white/40">
                           <Icon.Copy2 />
                         </button>
                       </div>
+
+                      {/* Complete indicator */}
+                      {isComplete && (
+                        <div className="border-l border-white/[0.04] px-2">
+                          <Icon.Check className="h-3 w-3 text-emerald-400/70" />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
