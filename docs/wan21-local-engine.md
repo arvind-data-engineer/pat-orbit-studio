@@ -24,12 +24,11 @@ For image-to-video support, use:
 
 ## Hardware Requirements
 
-### RTX 3050 6GB (tested)
-- Model fits with CPU offload for T5 text encoder
-- 480p output (480×832 for 9:16)
-- 33 frames at 16 fps
-- Generation time: ~15-30 minutes per clip
-- 30 inference steps (reduced from default 50 for speed)
+### RTX 3050 6GB (TESTED)
+- **FAILED**: Model download completes (19 files, ~5GB), but loading into memory fails with Windows pagefile error 1455
+- Only 4 GB free RAM available (16.8 GB total, 76% used)
+- The 1.3B model requires ~2.5 GB weights + ~5 GB T5 encoder + overhead → exceeds available RAM + pagefile
+- **Recommendation**: Close other applications, increase Windows pagefile to 32 GB+, or use a machine with 32+ GB RAM
 
 ### RTX 3060 12GB
 - Full model on GPU (no offload needed)
@@ -173,7 +172,7 @@ Wan 2.1 T2V-1.3B
 |--------|----------------|------|-------------|-------------|---------|
 | Veo | `veo` (default) | Cloud API | ✅ | ~30s | ★★★★ |
 | SVD-XT | `local` | Local I2V | ✅ | ~55 min | ★★☆ |
-| Wan 2.1 | `wan21` | Local T2V | ❌ | ~20 min | ★★★ |
+| Wan 2.1 | `wan21` | Local T2V | ❌ | ❌ (OOM on 6GB/16GB RAM) | ★★★ |
 
 ## Upgrading to Wan 2.2
 
@@ -188,6 +187,33 @@ To upgrade later:
 1. Update `server_wan21.py` to use `Wan2.2-TI2V-5B` model
 2. Enable image input processing
 3. Increase resolution to 720p
+
+## Actual Test Results (August 2026)
+
+### Test 1: RTX 3050 6GB + 16.8 GB RAM — FAILED
+
+| Metric | Value |
+|--------|-------|
+| Model download | ✅ 19/19 files, ~5 GB, 96 min |
+| Model loading | ❌ FAILED — Windows pagefile error 1455 |
+| Root cause | Only 4 GB free RAM (12.8 GB used by OS/apps) |
+| GPU | NVIDIA GeForce RTX 3050 6GB Laptop |
+| System RAM | 16.8 GB total, 76.4% used |
+| Device attempted | CUDA with CPU offload |
+| Error | `OSError: The paging file is too small for this operation to complete` |
+| Model cached | ✅ Yes — subsequent loads skip download |
+| Fix required | 32+ GB total RAM or 32 GB+ Windows pagefile |
+
+### Test 2: SVD-XT (VIDEO_ENGINE=local) — PASSED
+
+| Metric | Value |
+|--------|-------|
+| Generation | ✅ 14 frames at 1024×576 |
+| Duration | 2.0 seconds at 7 fps |
+| File size | 56.4 KB |
+| Total time | ~55 min (denoising on 6GB GPU + CPU offload) |
+| Device | CUDA (enable_model_cpu_offload) |
+| OOM | No — CPU offload kept within 6GB |
 
 ## Troubleshooting
 

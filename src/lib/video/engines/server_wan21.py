@@ -35,7 +35,7 @@ from pathlib import Path
 
 PORT = int(os.environ.get("WAN21_PORT", "8001"))
 DEVICE = os.environ.get("WAN21_DEVICE", "")
-MODEL_ID = os.environ.get("WAN21_MODEL_ID", "Wan-AI/Wan2.1-T2V-1.3B")
+MODEL_ID = os.environ.get("WAN21_MODEL_ID", "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
 CACHE_DIR = os.environ.get("WAN21_CACHE_DIR", "")
 QUANT = os.environ.get("WAN21_QUANT", "none")
 GGUF_PATH = os.environ.get("WAN21_GGUF_PATH", "")
@@ -96,34 +96,32 @@ def load_model():
             model_info["vram"] = f"{vram_gb:.1f} GB"
             model_info["gpu_name"] = gpu_name
 
-            # For 6GB VRAM: use CPU offload for T5 encoder
-            if vram_gb < 10:
-                print(f"[wan21] Low VRAM ({vram_gb:.1f} GB) — enabling CPU offload for T5 encoder")
-                pipeline = WanPipeline.from_pretrained(
-                    MODEL_ID,
-                    torch_dtype=dtype,
-                    cache_dir=CACHE_DIR or None,
-                )
-                # Move transformer to GPU, keep T5 on CPU
-                pipeline.transformer.to(device)
-                pipeline.vae.to(device)
-                # T5 stays on CPU — accessed during conditioning only
-                pipeline.text_encoder.to("cpu")
-                print("[wan21] CPU offload: T5 encoder on CPU, transformer+VAE on GPU")
-            else:
-                pipeline = WanPipeline.from_pretrained(
-                    MODEL_ID,
-                    torch_dtype=dtype,
-                    cache_dir=CACHE_DIR or None,
-                )
-                pipeline.to(device)
-        else:
+            # Load model onto CPU first (safe), then use enable_model_cpu_offload
+            # to dynamically move components to GPU during inference.
+            # This is much safer than manual .to(device) for low VRAM.
+            print(f"[wan21] Loading model on CPU, then enabling CPU offload for {vram_gb:.1f} GB VRAM")
             pipeline = WanPipeline.from_pretrained(
                 MODEL_ID,
                 torch_dtype=dtype,
                 cache_dir=CACHE_DIR or None,
             )
-            pipeline.to(device)
+            # Move to CPU first, then let offload handle GPU transfers
+            pipeline.to("cpu")
+            try:
+                pipeline.enable_model_cpu_offload(device=device)
+                print(f"[wan21] CPU offload enabled — components will move to GPU during inference")
+            except Exception as e:
+                print(f"[wan21] CPU offload failed ({e}), falling back to full CPU inference")
+                device = "cpu"
+                pipeline.to("cpu")
+        else:
+            print(f"[wan21] No CUDA — loading on CPU")
+            pipeline = WanPipeline.from_pretrained(
+                MODEL_ID,
+                torch_dtype=dtype,
+                cache_dir=CACHE_DIR or None,
+            )
+            pipeline.to("cpu")
 
         elapsed = time.time() - t0
         model_info.update({
@@ -166,26 +164,59 @@ def process_job(job_id: str, prompt: str, negative_prompt: str = ""):
         t0 = time.time()
 
         # Build generation kwargs
+        # Start with a small resolution to avoid OOM on 6GB VRAM
+        # The user can override via WAN21_MAX_FRAMES and WAN21_FPS
+        is_cpu_offload = model_info["device"] != "cpu" and hasattr(pipeline, 'offload_device') if pipeline else False
         gen_kwargs = {
             "prompt": prompt,
-            "num_frames": MAX_FRAMES,
-            "num_inference_steps": 30,  # Default 50 is slow on 6GB; 30 is faster
+            "num_frames": min(MAX_FRAMES, 17),  # 17 frames is safer for low VRAM
+            "num_inference_steps": 25,  # Reduced from 50 for speed on consumer GPU
             "guidance_scale": 5.0,
-            "width": 480,   # 480p for 6GB VRAM
-            "height": 832,  # 9:16 aspect ratio for 480p
+            "width": 480,
+            "height": 480,  # Square 480x480 for minimum VRAM usage
         }
 
         if negative_prompt:
             gen_kwargs["negative_prompt"] = negative_prompt
 
-        # Generate frames
-        print(f"[wan21] Starting diffusion: {gen_kwargs['num_inference_steps']} steps at {gen_kwargs['width']}x{gen_kwargs['height']}")
-        with torch.no_grad():
-            result = pipeline(**gen_kwargs)
+        # Generate frames with OOM retry
+        # Try progressively smaller settings on CUDA OOM
+        resolutions = [
+            (480, 480, 17),
+            (256, 256, 9),
+        ]
+        frames = None
+        last_error = None
 
-        frames = result.frames[0]  # List of PIL Images
-        elapsed_gen = time.time() - t0
-        print(f"[wan21] Diffusion complete: {len(frames)} frames in {elapsed_gen:.1f}s")
+        for width, height, num_frames in resolutions:
+            gen_kwargs["width"] = width
+            gen_kwargs["height"] = height
+            gen_kwargs["num_frames"] = num_frames
+            print(f"[wan21] Starting diffusion: {gen_kwargs['num_inference_steps']} steps at {width}x{height}, {num_frames} frames")
+            try:
+                with torch.no_grad():
+                    result = pipeline(**gen_kwargs)
+                frames = result.frames[0]  # List of PIL Images
+                elapsed_gen = time.time() - t0
+                print(f"[wan21] Diffusion complete: {len(frames)} frames in {elapsed_gen:.1f}s")
+                break
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+                last_error = e
+                print(f"[wan21] OOM at {width}x{height}: {e}")
+                # Clear GPU cache before retry
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                # Try to move pipeline to CPU if on CUDA
+                try:
+                    pipeline.to("cpu")
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                except Exception:
+                    pass
+                continue
+
+        if frames is None:
+            raise RuntimeError(f"Video generation failed at all resolutions. Last error: {last_error}")
 
         # Encode to MP4
         output_dir = Path("tmp/wan21_output")
