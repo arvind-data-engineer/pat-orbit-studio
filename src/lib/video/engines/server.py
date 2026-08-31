@@ -79,7 +79,7 @@ def get_device():
 
 def load_model():
     """Load the Stable Video Diffusion pipeline. Called once on first request."""
-    global pipeline, model_info
+    global pipeline, model_info  # noqa: must be global so process_job can read device
 
     if pipeline is not None:
         return
@@ -105,20 +105,33 @@ def load_model():
             MODEL_ID,
             **{k: v for k, v in pipe_kwargs.items() if v is not None},
         )
-        pipeline.to(device)
 
-        # Memory-efficient attention if available
+        # Use CPU offloading for low-VRAM GPUs (< 8GB) to avoid OOM.
+        # Must be called BEFORE .to(device).
         if device == "cuda":
             try:
-                pipeline.enable_model_cpu_offload()
-            except Exception:
-                pass
+                total_mem = getattr(
+                    torch.cuda.get_device_properties(0),
+                    'total_memory',
+                    getattr(torch.cuda.get_device_properties(0), 'total_mem', 0),
+                )
+                vram_gb = total_mem / (1024 ** 3)
+                if vram_gb < 8.0:
+                    logger.info(f"Low VRAM ({vram_gb:.1f} GB) — enabling CPU offload")
+                    pipeline.enable_model_cpu_offload()
+                else:
+                    pipeline.to(device)
+            except Exception as e:
+                logger.warning(f"CPU offload setup failed, falling back to device move: {e}")
+                pipeline.to(device)
+        else:
+            pipeline.to(device)
 
         gpu_name = "N/A"
         vram = "N/A"
         if device == "cuda" and torch.cuda.is_available():
             gpu_name = torch.cuda.get_device_name(0)
-            total_mem = torch.cuda.get_device_properties(0).total_mem
+            total_mem = getattr(torch.cuda.get_device_properties(0), 'total_memory', getattr(torch.cuda.get_device_properties(0), 'total_mem', 0))
             vram = f"{total_mem / (1024**3):.1f} GB"
         elif device == "mps":
             gpu_name = "Apple Silicon (MPS)"
@@ -207,11 +220,14 @@ def process_job(job: Job, request_data: dict):
         generator = torch.Generator(device=pipeline.device).manual_seed(seed)
 
         with torch.no_grad():
+            # Use 14 frames on low-VRAM GPUs to avoid OOM during decode
+            dev = model_info.get('device', 'cpu')
+            num_frames = 14 if dev == 'cuda' else 25
+            decode_chunks = 4 if dev == 'cuda' else 8
             frames = pipeline(
                 image,
-                prompt=prompt,
-                num_frames=25,  # SVD-XT produces 25 frames
-                decode_chunk_size=8,
+                num_frames=num_frames,
+                decode_chunk_size=decode_chunks,
                 generator=generator,
             ).frames[0]
 
@@ -222,22 +238,47 @@ def process_job(job: Job, request_data: dict):
                 job.updated_at = time.time()
             return
 
-        # Encode frames to MP4 using imageio
+        # Encode frames to MP4 using imageio with explicit ffmpeg path
         try:
             import numpy as np
             import imageio
+            import imageio_ffmpeg
+            import tempfile
 
-            video_buffer = io.BytesIO()
-            writer = imageio.get_writer(video_buffer, format="ffmpeg", fps=14, codec="libx264")
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+            logger.info(f"Using ffmpeg: {ffmpeg_path}")
+
+            # Set the ffmpeg binary path for imageio
+            os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
+
+            # Write to a temp file first (imageio-ffmpeg works more reliably with files)
+            tmp_mp4 = os.path.join(tempfile.gettempdir(), f"svd_{job.job_id}.mp4")
+            writer = imageio.get_writer(
+                tmp_mp4,
+                format="ffmpeg",
+                fps=7,
+                codec="libx264",
+            )
 
             for frame in frames:
                 arr = np.array(frame)
                 writer.append_data(arr)
             writer.close()
 
-            # Save to temp file and upload to a local path
-            # For now, encode as base64 MP4 and store in the job
-            video_b64 = base64.b64encode(video_buffer.getvalue()).decode("utf-8")
+            # Read the file and encode as base64 data URI
+            with open(tmp_mp4, "rb") as f:
+                video_bytes = f.read()
+
+            # Clean up temp file
+            try:
+                os.remove(tmp_mp4)
+            except OSError:
+                pass
+
+            if len(video_bytes) == 0:
+                raise Exception("Generated MP4 file is empty")
+
+            video_b64 = base64.b64encode(video_bytes).decode("utf-8")
             video_url = f"data:video/mp4;base64,{video_b64}"
 
             with jobs_lock:
