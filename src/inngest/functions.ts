@@ -17,7 +17,7 @@ const execFileAsync = promisify(execFile);
 /*  Inngest step timeout: 10 minutes per step                          */
 /* ================================================================== */
 
-const STEP_TIMEOUT_MS = 600_000;
+const STEP_TIMEOUT_MS = 1_200_000;  // 20 minutes (multi-clip SVD can take 10+ min)
 
 // Local engine helper removed — replaced by processVideoWithGenericEngine
 /* ================================================================== */

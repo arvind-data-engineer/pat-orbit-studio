@@ -50,14 +50,17 @@ class LocalVideoEngine implements VideoEngine {
   async generate(request: VideoGenerationRequest): Promise<{ jobId: string }> {
     const serverUrl = getServerUrl();
 
-    // Build multipart form data or JSON payload
+    // Build JSON payload for the local inference server
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
-      duration: request.duration,
-      aspect_ratio: request.aspectRatio,
       scene_id: request.sceneId,
       scene_title: request.sceneTitle,
     };
+
+    // Pass target duration for multi-clip generation
+    if (request.duration && request.duration > 0) {
+      payload.target_duration = request.duration;
+    }
 
     // Pass image as base64 data URI (server extracts it)
     if (request.image) {

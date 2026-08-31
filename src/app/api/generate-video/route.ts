@@ -82,8 +82,8 @@ export async function POST(request: Request) {
           : undefined,
         continuity: continuityBefore || undefined,
       });
-      // Poll until completed or failed
-      const MAX_POLLS = 60;
+      // Poll until completed or failed (multi-clip can take 15+ min)
+      const MAX_POLLS = 240;
       const POLL_MS = 5_000;
       for (let i = 0; i < MAX_POLLS; i++) {
         await new Promise((r) => setTimeout(r, POLL_MS));
