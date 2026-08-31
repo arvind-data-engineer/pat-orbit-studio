@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { inngest } from "@/lib/inngest";
 import { getJob, updateJob } from "@/lib/jobs";
 import { uploadToBlob } from "@/lib/blob";
-import { useLocalEngine } from "@/lib/video/engine";
+import { useWan21Engine, getActiveEngine } from "@/lib/video/engine";
 import type { VideoGenerationRequest } from "@/lib/video/types";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "child_process";
@@ -19,23 +19,22 @@ const execFileAsync = promisify(execFile);
 
 const STEP_TIMEOUT_MS = 600_000;
 
+// Local engine helper removed — replaced by processVideoWithGenericEngine
 /* ================================================================== */
-/*  LOCAL ENGINE HELPER                                                 */
+/*  GENERIC LOCAL ENGINE HELPER                                         */
 /* ================================================================== */
 
 /**
- * Process a video generation job using the local open-source engine.
- * Polls the local inference server until the job completes or fails.
- * Uploads the resulting video to Vercel Blob.
+ * Process a video generation job using any registered local engine.
+ * Supports SVD (local) and Wan 2.1 (wan21) engines.
  */
-async function processVideoWithLocalEngine(
+async function processVideoWithGenericEngine(
+  engine: { generate: (req: VideoGenerationRequest) => Promise<{ jobId: string }>; getStatus?: (jobId: string) => Promise<{ jobId: string; status: string; videoUrl?: string; error?: string }> },
   jobId: string,
   job: Awaited<ReturnType<typeof getJob>> & object
 ): Promise<{ jobId: string; status: string; videoUrl?: string }> {
-  const { localVideoEngine } = await import("@/lib/video/engines/local");
-
   // Build the generation request from the job data
-  const request: Parameters<typeof localVideoEngine.generate>[0] = {
+  const request: VideoGenerationRequest = {
     prompt: job.prompt || "",
   };
 
@@ -53,17 +52,21 @@ async function processVideoWithLocalEngine(
   if (job.continuityBefore) request.continuity = job.continuityBefore as VideoGenerationRequest["continuity"];
 
   // Start generation on the local engine
-  console.log(`[inngest/video] Local engine: generating for ${jobId}`);
-  const { jobId: localJobId } = await localVideoEngine.generate(request);
+  const engineName = useWan21Engine() ? "Wan 2.1" : "SVD";
+  console.log(`[inngest/video] ${engineName} engine: generating for ${jobId}`);
+  const { jobId: localJobId } = await engine.generate(request);
 
   // Poll until completed or failed
-  const MAX_POLLS = 120; // Up to 10 minutes (5s intervals)
+  const MAX_POLLS = 240; // Up to 20 minutes for Wan 2.1 (slower on low VRAM)
   const POLL_INTERVAL_MS = 5_000;
 
   for (let i = 0; i < MAX_POLLS; i++) {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
 
-    const status = await localVideoEngine.getStatus(localJobId);
+    if (!engine.getStatus) {
+      throw new Error(`${engineName} engine does not support status polling.`);
+    }
+    const status = await engine.getStatus(localJobId);
 
     if (status.status === "completed" && status.videoUrl) {
       // Upload the video to Vercel Blob for persistence
@@ -84,30 +87,29 @@ async function processVideoWithLocalEngine(
         }
       }
 
-      console.log(`[inngest/video] Local engine completed ${jobId}`);
+      console.log(`[inngest/video] ${engineName} engine completed ${jobId}`);
       await updateJob(jobId, { status: "completed", videoUrl });
       return { jobId, status: "completed", videoUrl };
     }
 
     if (status.status === "failed") {
-      const errorMsg = status.error || "Local video generation failed.";
-      console.error(`[inngest/video] Local engine failed ${jobId}: ${errorMsg}`);
+      const errorMsg = status.error || `${engineName} video generation failed.`;
+      console.error(`[inngest/video] ${engineName} engine failed ${jobId}: ${errorMsg}`);
       await updateJob(jobId, { status: "failed", error: errorMsg });
       throw new Error(errorMsg);
     }
 
     // Still processing — continue polling
     if (i % 6 === 0 && i > 0) {
-      console.log(`[inngest/video] Local engine polling ${jobId} (${i * POLL_INTERVAL_MS / 1000}s elapsed)`);
+      console.log(`[inngest/video] ${engineName} engine polling ${jobId} (${i * POLL_INTERVAL_MS / 1000}s elapsed)`);
     }
   }
 
   // Timeout
-  await updateJob(jobId, { status: "failed", error: "Local video generation timed out after 10 minutes." });
-  throw new Error("Local video generation timed out after 10 minutes.");
+  await updateJob(jobId, { status: "failed", error: `${engineName} video generation timed out.` });
+  throw new Error(`${engineName} video generation timed out.`);
 }
 
-// Re-import the VideoGenerationRequest type for the local engine helper
 /* ================================================================== */
 /*  VIDEO GENERATION FUNCTION                                           */
 /* ================================================================== */
@@ -127,9 +129,10 @@ export const generateVideoJob = inngest.createFunction(
     console.log(`[inngest/video] Processing ${jobId}, scene ${job.sceneId ?? 'unknown'}`);
     await updateJob(jobId, { status: "processing" });
 
-    /* 2. Route to local engine if configured */
-    if (useLocalEngine()) {
-      return processVideoWithLocalEngine(jobId, job);
+    /* 2. Route to local engines if configured */
+    const activeEngine = getActiveEngine();
+    if (activeEngine) {
+      return processVideoWithGenericEngine(activeEngine, jobId, job);
     }
 
     /* 3. Generate video with Veo */

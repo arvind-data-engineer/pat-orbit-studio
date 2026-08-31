@@ -25,6 +25,7 @@
 
 import type { VideoEngine } from "./types";
 import { localVideoEngine } from "./engines/local";
+import { wan21VideoEngine } from "./engines/wan21";
 
 // Re-export all types so consumers can import from this module.
 export type {
@@ -84,7 +85,7 @@ export function listEngines(): string[] {
 // ── Provider Selection ──────────────────────────────────────────────
 
 /**
- * Check whether the local video engine is selected via environment.
+ * Check whether the local SVD video engine is selected via environment.
  * Returns true when VIDEO_ENGINE=local.
  * Defaults to false (Veo is the default provider).
  */
@@ -93,16 +94,29 @@ export function useLocalEngine(): boolean {
 }
 
 /**
+ * Check whether the Wan 2.1 video engine is selected.
+ * Returns true when VIDEO_ENGINE=wan21.
+ */
+export function useWan21Engine(): boolean {
+  return (process.env.VIDEO_ENGINE || "veo").toLowerCase() === "wan21";
+}
+
+/**
  * Get the active engine based on VIDEO_ENGINE env var.
- * Returns the local engine adapter when VIDEO_ENGINE=local,
- * or null when using the default Veo/Gemini path.
+ * Returns the appropriate engine adapter, or null when using Veo.
  *
- * The null case means callers should fall through to the existing
- * Veo implementation — no engine abstraction needed.
+ * Supported values:
+ *   veo   — default Gemini/Veo path (returns null)
+ *   local — SVD-XT local engine
+ *   wan21 — Wan 2.1 T2V-1.3B local engine
  */
 export function getActiveEngine(): VideoEngine | null {
-  if (useLocalEngine()) {
+  const engineName = (process.env.VIDEO_ENGINE || "veo").toLowerCase();
+  if (engineName === "local") {
     return localVideoEngine;
+  }
+  if (engineName === "wan21") {
+    return wan21VideoEngine;
   }
   return null;
 }

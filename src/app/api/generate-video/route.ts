@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { uploadToBlob } from "@/lib/blob";
-import { useLocalEngine } from "@/lib/video/engine";
+import { useLocalEngine, useWan21Engine } from "@/lib/video/engine";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -30,7 +30,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── Local engine path ──────────────────────────────────────────
+    // ── Wan 2.1 engine path ────────────────────────────────────────
+    if (useWan21Engine()) {
+      const { wan21VideoEngine } = await import("@/lib/video/engines/wan21");
+      const durationMatch = duration?.match(/(\d+)/);
+      const { jobId: wan21JobId } = await wan21VideoEngine.generate({
+        prompt: prompt.trim(),
+        duration: durationMatch ? parseInt(durationMatch[1], 10) : undefined,
+        aspectRatio: aspectRatio || undefined,
+        sceneTitle: sceneTitle || undefined,
+        characters: characters || undefined,
+        camera: camera && camera.shotType && camera.angle && camera.movement && camera.framing
+          ? camera as { shotType: string; angle: string; movement: string; framing: string }
+          : undefined,
+        motion: motion && motion.subjectMovement && motion.environmentMovement && motion.intensity
+          ? motion as { subjectMovement: string; environmentMovement: string; intensity: 'subtle' | 'moderate' | 'dramatic' }
+          : undefined,
+        continuity: continuityBefore || undefined,
+      });
+      const MAX_POLLS = 240;
+      const POLL_MS = 5_000;
+      for (let i = 0; i < MAX_POLLS; i++) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+        const st = await wan21VideoEngine.getStatus(wan21JobId);
+        if (st.status === "completed" && st.videoUrl) {
+          return NextResponse.json({ videoUrl: st.videoUrl });
+        }
+        if (st.status === "failed") {
+          return NextResponse.json({ error: st.error || "Wan 2.1 video generation failed." }, { status: 500 });
+        }
+      }
+      return NextResponse.json({ error: "Wan 2.1 video generation timed out." }, { status: 504 });
+    }
+
+    // ── Local SVD engine path ────────────────────────────────────────
     if (useLocalEngine()) {
       const { localVideoEngine } = await import("@/lib/video/engines/local");
       const durationMatch = duration?.match(/(\d+)/);
