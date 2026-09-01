@@ -217,6 +217,7 @@ export default function Home() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteSceneConfirmId, setDeleteSceneConfirmId] = useState<number | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"main" | "projects">("main");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
@@ -1208,65 +1209,94 @@ export default function Home() {
   onLoadProjectRef.current = loadProject;
 
   return (
-    <main className="min-h-screen bg-[#0a0b0e] text-white overflow-x-hidden">
-      {!result ? (
-        <CreateScreen
-          story={story} setStory={setStory}
-          style={style} setStyle={setStyle}
-          duration={duration} setDuration={setDuration}
-          aspectRatio={aspectRatio} setAspectRatio={setAspectRatio}
-          voice={voice} setVoice={setVoice}
-          language={language} setLanguage={setLanguage}
-          loading={loading} error={error} loadingStep={loadingStep}
-          result={result} projects={projects}
-          onGenerate={generateStory}
-          onLoadProject={(p) => loadProject(p as Project)}
-          onScrollToProjects={() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })}
-        />
-      ) : (
-        <WorkspaceView
-          result={result} activeScene={activeScene}
-          projectName={projectName} setProjectName={setProjectName}
-          sceneImages={sceneImages} sceneVideos={sceneVideos}
-          sceneStatus={sceneStatus} voiceStatus={voiceStatus}
-          voiceAudios={voiceAudios} characters={characters}
-          sceneCharacters={sceneCharacters} currentScene={currentScene}
-          totalImagesGenerated={totalImagesGenerated}
-          totalVideosGenerated={totalVideosGenerated}
-          totalVoiceReady={totalVoiceReady}
-          totalDurationFormatted={totalDurationFormatted}
-          rendering={rendering} renderStage={renderStage}
-          finalVideo={finalVideo} saved={saved}
-          hasUnsavedChanges={hasUnsavedChanges}
-          saveStatus={saveStatus} music={music} captions={captions}
-          onSwitchScene={switchScene}
-          onStartImage={startImageGeneration}
-          onStartVideo={startVideoGeneration}
-          onStartVoice={startVoiceGeneration}
-          onPlayVoice={playVoice} onStopVoice={stopVoice}
-          onCancelGeneration={cancelGeneration}
-          onStartRender={startRender}
-          onExportVideo={exportVideo}
-          onSaveProject={saveCurrentProject}
-          onDuplicateScene={duplicateScene}
-          onDeleteScene={deleteScene}
-          onMoveScene={moveScene}
-          onSetDeleteSceneConfirm={setDeleteSceneConfirmId}
-          deleteSceneConfirmId={deleteSceneConfirmId}
-        />
-      )}
+    <main className="min-h-screen bg-[#08090c] text-white overflow-x-hidden">
+      {/* ── Top navigation bar ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 h-12 flex items-center justify-between px-5 border-b border-white/[0.04] bg-[#08090c]/80 backdrop-blur-xl">
+        <div className="flex items-center gap-6">
+          <button onClick={() => { setViewMode('main'); if (!result) window.scrollTo({ top: 0 }); }} className="flex items-center gap-2.5">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-[9px] font-black text-[#08090c]">P</div>
+            <span className="text-[13px] font-bold tracking-tight text-white/90">PAT Orbit</span>
+          </button>
+          <div className="hidden sm:flex items-center gap-1">
+            <button onClick={() => setViewMode('main')} className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition-all ${viewMode === 'main' ? 'bg-white/[0.06] text-white/90' : 'text-white/35 hover:text-white/55 hover:bg-white/[0.03]'}`}>
+              {result ? 'Editor' : 'Create'}
+            </button>
+            <button onClick={() => setViewMode('projects')} className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition-all ${viewMode === 'projects' ? 'bg-white/[0.06] text-white/90' : 'text-white/35 hover:text-white/55 hover:bg-white/[0.03]'}`}>
+              Projects
+              {projects.length > 0 && <span className="ml-1.5 text-[10px] text-white/20">{projects.length}</span>}
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {result && viewMode === 'main' && (
+            <button onClick={() => { setResult(null); setViewMode('main'); setSceneImages({}); setSceneVideos({}); setVoiceStatus({}); setVoiceAudios({}); setFinalVideo(null); setCharacters([]); setSceneCharacters({}); setCurrentProjectId(null); setSaved(false); }} className="rounded-md px-3 py-1.5 text-[12px] font-medium text-white/35 hover:text-white/55 hover:bg-white/[0.03] transition-all">
+              + New
+            </button>
+          )}
+        </div>
+      </nav>
 
-      <ProjectGrid
-        projects={projects}
-        searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-        projectFilter={projectFilter} setProjectFilter={setProjectFilter}
-        onLoadProject={(p) => loadProject(p as Project)}
-        onDuplicateProject={(p) => duplicateProject(p as Project)}
-        onDeleteProject={deleteProject}
-        onImport={handleImportFile}
-        importRef={importFileRef}
-        onNewVideo={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      />
+      {/* ── Main content area ── */}
+      <div className="pt-12">
+        {viewMode === 'projects' ? (
+          <ProjectGrid
+            projects={projects}
+            searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+            projectFilter={projectFilter} setProjectFilter={setProjectFilter}
+            onLoadProject={(p) => { loadProject(p as Project); setViewMode('main'); }}
+            onDuplicateProject={(p) => duplicateProject(p as Project)}
+            onDeleteProject={deleteProject}
+            onImport={handleImportFile}
+            importRef={importFileRef}
+            onNewVideo={() => { setResult(null); setViewMode('main'); }}
+          />
+        ) : !result ? (
+          <CreateScreen
+            story={story} setStory={setStory}
+            style={style} setStyle={setStyle}
+            duration={duration} setDuration={setDuration}
+            aspectRatio={aspectRatio} setAspectRatio={setAspectRatio}
+            voice={voice} setVoice={setVoice}
+            language={language} setLanguage={setLanguage}
+            loading={loading} error={error} loadingStep={loadingStep}
+            result={result} projects={projects}
+            onGenerate={generateStory}
+            onLoadProject={(p) => { loadProject(p as Project); setViewMode('main'); }}
+            onScrollToProjects={() => setViewMode('projects')}
+          />
+        ) : (
+          <WorkspaceView
+            result={result} activeScene={activeScene}
+            projectName={projectName} setProjectName={setProjectName}
+            sceneImages={sceneImages} sceneVideos={sceneVideos}
+            sceneStatus={sceneStatus} voiceStatus={voiceStatus}
+            voiceAudios={voiceAudios} characters={characters}
+            sceneCharacters={sceneCharacters} currentScene={currentScene}
+            totalImagesGenerated={totalImagesGenerated}
+            totalVideosGenerated={totalVideosGenerated}
+            totalVoiceReady={totalVoiceReady}
+            totalDurationFormatted={totalDurationFormatted}
+            rendering={rendering} renderStage={renderStage}
+            finalVideo={finalVideo} saved={saved}
+            hasUnsavedChanges={hasUnsavedChanges}
+            saveStatus={saveStatus} music={music} captions={captions}
+            onSwitchScene={switchScene}
+            onStartImage={startImageGeneration}
+            onStartVideo={startVideoGeneration}
+            onStartVoice={startVoiceGeneration}
+            onPlayVoice={playVoice} onStopVoice={stopVoice}
+            onCancelGeneration={cancelGeneration}
+            onStartRender={startRender}
+            onExportVideo={exportVideo}
+            onSaveProject={saveCurrentProject}
+            onDuplicateScene={duplicateScene}
+            onDeleteScene={deleteScene}
+            onMoveScene={moveScene}
+            onSetDeleteSceneConfirm={setDeleteSceneConfirmId}
+            deleteSceneConfirmId={deleteSceneConfirmId}
+          />
+        )}
+      </div>
 
       {/* Character editor modal */}
       {showCharacters && (
