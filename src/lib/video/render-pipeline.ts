@@ -499,6 +499,4 @@ export async function executeRender(config: RenderConfig): Promise<RenderOutput>
     }
     throw error;
   }
-  // On success, callers must clean up tempDir after reading outputPath.
-  // The RenderOutput includes tempDir for this purpose.
 }

@@ -7,11 +7,7 @@ import { generateVideo } from "@/lib/video/generate";
 import { buildVeoPrompt } from "@/lib/video/prompt-builder";
 import { buildConditioning } from "@/lib/video/conditioning";
 import ffmpegPath from "ffmpeg-static";
-import { execFile } from "child_process";
-import { promisify } from "util";
 
-
-const execFileAsync = promisify(execFile);
 
 /* ================================================================== */
 /*  Inngest step timeout: 20 minutes per step                          */
@@ -165,30 +161,6 @@ export const generateVideoJob = inngest.createFunction(
 /* ================================================================== */
 /*  RENDER VIDEO FUNCTION                                               */
 /* ================================================================== */
-
-function generateMusicToneSync(
-  ffmpeg: string,
-  durationSec: number,
-  style: string,
-  outPath: string
-): Promise<void> {
-  const presets: Record<string, { freq: string; vol: string }> = {
-    Ambient: { freq: "220", vol: "0.03" },
-    Cinematic: { freq: "165", vol: "0.04" },
-    Emotional: { freq: "262", vol: "0.035" },
-  };
-  const p = presets[style] || presets.Ambient;
-  const args = [
-    "-y",
-    "-f", "lavfi",
-    "-i", `sine=frequency=${p.freq}:duration=${durationSec}:sample_rate=44100`,
-    "-af", `volume=${p.vol},afade=t=in:st=0:d=2,afade=t=out:st=${Math.max(0, durationSec - 2)}:d=2`,
-    "-ar", "44100",
-    "-ac", "1",
-    outPath,
-  ];
-  return execFileAsync(ffmpeg, args, { timeout: 60_000 }).then(() => {});
-}
 
 export const renderVideoJob = inngest.createFunction(
   {

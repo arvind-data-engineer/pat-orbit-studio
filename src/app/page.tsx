@@ -379,6 +379,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState<"all" | "completed" | "in-progress">("all");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteSceneConfirmId, setDeleteSceneConfirmId] = useState<number | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -399,6 +400,9 @@ export default function Home() {
 
   /* Polling intervals */
   const pollIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
+
+  /* Render abort controller */
+  const renderAbortRef = useRef<AbortController | null>(null);
 
   /* Cleanup polling and toast timer on unmount */
   useEffect(() => {
@@ -463,6 +467,7 @@ export default function Home() {
         if (mobileNavOpen) { setMobileNavOpen(false); return; }
         if (settingsOpen) { setSettingsOpen(false); return; }
         if (deleteConfirmId) { setDeleteConfirmId(null); return; }
+        if (deleteSceneConfirmId) { setDeleteSceneConfirmId(null); return; }
         if (showCharacters) { setShowCharacters(false); return; }
       }
 
@@ -491,7 +496,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, showCharacters, isEditingScene, rendering, sceneVideos]);
+  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, deleteSceneConfirmId, showCharacters, isEditingScene, rendering, sceneVideos]);
 
   function saveProjects(nextProjects: Project[]) {
     setProjects(nextProjects);
@@ -1196,6 +1201,10 @@ export default function Home() {
 
   async function startRender() {
     if (!result || totalVideosGenerated < result.scenes.length) return;
+    // Cancel any existing render
+    if (renderAbortRef.current) renderAbortRef.current.abort();
+    const controller = new AbortController();
+    renderAbortRef.current = controller;
     setRendering(true);
     setRenderStage("Preparing scenes...");
     setRenderProgress(5);
@@ -1256,6 +1265,11 @@ export default function Home() {
       await new Promise<void>((resolve, reject) => {
         let attempts = 0;
         const interval = setInterval(async () => {
+          if (controller.signal.aborted) {
+            clearInterval(interval);
+            resolve();
+            return;
+          }
           attempts++;
           if (attempts > MAX_POLL) {
             clearInterval(interval);
@@ -1975,6 +1989,11 @@ export default function Home() {
                               Try voice again
                             </button>
                           )}
+                          {renderStage === 'Render failed' && totalVideosGenerated >= (result?.scenes.length ?? 0) && (
+                            <button onClick={() => { setError(''); setRenderStage(''); startRender(); }} className="rounded-lg bg-red-500/10 border border-red-500/15 px-3 py-1.5 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/20">
+                              Retry render
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2003,9 +2022,20 @@ export default function Home() {
                                 <Icon.Wand className="h-3 w-3" />Edit Scene
                               </button>
                               {result.scenes.length > 1 && (
-                                <button onClick={() => deleteScene(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/[0.08] px-2.5 py-1.5 text-[10px] font-medium text-red-400/80 transition-colors hover:bg-red-500/[0.15]">
-                                  <Icon.Trash className="h-3 w-3" />Delete
-                                </button>
+                                deleteSceneConfirmId === currentScene.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <button onClick={() => { deleteScene(currentScene.id); setDeleteSceneConfirmId(null); }} className="rounded border border-red-500/30 bg-red-500/20 px-2 py-1 text-[9px] font-bold text-red-400 hover:bg-red-500/30">
+                                      Confirm
+                                    </button>
+                                    <button onClick={() => setDeleteSceneConfirmId(null)} className="rounded border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[9px] font-medium text-white/50 hover:bg-white/[0.08]">
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setDeleteSceneConfirmId(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/[0.08] px-2.5 py-1.5 text-[10px] font-medium text-red-400/80 transition-colors hover:bg-red-500/[0.15]">
+                                    <Icon.Trash className="h-3 w-3" />Delete
+                                  </button>
+                                )
                               )}
                             </>
                           )}
@@ -2277,15 +2307,20 @@ export default function Home() {
                     {(() => {
                       const missingImages = result.scenes.filter((s) => !sceneImages[s.id]).length;
                       const missingVideos = result.scenes.filter((s) => !sceneVideos[s.id] && sceneImages[s.id]).length;
+                      const missingVoice = result.scenes.filter((s) => s.narration?.trim() && voiceStatus[s.id] !== 'ready').length;
                       const anyGenerating = Object.values(sceneStatus).some((s) => s !== 'idle');
-                      if (missingImages === 0 && missingVideos === 0) return null;
+                      const anyVoiceGenerating = Object.values(voiceStatus).some((s) => s === 'generating');
+                      if (missingImages === 0 && missingVideos === 0 && missingVoice === 0) return null;
                       return (
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
                           <div className="mb-2 flex items-center gap-2">
                             <Icon.Zap className="h-3.5 w-3.5 text-white/50" />
                             <span className="text-[12px] font-semibold text-white/75">Batch Actions</span>
+                            {(anyGenerating || anyVoiceGenerating) && (
+                              <span className="text-[10px] text-white/30">Generating...</span>
+                            )}
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             {missingImages > 0 && (
                               <button onClick={() => { for (const s of result.scenes) { if (!sceneImages[s.id]) startImageGeneration(s.id); } }} disabled={anyGenerating}
                                 className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-40">
@@ -2296,6 +2331,12 @@ export default function Home() {
                               <button onClick={() => { for (const s of result.scenes) { if (!sceneVideos[s.id] && sceneImages[s.id]) startVideoGeneration(s.id); } }} disabled={anyGenerating}
                                 className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-40">
                                 Generate {missingVideos} video{missingVideos !== 1 ? 's' : ''}
+                              </button>
+                            )}
+                            {missingVoice > 0 && (
+                              <button onClick={() => { for (const s of result.scenes) { if (s.narration?.trim() && voiceStatus[s.id] !== 'ready') startVoiceGeneration(s.id); } }} disabled={anyVoiceGenerating}
+                                className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-40">
+                                Generate {missingVoice} voice{missingVoice !== 1 ? 's' : ''}
                               </button>
                             )}
                           </div>
@@ -2338,6 +2379,9 @@ export default function Home() {
                                   <div className="h-2 overflow-hidden rounded-full bg-blue-500/10">
                                     <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-700" style={{ width: `${renderProgress}%` }} />
                                   </div>
+                                  <button onClick={() => { if (renderAbortRef.current) renderAbortRef.current.abort(); setRendering(false); setRenderStage(''); setRenderProgress(0); }} className="mt-3 w-full rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
+                                    Cancel render
+                                  </button>
                                 </div>
                               )}
                             </div>
