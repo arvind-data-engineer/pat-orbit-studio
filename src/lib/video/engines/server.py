@@ -1157,5 +1157,7 @@ if __name__ == "__main__":
     logger.info(f"Resolution: {VIDEO_WIDTH or 1024}x{VIDEO_HEIGHT or 576}")
     logger.info(f"Interpolation: {VIDEO_INTERPOLATION} (target: {VIDEO_TARGET_FPS} FPS)")
     logger.info(f"OOM retry: {VIDEO_OOM_RETRY}, Temp: {_get_temp_dir()}")
+    HOST = os.environ.get("VIDEO_ENGINE_HOST", "127.0.0.1")
+    logger.info(f"Host: {HOST} (set VIDEO_ENGINE_HOST=0.0.0.0 for network access)")
     logger.info("=" * 60)
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
+    uvicorn.run(app, host=HOST, port=PORT, log_level="info")

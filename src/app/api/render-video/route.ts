@@ -131,13 +131,20 @@ export async function POST(request: Request) {
     /* ---- Get video durations for each scene ---- */
     const getDuration = async (filePath: string): Promise<number> => {
       try {
-        const { stdout } = await execFileAsync(ffmpeg, [
+        // ffmpeg-static is the ffmpeg binary; ffprobe args won't work.
+        // Parse ffmpeg's stderr to extract Duration.
+        const { stdout, stderr } = await execFileAsync(ffmpeg, [
           "-i", filePath,
-          "-show_entries", "format=duration",
-          "-v", "quiet",
-          "-of", "csv=p=0",
-        ], { timeout: 10000 });
-        return parseFloat(stdout.trim()) || 5;
+        ], { timeout: 10000 }).catch(({ stdout, stderr }) => ({ stdout: stdout ?? "", stderr: stderr ?? "" }));
+        const output = stdout + stderr;
+        const match = output.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+        if (match) {
+          const hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const seconds = parseFloat(match[3]);
+          return hours * 3600 + minutes * 60 + seconds;
+        }
+        return 5;
       } catch {
         return 5;
       }

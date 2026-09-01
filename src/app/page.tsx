@@ -861,6 +861,8 @@ export default function Home() {
 
   async function startVideoGeneration(sceneId: number) {
     if (!result) return;
+    // Prevent duplicate generation requests
+    if (sceneStatus[sceneId] === "video" || sceneStatus[sceneId]?.startsWith("video:")) return;
     if (videoAbortRef.current[sceneId]) videoAbortRef.current[sceneId].abort();
 
     setSceneStatus((c) => ({ ...c, [sceneId]: "video" }));
@@ -1125,7 +1127,7 @@ export default function Home() {
       /* Poll for completion */
       setRenderStage("Mixing audio & rendering...");
       setRenderProgress(50);
-      const MAX_POLL = 180;
+      const MAX_POLL = 360;
       const POLL_MS = 3000;
 
       await new Promise<void>((resolve, reject) => {
