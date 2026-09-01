@@ -20,6 +20,7 @@ export interface StoredProject {
   duration: string;
   result: unknown; // StoryResult — avoid circular import
   createdAt: string;
+  updatedAt?: string; // ISO timestamp of last save
   sceneImages?: Record<number, string>;
   sceneVideos?: Record<number, string>;
   finalVideoUrl?: string | null;
@@ -110,16 +111,50 @@ export function saveProjects(projects: StoredProject[]): boolean {
 
 /**
  * Save a single project (upsert) and persist all projects.
+ * Automatically sets updatedAt timestamp.
  */
 export function saveProject(project: StoredProject): boolean {
   const projects = loadProjects();
   const idx = projects.findIndex((p) => p.id === project.id);
+  const now = new Date().toISOString();
+  const updated: StoredProject = { ...project, updatedAt: now };
   if (idx >= 0) {
-    projects[idx] = project;
+    projects[idx] = updated;
   } else {
-    projects.unshift(project);
+    projects.unshift(updated);
   }
   return saveProjects(projects);
+}
+
+/**
+ * Rename a project by ID.
+ */
+export function renameProject(id: string, newTitle: string): boolean {
+  const projects = loadProjects();
+  const project = projects.find((p) => p.id === id);
+  if (!project) return false;
+  project.title = newTitle;
+  project.updatedAt = new Date().toISOString();
+  return saveProjects(projects);
+}
+
+/**
+ * Duplicate a project by ID with a new ID.
+ */
+export function duplicateProject(id: string): StoredProject | null {
+  const projects = loadProjects();
+  const original = projects.find((p) => p.id === id);
+  if (!original) return null;
+  const dup: StoredProject = {
+    ...JSON.parse(JSON.stringify(original)),
+    id: crypto.randomUUID(),
+    title: original.title + " (Copy)",
+    createdAt: new Date().toISOString(),
+    updatedAt: undefined,
+  };
+  projects.unshift(dup);
+  saveProjects(projects);
+  return dup;
 }
 
 /**

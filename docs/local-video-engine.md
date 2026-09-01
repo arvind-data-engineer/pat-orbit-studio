@@ -1,18 +1,24 @@
-# PAT Orbit — Local Video Engine (v3.0)
+# PAT Orbit — Local Video Engine (v3.1)
 
 Local, open-source video generation engine using **Stable Video Diffusion (SVD-XT 1.1)** by Stability AI.
 
 This engine runs entirely on your own hardware — no paid API required for video generation.
 
-## What's New in v3.0
+## What's New in v3.1
+
+- **Scene transitions** — Optional crossfade between multi-clip segments
+- **Improved health endpoint** — Reports transition settings, interpolation config
+- **Fixed infinite recursion** — `_get_temp_dir()` no longer calls itself recursively
+- **Fixed PIL import** — `extract_last_frame_from_video` now has correct PIL import
+- **Project timestamps** — Auto-save tracks `updatedAt` for conflict detection
+- **Project rename/duplicate** — Storage abstraction supports rename and duplicate
+
+## Previous Features (v3.0)
 
 - **Frame interpolation** — Optional FFmpeg-based minterpolation (7 FPS → 24 FPS)
 - **OOM retry** — Automatic retry with reduced settings on CUDA out-of-memory
 - **Clip-to-clip continuity** — Each clip starts from the last frame of the previous clip
 - **Temp directory control** — `VIDEO_TEMP_DIR` to keep generated files on D: drive
-- **Fixed continuity bug** — `extract_last_frame_from_frames` now has correct PIL import
-- **Fixed render sync** — Inngest `getDuration` now correctly parses video duration
-- **Consistent versioning** — All endpoints report v3.0.0
 
 ## Previous Features (v2.0)
 
@@ -96,6 +102,10 @@ VIDEO_OOM_RETRY=true        # Retry once with preview settings on OOM
 
 # Temp directory (v3.0) — keep generated files on D: drive
 VIDEO_TEMP_DIR=D:/AI/cache/video
+
+# Scene transitions (v3.1)
+VIDEO_TRANSITION=none        # "none" (hard cut) or "crossfade"
+VIDEO_TRANSITION_DURATION=0.5  # crossfade duration in seconds
 ```
 
 ### RTX 3050 6GB Recommended Settings
@@ -156,7 +166,7 @@ Comprehensive diagnostics:
 ```json
 {
   "status": "ok",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "engine": "svd-xt-1.1",
   "model": "stabilityai/stable-video-diffusion-img2vid-xt",
   "device": "cuda",
@@ -289,6 +299,23 @@ VIDEO_ENGINE=local npm run dev
 | **Duration** | Multi-clip pipeline | Up to 8s per clip |
 | **Offline** | Yes | No |
 | **Privacy** | Fully local | Data sent to Google |
+
+## Scene Transitions
+
+By default, multi-clip videos use hard cuts between clips. You can enable crossfade transitions:
+
+```bash
+# Enable crossfade transitions
+VIDEO_TRANSITION=crossfade
+VIDEO_TRANSITION_DURATION=0.5  # 0.5 second fade between clips
+```
+
+| Transition | Description | Speed | Quality |
+|------------|-------------|-------|---------|
+| `none` | Hard cut (default) | Fast (stream copy) | Clean cuts |
+| `crossfade` | Smooth fade between clips | Slower (re-encode) | Professional |
+
+**Note:** Crossfade requires re-encoding all clips, which increases generation time. On RTX 3050, expect an additional 30-60 seconds for a 4-clip sequence.
 
 ## Troubleshooting
 

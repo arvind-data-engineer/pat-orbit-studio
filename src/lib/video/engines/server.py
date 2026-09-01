@@ -60,7 +60,7 @@ def _get_temp_dir() -> str:
     Uses VIDEO_TEMP_DIR if set, otherwise falls back to system temp."""
     if VIDEO_TEMP_DIR:
         return VIDEO_TEMP_DIR
-    return _get_temp_dir()
+    return tempfile.gettempdir()
 
 
 # ── Configuration ─────────────────────────────────────────────────────
@@ -113,6 +113,10 @@ VIDEO_TARGET_FPS = int(os.environ.get("VIDEO_TARGET_FPS", "24"))  # Target FPS w
 
 # OOM retry: retry once with reduced settings (8 frames, 3 steps) on CUDA OOM
 VIDEO_OOM_RETRY = os.environ.get("VIDEO_OOM_RETRY", "true").lower() in ("true", "1", "yes")
+
+# Scene transitions: "none" (default, hard cut) or "crossfade"
+VIDEO_TRANSITION = os.environ.get("VIDEO_TRANSITION", "none").lower()
+VIDEO_TRANSITION_DURATION = float(os.environ.get("VIDEO_TRANSITION_DURATION", "0.5"))  # seconds
 
 # Temp directory for generated clips — default to system temp; set to D: on Windows
 VIDEO_TEMP_DIR = os.environ.get("VIDEO_TEMP_DIR", "")
@@ -391,7 +395,8 @@ def extract_last_frame_from_video(video_path: str):
         if result.returncode != 0 or not os.path.exists(frame_path):
             return None
 
-        img = Image.open(frame_path).convert("RGB")
+        from PIL import Image as _PILImage
+        img = _PILImage.open(frame_path).convert("RGB")
         try:
             os.remove(frame_path)
         except OSError:
@@ -513,6 +518,85 @@ def concat_clips_with_ffmpeg(clip_paths: list, output_path: str):
             os.remove(list_file)
         except OSError:
             pass
+
+
+def concat_clips_with_crossfade(clip_paths: list, output_path: str, fade_duration: float = 0.5):
+    """Concatenate MP4 clips with crossfade transitions between them.
+    
+    Uses FFmpeg xfade filter for video and acrossfade for audio.
+    Re-encodes the entire sequence, which is slower but produces smooth transitions.
+    """
+    ffmpeg_path = None
+    try:
+        import imageio_ffmpeg
+        ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        ffmpeg_path = shutil.which("ffmpeg")
+
+    if not ffmpeg_path:
+        raise RuntimeError("FFmpeg is not available")
+
+    if len(clip_paths) == 1:
+        shutil.copy2(clip_paths[0], output_path)
+        return
+
+    if len(clip_paths) == 2:
+        # Simple 2-clip crossfade
+        filter_complex = f"[0:v][1:v]xfade=transition=fade:duration={fade_duration}:offset=0[vout]"
+        args = [
+            ffmpeg_path, "-y",
+            "-i", clip_paths[0], "-i", clip_paths[1],
+            "-filter_complex", filter_complex,
+            "-map", "[vout]",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            output_path,
+        ]
+        result = subprocess.run(args, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            logger.warning(f"Crossfade failed, falling back to hard cut: {result.stderr[:200]}")
+            concat_clips_with_ffmpeg(clip_paths, output_path)
+        return
+
+    # Multi-clip: chain xfade filters
+    # Get duration of first clip for offset calculation
+    first_dur = get_video_duration(clip_paths[0])
+    if first_dur <= 0:
+        first_dur = 2.0
+    offset = max(0, first_dur - fade_duration)
+
+    inputs = []
+    for p in clip_paths:
+        inputs.extend(["-i", p])
+
+    # Build chained xfade filter: [0][1]xfade...[tmp1]; [tmp1][2]xfade...[tmp2]; ...
+    filter_parts = []
+    prev_label = "0:v"
+    for i in range(1, len(clip_paths)):
+        next_label = "vout" if i == len(clip_paths) - 1 else f"tmp{i}"
+        filter_parts.append(f"[{prev_label}][{i}:v]xfade=transition=fade:duration={fade_duration}:offset={offset:.3f}[{next_label}]")
+        if i < len(clip_paths) - 1:
+            # Update offset for next crossfade
+            clip_dur = get_video_duration(clip_paths[i])
+            if clip_dur <= 0:
+                clip_dur = 2.0
+            offset = offset + clip_dur - fade_duration
+        prev_label = next_label
+
+    filter_complex = ";".join(filter_parts)
+    args = [
+        ffmpeg_path, "-y",
+        *inputs,
+        "-filter_complex", filter_complex,
+        "-map", "[vout]",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        output_path,
+    ]
+    result = subprocess.run(args, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        logger.warning(f"Multi-clip crossfade failed, falling back to hard cut: {result.stderr[:200]}")
+        concat_clips_with_ffmpeg(clip_paths, output_path)
 
 
 def trim_video_ffmpeg(input_path: str, output_path: str, target_duration: float):
@@ -891,7 +975,11 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
 
         final_path = os.path.join(_get_temp_dir(), f"svd_{job.job_id}_final.mp4")
         try:
-            concat_clips_with_ffmpeg(clip_paths, final_path)
+            if VIDEO_TRANSITION == "crossfade" and VIDEO_TRANSITION_DURATION > 0:
+                _update_job(job, progress=f"Combining with crossfade transitions")
+                concat_clips_with_crossfade(clip_paths, final_path, VIDEO_TRANSITION_DURATION)
+            else:
+                concat_clips_with_ffmpeg(clip_paths, final_path)
             temp_files.append(final_path)
         except RuntimeError as e:
             _update_job(job, status="failed", error=f"Video concatenation failed: {str(e)[:200]}")
@@ -1045,6 +1133,10 @@ try:
                 "target_fps": VIDEO_TARGET_FPS if VIDEO_INTERPOLATION != "none" else None,
             },
             "oom_retry": VIDEO_OOM_RETRY,
+            "transition": {
+                "method": VIDEO_TRANSITION,
+                "crossfade_duration": VIDEO_TRANSITION_DURATION if VIDEO_TRANSITION == "crossfade" else None,
+            },
             "temp_dir": _get_temp_dir(),
             "gpu": gpu_mem_info,
             "ffmpeg_available": ffmpeg_ok,
