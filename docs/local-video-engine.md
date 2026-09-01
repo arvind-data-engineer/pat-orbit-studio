@@ -1,20 +1,28 @@
-# PAT Orbit — Local Video Engine (v2.0)
+# PAT Orbit — Local Video Engine (v3.0)
 
 Local, open-source video generation engine using **Stable Video Diffusion (SVD-XT 1.1)** by Stability AI.
 
 This engine runs entirely on your own hardware — no paid API required for video generation.
 
-## What's New in v2.0
+## What's New in v3.0
+
+- **Frame interpolation** — Optional FFmpeg-based minterpolation (7 FPS → 24 FPS)
+- **OOM retry** — Automatic retry with reduced settings on CUDA out-of-memory
+- **Clip-to-clip continuity** — Each clip starts from the last frame of the previous clip
+- **Temp directory control** — `VIDEO_TEMP_DIR` to keep generated files on D: drive
+- **Fixed continuity bug** — `extract_last_frame_from_frames` now has correct PIL import
+- **Fixed render sync** — Inngest `getDuration` now correctly parses video duration
+- **Consistent versioning** — All endpoints report v3.0.0
+
+## Previous Features (v2.0)
 
 - **GPU lock** — Only one generation at a time, preventing OOM and corruption
-- **Quality presets** — `VIDEO_QUALITY=preview|production` for quick configuration
+- **Quality presets** — `VIDEO_QUALITY=preview|production|quality` for quick configuration
 - **Progress tracking** — Real-time clip progress ("Clip 2/3") separate from errors
 - **MP4 validation** — Output is verified before returning to the caller
 - **Input validation** — Invalid images are rejected before GPU work starts
 - **Duration trimming** — Final video is trimmed to the requested duration
-- **OOM handling** — GPU out-of-memory errors are caught and reported clearly
 - **Health diagnostics** — `/health` returns GPU memory, queue status, uptime, FFmpeg check
-- **Separate progress/error fields** — No more hacky error-field repurposing
 
 ## Model
 
@@ -67,7 +75,7 @@ LOCAL_VIDEO_ENGINE_URL=http://localhost:8000
 
 ```bash
 # Quality presets
-VIDEO_QUALITY=production   # "preview" or "production"
+VIDEO_QUALITY=production   # "preview", "production", or "quality"
 
 # Explicit overrides (override quality preset)
 VIDEO_FRAMES=14
@@ -78,6 +86,16 @@ VIDEO_HEIGHT=576
 DECODE_CHUNKS=4
 VIDEO_ENGINE_PORT=8000
 VIDEO_ENGINE_DEVICE=cuda
+
+# Frame interpolation (v3.0)
+VIDEO_INTERPOLATION=none    # "none" or "ffmpeg" (minterpolate)
+VIDEO_TARGET_FPS=24         # Target FPS when interpolating
+
+# OOM retry (v3.0)
+VIDEO_OOM_RETRY=true        # Retry once with preview settings on OOM
+
+# Temp directory (v3.0) — keep generated files on D: drive
+VIDEO_TEMP_DIR=D:/AI/cache/video
 ```
 
 ### RTX 3050 6GB Recommended Settings

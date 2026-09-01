@@ -53,6 +53,16 @@ import logging
 from typing import Optional
 from dataclasses import dataclass, field
 
+# ── Temp Directory ───────────────────────────────────────────────────
+
+def _get_temp_dir() -> str:
+    """Return the temp directory for video generation files.
+    Uses VIDEO_TEMP_DIR if set, otherwise falls back to system temp."""
+    if VIDEO_TEMP_DIR:
+        return VIDEO_TEMP_DIR
+    return _get_temp_dir()
+
+
 # ── Configuration ─────────────────────────────────────────────────────
 
 PORT = int(os.environ.get("VIDEO_ENGINE_PORT", "8000"))
@@ -96,6 +106,18 @@ VIDEO_FPS = int(os.environ.get("VIDEO_FPS", "7"))
 VIDEO_WIDTH = int(os.environ.get("VIDEO_WIDTH", "0"))
 VIDEO_HEIGHT = int(os.environ.get("VIDEO_HEIGHT", "0"))
 DECODE_CHUNKS = int(os.environ.get("DECODE_CHUNKS", "0"))
+
+# Frame interpolation: "none" (default, keep raw FPS) or "ffmpeg" (minterpolate to target)
+VIDEO_INTERPOLATION = os.environ.get("VIDEO_INTERPOLATION", "none").lower()
+VIDEO_TARGET_FPS = int(os.environ.get("VIDEO_TARGET_FPS", "24"))  # Target FPS when interpolating
+
+# OOM retry: retry once with reduced settings (8 frames, 3 steps) on CUDA OOM
+VIDEO_OOM_RETRY = os.environ.get("VIDEO_OOM_RETRY", "true").lower() in ("true", "1", "yes")
+
+# Temp directory for generated clips — default to system temp; set to D: on Windows
+VIDEO_TEMP_DIR = os.environ.get("VIDEO_TEMP_DIR", "")
+if VIDEO_TEMP_DIR:
+    os.makedirs(VIDEO_TEMP_DIR, exist_ok=True)
 
 # ── Logging ───────────────────────────────────────────────────────────
 
@@ -311,13 +333,14 @@ def extract_last_frame_from_frames(frames):
     Returns the last frame as a PIL Image, resized to the model's expected input.
     """
     try:
+        from PIL import Image as _PILImage
         if not frames or len(frames) == 0:
             return None
         last_frame = frames[-1]
         # Convert numpy array to PIL Image if needed
         if not hasattr(last_frame, 'save'):
             import numpy as np
-            last_frame = Image.fromarray(np.array(last_frame))
+            last_frame = _PILImage.fromarray(np.array(last_frame))
         return last_frame.convert("RGB")
     except Exception as e:
         logger.warning(f"Failed to extract last frame from frames: {e}")
@@ -357,7 +380,7 @@ def extract_last_frame_from_video(video_path: str):
                 duration = float(result.stdout.strip())
 
         # Seek to near end and extract one frame
-        frame_path = os.path.join(tempfile.gettempdir(), f"svd_lastframe_{uuid.uuid4().hex[:8]}.png")
+        frame_path = os.path.join(_get_temp_dir(), f"svd_lastframe_{uuid.uuid4().hex[:8]}.png")
         seek_time = max(0, duration - 0.1)
         result = subprocess.run(
             [ffmpeg_path, "-y", "-i", video_path, "-ss", str(seek_time),
@@ -409,7 +432,7 @@ def generate_single_clip(image, job_id: str, clip_index: int, gen_kwargs: dict, 
     num_frames = len(frames)
     clip_duration = num_frames / fps
 
-    tmp_mp4 = os.path.join(tempfile.gettempdir(), f"svd_{job_id}_clip{clip_index}.mp4")
+    tmp_mp4 = os.path.join(_get_temp_dir(), f"svd_{job_id}_clip{clip_index}.mp4")
     writer = imageio.get_writer(tmp_mp4, format="ffmpeg", fps=fps, codec="libx264")
     for frame in frames:
         writer.append_data(np.array(frame))
@@ -446,7 +469,7 @@ def concat_clips_with_ffmpeg(clip_paths: list, output_path: str):
         shutil.copy2(clip_paths[0], output_path)
         return
 
-    list_file = os.path.join(tempfile.gettempdir(), f"concat_{uuid.uuid4().hex[:8]}.txt")
+    list_file = os.path.join(_get_temp_dir(), f"concat_{uuid.uuid4().hex[:8]}.txt")
     try:
         with open(list_file, "w") as f:
             for p in clip_paths:
@@ -559,6 +582,57 @@ def get_video_duration(path: str) -> float:
     except Exception:
         pass
     return 0.0
+
+
+def interpolate_clip_ffmpeg(input_path: str, output_path: str, target_fps: int) -> bool:
+    """Interpolate a video clip to a higher FPS using FFmpeg minterpolate.
+    
+    Uses motion interpolation to generate intermediate frames, producing
+    smoother playback. This is CPU-intensive but runs after GPU work.
+    
+    Returns True on success, False on failure (caller should keep original).
+    """
+    ffmpeg_path = None
+    try:
+        import imageio_ffmpeg
+        ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        ffmpeg_path = shutil.which("ffmpeg")
+
+    if not ffmpeg_path:
+        logger.warning("FFmpeg not available for interpolation")
+        return False
+
+    try:
+        result = subprocess.run(
+            [
+                ffmpeg_path, "-y",
+                "-i", input_path,
+                "-filter:v",
+                f"minterpolate=fps={target_fps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1",
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-crf", "20",
+                "-pix_fmt", "yuv420p",
+                "-an",  # No audio to interpolate
+                output_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=300,  # 5 min max for a short clip
+        )
+        if result.returncode != 0:
+            logger.warning(f"FFmpeg minterpolate failed: {result.stderr[:200]}")
+            return False
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        logger.warning("FFmpeg interpolation timed out")
+        return False
+    except Exception as e:
+        logger.warning(f"Interpolation error: {e}")
+        return False
 
 
 # ── Main Job Processor ───────────────────────────────────────────────
@@ -697,16 +771,38 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
                 image, job.job_id, clip_idx, gen_kwargs, VIDEO_FPS,
                 start_image=continuity_image,
             )
+
+            # ── Frame interpolation (optional, CPU-based) ──────────────
+            if VIDEO_INTERPOLATION == "ffmpeg" and VIDEO_TARGET_FPS > VIDEO_FPS:
+                interp_path = os.path.join(
+                    _get_temp_dir(), f"svd_{job.job_id}_clip{clip_idx}_interp.mp4"
+                )
+                _update_job(job, progress=f"Clip {clip_idx + 1}/{num_clips} — interpolating to {VIDEO_TARGET_FPS} FPS")
+                t_interp_start = time.time()
+                if interpolate_clip_ffmpeg(clip_path, interp_path, VIDEO_TARGET_FPS):
+                    # Replace original clip with interpolated version
+                    try:
+                        os.remove(clip_path)
+                    except OSError:
+                        pass
+                    clip_path = interp_path
+                    clip_size = os.path.getsize(interp_path)
+                    logger.info(
+                        f"Interpolated clip {clip_idx + 1}: {VIDEO_FPS} → {VIDEO_TARGET_FPS} FPS, "
+                        f"{time.time() - t_interp_start:.1f}s, {clip_size/1024:.0f} KB"
+                    )
+                else:
+                    logger.warning(f"Interpolation failed for clip {clip_idx + 1}, keeping original {VIDEO_FPS} FPS")
+                    try:
+                        os.remove(interp_path)
+                    except OSError:
+                        pass
+
             clip_paths.append(clip_path)
             temp_files.append(clip_path)
         except RuntimeError as e:
             error_msg = str(e)
             if "out of memory" in error_msg.lower() or "oom" in error_msg.lower():
-                _update_job(
-                    job,
-                    status="failed",
-                    error="GPU ran out of memory. Try reducing VIDEO_FRAMES or VIDEO_STEPS.",
-                )
                 # Clean GPU memory
                 try:
                     import torch
@@ -714,8 +810,43 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
                         torch.cuda.empty_cache()
                 except Exception:
                     pass
-                return
-            raise
+
+                # Retry once with preview settings if enabled
+                if VIDEO_OOM_RETRY and not getattr(job, '_oom_retried', False):
+                    job._oom_retried = True
+                    retry_kwargs = {
+                        "num_frames": 8,
+                        "num_inference_steps": 3,
+                        "decode_chunk_size": gen_kwargs.get("decode_chunk_size", 4),
+                    }
+                    logger.warning(
+                        f"Job {job.job_id}: OOM on clip {clip_idx + 1}, "
+                        f"retrying with preview settings (8 frames, 3 steps)"
+                    )
+                    _update_job(job, progress=f"Clip {clip_idx + 1}/{num_clips} — retrying with less VRAM")
+                    try:
+                        clip_path, clip_size, clip_dur, last_frame = generate_single_clip(
+                            image, job.job_id, clip_idx, retry_kwargs, VIDEO_FPS,
+                            start_image=continuity_image,
+                        )
+                        clip_paths.append(clip_path)
+                        temp_files.append(clip_path)
+                    except RuntimeError as retry_err:
+                        _update_job(
+                            job,
+                            status="failed",
+                            error=f"GPU ran out of memory (even after retry): {str(retry_err)[:150]}",
+                        )
+                        return
+                else:
+                    _update_job(
+                        job,
+                        status="failed",
+                        error="GPU ran out of memory. Try reducing VIDEO_FRAMES or VIDEO_STEPS.",
+                    )
+                    return
+            else:
+                raise
 
         t_clip_end = time.time()
         logger.info(
@@ -758,7 +889,7 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
         logger.info(f"Job {job.job_id}: concatenating {len(clip_paths)} clips...")
         _update_job(job, progress=f"Combining {len(clip_paths)} clips")
 
-        final_path = os.path.join(tempfile.gettempdir(), f"svd_{job.job_id}_final.mp4")
+        final_path = os.path.join(_get_temp_dir(), f"svd_{job.job_id}_final.mp4")
         try:
             concat_clips_with_ffmpeg(clip_paths, final_path)
             temp_files.append(final_path)
@@ -773,7 +904,7 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
     if target_duration and isinstance(target_duration, (int, float)) and target_duration > 0:
         untrimmed_duration = get_video_duration(final_path)
         if untrimmed_duration > 0 and untrimmed_duration > target_duration + 0.1:
-            trimmed_path = os.path.join(tempfile.gettempdir(), f"svd_{job.job_id}_trimmed.mp4")
+            trimmed_path = os.path.join(_get_temp_dir(), f"svd_{job.job_id}_trimmed.mp4")
             logger.info(f"Job {job.job_id}: trimming {untrimmed_duration:.1f}s → {target_duration:.1f}s")
             _update_job(job, progress="Trimming to target duration")
             try:
@@ -908,6 +1039,13 @@ try:
                 "height": VIDEO_HEIGHT or 576,
                 "decode_chunks": model_info.get("decode_chunks", "auto"),
             },
+            "interpolation": {
+                "enabled": VIDEO_INTERPOLATION != "none",
+                "method": VIDEO_INTERPOLATION,
+                "target_fps": VIDEO_TARGET_FPS if VIDEO_INTERPOLATION != "none" else None,
+            },
+            "oom_retry": VIDEO_OOM_RETRY,
+            "temp_dir": _get_temp_dir(),
             "gpu": gpu_mem_info,
             "ffmpeg_available": ffmpeg_ok,
             "model_loaded": pipeline is not None,
@@ -1010,12 +1148,14 @@ if __name__ == "__main__":
         exit(1)
 
     logger.info("=" * 60)
-    logger.info("PAT Orbit Local Video Engine v2.0")
+    logger.info("PAT Orbit Local Video Engine v3.0.0")
     logger.info(f"Port: {PORT}")
     logger.info(f"Model: {MODEL_ID}")
     logger.info(f"Device: {get_device()}")
     logger.info(f"Quality: {VIDEO_QUALITY}")
     logger.info(f"Frames: {VIDEO_FRAMES or 'auto'}, Steps: {VIDEO_STEPS or 'auto'}, FPS: {VIDEO_FPS}")
     logger.info(f"Resolution: {VIDEO_WIDTH or 1024}x{VIDEO_HEIGHT or 576}")
+    logger.info(f"Interpolation: {VIDEO_INTERPOLATION} (target: {VIDEO_TARGET_FPS} FPS)")
+    logger.info(f"OOM retry: {VIDEO_OOM_RETRY}, Temp: {_get_temp_dir()}")
     logger.info("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")

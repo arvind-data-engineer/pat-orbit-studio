@@ -299,11 +299,20 @@ export const renderVideoJob = inngest.createFunction(
       /* 4. Get video durations */
       const getDuration = async (fp: string): Promise<number> => {
         try {
-          const { stdout } = await execFileAsync(ffmpeg, [
-            "-i", fp, "-show_entries", "format=duration",
-            "-v", "quiet", "-of", "csv=p=0",
-          ], { timeout: 10_000 });
-          return parseFloat(stdout.trim()) || 5;
+          // ffmpeg-static is the ffmpeg binary; ffprobe args won't work.
+          // Use ffmpeg's built-in duration detection instead.
+          const { stdout, stderr } = await execFileAsync(ffmpeg, [
+            "-i", fp,
+          ], { timeout: 10_000 }).catch(({ stdout, stderr }) => ({ stdout: stdout ?? "", stderr: stderr ?? "" }));
+          const output = stdout + stderr;
+          const match = output.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
+          if (match) {
+            const hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            const seconds = parseFloat(match[3]);
+            return hours * 3600 + minutes * 60 + seconds;
+          }
+          return 5;
         } catch {
           return 5;
         }

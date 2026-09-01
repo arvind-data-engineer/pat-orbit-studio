@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "video:server": "python src/lib/video/engines/server.py"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
