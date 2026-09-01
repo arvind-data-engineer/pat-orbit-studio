@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
 import { uploadToBlob } from "@/lib/blob";
 import { executeRender } from "@/lib/video/render-pipeline";
 
@@ -60,10 +59,7 @@ export async function POST(request: Request) {
     });
 
     /* ---- Upload to Blob ---- */
-    const outputBuffer = await readFile(result.outputPath);
-    if (outputBuffer.length === 0) {
-      throw new Error("FFmpeg produced an empty output file.");
-    }
+    const outputBuffer = result.outputBuffer;
 
     const filename = `final-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
     const videoUrl = await uploadToBlob(outputBuffer, filename, "video/mp4");

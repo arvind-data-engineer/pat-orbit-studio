@@ -855,6 +855,8 @@ export default function Home() {
 
   async function startImageGeneration(sceneId: number) {
     if (!result) return;
+    // Prevent duplicate generation requests
+    if (sceneStatus[sceneId] === "image") return;
     if (imageAbortRef.current[sceneId]) imageAbortRef.current[sceneId].abort();
     const controller = new AbortController();
     imageAbortRef.current[sceneId] = controller;
@@ -1058,6 +1060,8 @@ export default function Home() {
 
   async function startVoiceGeneration(sceneId: number) {
     if (!result) return;
+    // Prevent duplicate generation requests
+    if (voiceStatus[sceneId] === 'generating') return;
     const scene = result.scenes.find((s) => s.id === sceneId);
     if (!scene || !scene.narration?.trim()) return;
 
@@ -1135,6 +1139,7 @@ export default function Home() {
   const totalVideosGenerated = Object.keys(sceneVideos).length;
   const totalImagesGenerated = Object.keys(sceneImages).length;
   const totalVoiceReady = Object.values(voiceStatus).filter((s) => s === "ready").length;
+  const totalScenes = result?.scenes.length ?? 0;
 
   async function startRender() {
     if (!result || totalVideosGenerated < result.scenes.length) return;
@@ -1220,8 +1225,10 @@ export default function Home() {
             } else {
               const pct = Math.min(50 + Math.round((attempts / MAX_POLL) * 45), 95);
               setRenderProgress(pct);
-              if (attempts === 30) setRenderStage("Encoding with FFmpeg...");
-              if (attempts === 80) setRenderStage("Uploading final video...");
+              if (attempts <= 10) setRenderStage("Downloading scene videos...");
+              else if (attempts <= 30) setRenderStage("Mixing audio...");
+              else if (attempts <= 70) setRenderStage("Encoding with FFmpeg...");
+              else setRenderStage("Finalizing...");
             }
           } catch { /* Keep polling */ }
         }, POLL_MS);
@@ -1594,9 +1601,9 @@ export default function Home() {
                     {([
                       { label: "IDEA", done: true },
                       { label: "STORY", done: true },
-                      { label: "SCENES", done: result.scenes.length > 0 },
-                      { label: "VISUALS", done: totalImagesGenerated >= result.scenes.length },
-                      { label: "MOTION", done: totalVideosGenerated >= result.scenes.length },
+                      { label: "SCENES", done: totalScenes > 0 },
+                      { label: "VISUALS", done: totalImagesGenerated >= totalScenes },
+                      { label: "MOTION", done: totalVideosGenerated >= totalScenes },
                       { label: "AUDIO", done: totalVoiceReady > 0 && totalVoiceReady >= result.scenes.filter((s: { narration?: string }) => s.narration?.trim()).length },
                       { label: "FINAL", done: !!finalVideo },
                     ] as const).map((step, i, arr) => {
@@ -2555,7 +2562,7 @@ export default function Home() {
               <div className="flex items-center gap-3 text-[11px] text-white/40">
                 <span>{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
                 <span className="text-white/15">|</span>
-                <span>{projects.filter((p) => { const ic = p.sceneImages ? Object.keys(p.sceneImages).length : 0; const vc = p.sceneVideos ? Object.keys(p.sceneVideos).length : 0; return ic >= 5 && vc >= 5; }).length} completed</span>
+                <span>{projects.filter((p) => { const ic = p.sceneImages ? Object.keys(p.sceneImages).length : 0; const vc = p.sceneVideos ? Object.keys(p.sceneVideos).length : 0; const sc = p.result?.scenes?.length || 0; return sc > 0 && ic >= sc && vc >= sc; }).length} completed</span>
                 <span className="text-white/15">|</span>
                 <button onClick={() => importFileRef.current?.click()} className="text-emerald-400/70 hover:text-emerald-400 transition-colors">Import</button>
                 <input ref={importFileRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
@@ -2605,7 +2612,7 @@ export default function Home() {
                   const scenes = project.result?.scenes || [];
                   const sceneCount = scenes.length || 5;
                   const hasFinalVideo = !!project.finalVideoUrl;
-                  const isComplete = imageCount >= 5 && videoCount >= 5;
+                  const isComplete = imageCount >= scenes.length && videoCount >= scenes.length && scenes.length > 0;
                   const firstImage = project.sceneImages ? Object.values(project.sceneImages)[0] : null;
                   const totalDur = scenes.reduce((sum: number, s: { sceneDuration?: string }) => sum + (parseInt(s.sceneDuration || '10') || 10), 0) || 50;
                   const scenesReady = Math.min(imageCount, videoCount);
@@ -2666,11 +2673,11 @@ export default function Home() {
                         {/* Progress dots */}
                         <div className="mt-3 flex items-center gap-1.5">
                           <div className="flex gap-0.5">
-                            {Array.from({ length: 5 }).map((_, i) => (
+                            {Array.from({ length: Math.min(sceneCount, 10) }).map((_, i) => (
                               <div key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i < scenesReady ? 'bg-emerald-400' : 'bg-white/[0.08]'}`} />
                             ))}
                           </div>
-                          <span className="text-[9px] text-white/30 ml-1">{scenesReady}/5 scenes</span>
+                          <span className="text-[9px] text-white/30 ml-1">{scenesReady}/{sceneCount} scenes</span>
                         </div>
 
                         {/* Actions */}

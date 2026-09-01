@@ -9,7 +9,7 @@ import { buildConditioning } from "@/lib/video/conditioning";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { readFile } from "fs/promises";
+
 
 const execFileAsync = promisify(execFile);
 
@@ -263,7 +263,7 @@ export const renderVideoJob = inngest.createFunction(
 
       /* 3. Execute render via shared pipeline */
       const { executeRender } = await import("@/lib/video/render-pipeline");
-      const result = await executeRender({
+      const renderResult = await executeRender({
         scenes: render.scenes.map((s) => ({ id: s.id, video: s.video, narration: s.narration })),
         aspectRatio: render.aspectRatio,
         captions: render.captions,
@@ -276,10 +276,7 @@ export const renderVideoJob = inngest.createFunction(
       });
 
       /* 4. Upload final video to Blob */
-      const outputBuffer = await readFile(result.outputPath);
-      if (outputBuffer.length === 0) {
-        throw new Error("FFmpeg produced an empty output file.");
-      }
+      const outputBuffer = renderResult.outputBuffer;
 
       const filename = `final-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
       const videoUrl = await uploadToBlob(outputBuffer, filename, "video/mp4");
@@ -293,10 +290,10 @@ export const renderVideoJob = inngest.createFunction(
         status: "completed",
         videoUrl,
         size: outputBuffer.length,
-        duration: result.totalDuration,
-        hasVoice: result.hasVoice,
-        hasMusic: result.hasMusic,
-        hasCaptions: result.hasCaptions,
+        duration: renderResult.totalDuration,
+        hasVoice: renderResult.hasVoice,
+        hasMusic: renderResult.hasMusic,
+        hasCaptions: renderResult.hasCaptions,
       };
     } catch (error) {
       console.error(`[inngest/render] Failed ${jobId}:`, error instanceof Error ? error.message : error);
@@ -306,7 +303,7 @@ export const renderVideoJob = inngest.createFunction(
       });
       throw error;
     } finally {
-      // Cleanup handled by the shared render pipeline
+      // Temp dir cleanup is handled by the shared render pipeline
     }
   }
 );

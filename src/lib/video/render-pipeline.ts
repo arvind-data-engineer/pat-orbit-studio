@@ -10,9 +10,21 @@
 
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { writeFile, readFile, mkdtemp, rm } from "fs/promises";
+import { writeFile, readFile, mkdtemp, rm, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
+
+/** Get the temp directory, preferring VIDEO_TEMP_DIR if set. */
+async function getTempDir(): Promise<string> {
+  const custom = process.env.VIDEO_TEMP_DIR;
+  if (custom && custom.trim()) {
+    try {
+      await mkdir(custom, { recursive: true });
+      return custom;
+    } catch { /* fall through */ }
+  }
+  return tmpdir();
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +52,7 @@ export interface RenderConfig {
 
 export interface RenderOutput {
   outputPath: string;
+  outputBuffer: Buffer;
   tempDir: string;
   totalDuration: number;
   hasVoice: boolean;
@@ -300,7 +313,8 @@ export async function executeRender(config: RenderConfig): Promise<RenderOutput>
   }
 
   // Prepare temp directory
-  const tempDir = await mkdtemp(join(tmpdir(), "pat-render-"));
+  const baseDir = await getTempDir();
+  const tempDir = await mkdtemp(join(baseDir, "pat-render-"));
 
   try {
     // 1. Download scene videos
@@ -443,14 +457,22 @@ export async function executeRender(config: RenderConfig): Promise<RenderOutput>
       maxBuffer: 100 * 1024 * 1024,
     });
 
-    // 7. Validate output
+    // 7. Validate output and clean up
     const outputBuffer = await readFile(outputPath);
     if (outputBuffer.length === 0) {
       throw new Error("FFmpeg produced an empty output file.");
     }
 
+    // Clean up temp dir now that we have the output buffer
+    try {
+      await rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Best-effort
+    }
+
     return {
       outputPath,
+      outputBuffer,
       tempDir,
       totalDuration,
       hasVoice: voiceInputIndices.length > 0,
@@ -467,4 +489,6 @@ export async function executeRender(config: RenderConfig): Promise<RenderOutput>
     }
     throw error;
   }
+  // On success, callers must clean up tempDir after reading outputPath.
+  // The RenderOutput includes tempDir for this purpose.
 }
