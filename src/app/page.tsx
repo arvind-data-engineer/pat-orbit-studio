@@ -154,9 +154,7 @@ const Icon = {
   Mic: (p: { className?: string }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>
   ),
-  FileText: (p: { className?: string }) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-  ),
+
   Wand: (p: { className?: string }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M15 4V2" /><path d="M15 16v-2" /><path d="M8 9h2" /><path d="M20 9h2" /><path d="M17.8 11.8 19 13" /><path d="M15 9h0" /><path d="M17.8 6.2 19 5" /><path d="M3 21l9-9" /><path d="M12.2 6.2 11 5" /></svg>
   ),
@@ -171,21 +169,13 @@ const Icon = {
   ),  Copy2: (p: { className?: string }) => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
   ),
-  Globe: (p: { className?: string }) => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
-  ),
-  Clock: (p: { className?: string }) => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-  ),
-  Square: (p: { className?: string }) => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></svg>
-  ),
+
+
+
   Zap: (p: { className?: string }) => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
   ),
-  Subtitles: (p: { className?: string }) => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="14" x2="23" y2="14" /></svg>
-  ),
+
 
 };
 
@@ -1367,7 +1357,6 @@ export default function Home() {
   ];
 
   const renderReady = result && totalVideosGenerated >= result.scenes.length;
-  const renderReadiness = result ? Math.round(((totalVideosGenerated / result.scenes.length) * 70) + (totalImagesGenerated > 0 ? 15 : 0) + (totalVoiceReady > 0 ? 15 : 0)) : 0;
 
   return (
     <main className="min-h-screen bg-[#08090c] text-white overflow-x-hidden">
@@ -1436,6 +1425,14 @@ export default function Home() {
                   {renderTransition !== "none" && (
                     <button onClick={() => setRenderTransitionDuration(renderTransitionDuration === "0.5" ? "1.0" : renderTransitionDuration === "1.0" ? "0.25" : "0.5")} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] text-white/90">Duration: {renderTransitionDuration}s</button>
                   )}
+                  <div className="mx-2.5 my-1 border-t border-white/[0.06]" />
+                  <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Keyboard Shortcuts</div>
+                  <div className="px-2.5 py-1.5 space-y-1">
+                    <div className="flex items-center justify-between text-[10px]"><span className="text-white/40">Save project</span><kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-white/50">Ctrl+S</kbd></div>
+                    <div className="flex items-center justify-between text-[10px]"><span className="text-white/40">Render video</span><kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-white/50">Ctrl+Enter</kbd></div>
+                    <div className="flex items-center justify-between text-[10px]"><span className="text-white/40">Navigate scenes</span><kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-white/50">← →</kbd></div>
+                    <div className="flex items-center justify-between text-[10px]"><span className="text-white/40">Close panel</span><kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-white/50">Esc</kbd></div>
+                  </div>
                 </div>
               )}
             </div>
