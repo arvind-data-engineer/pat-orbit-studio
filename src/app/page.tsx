@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analyzeRegenerationRequest, type RegenerationTarget } from "@/lib/ai/regeneration";
 import type { DirectorScene, ProductionPlan } from "@/lib/ai/director-schema";
+import { loadProjects, saveProjects as storageSaveProjects, createAutoSave, getStorageInfo } from "@/lib/storage";
+import { downloadProjectFile, importProject, readFileAsText } from "@/lib/project-serialization";
+import { getQuickEstimate } from "@/lib/generation-estimator";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -362,6 +365,8 @@ export default function Home() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const importFileRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState<"all" | "completed" | "in-progress">("all");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -414,21 +419,9 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  /* Load projects from localStorage */
+  /* Load projects from storage abstraction */
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("pat-orbit-projects");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          const valid = parsed.filter((p) => p && typeof p === 'object' && p.id && p.title);
-          setProjects(valid);
-        }
-      }
-    } catch {
-      console.error("Could not load projects. Starting fresh.");
-      localStorage.removeItem("pat-orbit-projects");
-    }
+    setProjects(loadProjects().map((p) => ({ ...p, result: p.result as StoryResult })) as Project[]);
   }, []);
 
   /* Loading step animation */
@@ -475,7 +468,7 @@ export default function Home() {
 
   function saveProjects(nextProjects: Project[]) {
     setProjects(nextProjects);
-    localStorage.setItem("pat-orbit-projects", JSON.stringify(nextProjects));
+    storageSaveProjects(nextProjects);
   }
 
   /* ================================================================ */
@@ -659,6 +652,23 @@ export default function Home() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  /* ── Auto-save setup ─────────────────────────────────────────────── */
+  const autoSaveRef = useRef<ReturnType<typeof createAutoSave> | null>(null);
+  useEffect(() => {
+    autoSaveRef.current = createAutoSave(
+      () => projects,
+      (status) => setSaveStatus(status)
+    );
+    return () => autoSaveRef.current?.cancel();
+  }, []);
+
+  /* Trigger auto-save when project state changes */
+  useEffect(() => {
+    if (result && hasUnsavedChanges && autoSaveRef.current) {
+      autoSaveRef.current.save();
+    }
+  }, [result, hasUnsavedChanges, projectName, sceneImages, sceneVideos, finalVideo, characters, sceneCharacters, voiceGenerated]);
+
   /* ================================================================ */
   /*  PROJECT PERSISTENCE                                              */
   /* ================================================================ */
@@ -704,7 +714,13 @@ export default function Home() {
     }
     setSaved(true);
     setHasUnsavedChanges(false);
-    setToast("Project saved");
+    // Check storage quota
+    const info = getStorageInfo();
+    if (info.percentUsed > 90) {
+      setToast(`Project saved — storage ${info.percentUsed}% full`);
+    } else {
+      setToast("Project saved");
+    }
     setTimeout(() => setToast(null), 2500);
   }
 
@@ -782,6 +798,53 @@ export default function Home() {
     saveProjects([dup, ...projects]);
     setToast("Project duplicated");
     setTimeout(() => setToast(null), 2500);
+  }
+
+  /* ── Export ────────────────────────────────────────────────────── */
+  function handleExport() {
+    if (!result || !currentProjectId) {
+      setToast("No project to export");
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    const project = projects.find((p) => p.id === currentProjectId);
+    if (!project) {
+      setToast("Project not found");
+      setTimeout(() => setToast(null), 2500);
+      return;
+    }
+    try {
+      downloadProjectFile(project);
+      setToast("Project exported");
+    } catch {
+      setToast("Export failed");
+    }
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  /* ── Import ────────────────────────────────────────────────────── */
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await readFileAsText(file);
+      const result = importProject(text);
+      if (!result.success || !result.project) {
+        setToast(result.error || "Import failed");
+        setTimeout(() => setToast(null), 3000);
+        return;
+      }
+      // Add the imported project and load it
+      const imported = { ...result.project, result: result.project!.result as StoryResult } as Project;
+      saveProjects([imported, ...projects]);
+      loadProject(imported);
+      setToast(`Imported: ${result.project.title}`);
+    } catch {
+      setToast("Failed to read import file");
+    }
+    setTimeout(() => setToast(null), 2500);
+    // Reset file input so the same file can be re-imported
+    if (importFileRef.current) importFileRef.current.value = "";
   }
 
   /* ================================================================ */
@@ -1262,14 +1325,20 @@ export default function Home() {
           <div className="flex items-center gap-1.5">
             {result && (
               <>
-                {hasUnsavedChanges && (
+                {saveStatus === 'saving' && (
+                  <span className="hidden text-[10px] font-medium text-amber-400/70 sm:block">Saving...</span>
+                )}
+                {saveStatus === 'error' && (
+                  <span className="hidden text-[10px] font-medium text-red-400/70 sm:block">Save failed</span>
+                )}
+                {hasUnsavedChanges && saveStatus !== 'saving' && (
                   <span className="hidden text-[10px] font-medium text-amber-400/70 sm:block">Unsaved</span>
                 )}
                 <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors ${saved && !hasUnsavedChanges ? 'text-emerald-400/70' : 'text-white/65 hover:bg-white/[0.05] hover:text-white/80'}`}>
                   <Icon.Folder className="text-white/55" />
                   {saved && !hasUnsavedChanges ? "Saved" : "Save"}
                 </button>
-                <button onClick={exportVideo} disabled={!finalVideo} className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed">
+                <button onClick={handleExport} className="hidden sm:flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white/80">
                   <Icon.Download className="text-white/65" />
                   Export
                 </button>
@@ -1751,6 +1820,11 @@ export default function Home() {
                               {isGenVid ? (() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return (<><Icon.Spinner className="h-4 w-4 animate-spin" />{prog && prog !== 'video' ? prog : `Generating video for ${currentScene.title}`}</>); })() : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
                             </button>
                             {isGenVid && <p className="mt-1 text-center text-[10px] text-white/25">{(() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return prog && prog !== 'video' ? `${prog} — this may take several minutes` : 'Generating video — this may take several minutes'; })()}</p>}
+                            {!isGenVid && !hasVid && needsVideo && (() => {
+                              const sceneDur = parseInt(currentScene.sceneDuration || '10', 10) || 10;
+                              const est = getQuickEstimate('local', 'production', sceneDur);
+                              return est ? <p className="mt-1 text-center text-[10px] text-white/25">{est}</p> : null;
+                            })()}
                           </div>
                       )}
                       {hasImg && !hasVid && !isBusy && <p className="text-center text-[10px] text-white/30">Image is ready - generate video next</p>}
@@ -2469,11 +2543,14 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              {/* Stats */}
+              {/* Stats + Import */}
               <div className="flex items-center gap-3 text-[11px] text-white/40">
                 <span>{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
                 <span className="text-white/15">|</span>
                 <span>{projects.filter((p) => { const ic = p.sceneImages ? Object.keys(p.sceneImages).length : 0; const vc = p.sceneVideos ? Object.keys(p.sceneVideos).length : 0; return ic >= 5 && vc >= 5; }).length} completed</span>
+                <span className="text-white/15">|</span>
+                <button onClick={() => importFileRef.current?.click()} className="text-emerald-400/70 hover:text-emerald-400 transition-colors">Import</button>
+                <input ref={importFileRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
               </div>
             </div>
           )}
