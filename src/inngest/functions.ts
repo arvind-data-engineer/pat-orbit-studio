@@ -9,9 +9,7 @@ import { buildConditioning } from "@/lib/video/conditioning";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { writeFile, readFile, mkdtemp, rm } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import { readFile } from "fs/promises";
 
 const execFileAsync = promisify(execFile);
 
@@ -200,8 +198,6 @@ export const renderVideoJob = inngest.createFunction(
   },
   async ({ event }) => {
     const { jobId } = event.data;
-    let tempDir: string | null = null;
-
     try {
       /* 1. Load job and validate */
       const job = await getJob(jobId);
@@ -216,53 +212,23 @@ export const renderVideoJob = inngest.createFunction(
 
       if (!ffmpegPath) {
         throw new Error("FFmpeg is not available on this server.");
-      }
+      }      const ffmpeg = ffmpegPath;
 
-      const ffmpeg = ffmpegPath;
-
-      /* 2. Download scene videos */
-      tempDir = await mkdtemp(join(tmpdir(), "pat-render-"));
-      const inputFiles: string[] = [];
-
-      for (let i = 0; i < render.scenes.length; i++) {
-        const s = render.scenes[i];
-        const { downloadAsBuffer } = await import("@/lib/blob");
-        const buffer = await downloadAsBuffer(s.video);
-        if (buffer.length === 0) throw new Error(`Scene ${i + 1} video is empty.`);
-        const filePath = join(tempDir, `scene_${String(i + 1).padStart(2, "0")}.mp4`);
-        await writeFile(filePath, buffer);
-        inputFiles.push(filePath);
-      }
-
-      /* 3. Voice audio — reuse existing or generate */
-      const voiceFiles: string[] = [];
+      /* 2. Prepare voice audio — reuse existing or generate fresh */
+      const voiceDataUris: Record<number, string> = {};
       for (let i = 0; i < render.scenes.length; i++) {
         const s = render.scenes[i];
         if (!s.narration || !s.narration.trim()) continue;
 
-        const audioPath = join(tempDir, `voice_${String(i + 1).padStart(2, "0")}.wav`);
-
-        // Reuse pre-generated voice audio if available from the frontend.
+        // Reuse pre-generated voice audio from frontend
         const existingAudio = render.voiceAudios?.[s.id];
         if (existingAudio && typeof existingAudio === "string") {
-          try {
-            const commaIdx = existingAudio.indexOf(",");
-            if (commaIdx !== -1) {
-              const base64Data = existingAudio.substring(commaIdx + 1);
-              const audioBuffer = Buffer.from(base64Data, "base64");
-              if (audioBuffer.length > 0) {
-                await writeFile(audioPath, audioBuffer);
-                voiceFiles[i] = audioPath;
-                console.log(`[inngest/render] Reused existing voice for scene ${i + 1}`);
-                continue;
-              }
-            }
-          } catch {
-            // Fall through to generate fresh voice.
-          }
+          voiceDataUris[s.id] = existingAudio;
+          console.log(`[inngest/render] Reused existing voice for scene ${i + 1}`);
+          continue;
         }
 
-        // Generate fresh voice audio.
+        // Generate fresh voice audio via Gemini TTS
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const voiceMap: Record<string, string> = { Natural: "Aoede", Deep: "Charon", Soft: "Kore" };
         const langMap: Record<string, string> = { Hindi: "hi-IN", Hinglish: "hi-IN", English: "en-US" };
@@ -285,9 +251,8 @@ export const renderVideoJob = inngest.createFunction(
           const parts = response.candidates?.[0]?.content?.parts ?? [];
           for (const part of parts) {
             if (part.inlineData?.data && part.inlineData?.mimeType) {
-              const audioBuffer = Buffer.from(part.inlineData.data, "base64");
-              await writeFile(audioPath, audioBuffer);
-              voiceFiles[i] = audioPath;
+              const mimeType = part.inlineData.mimeType;
+              voiceDataUris[s.id] = `data:${mimeType};base64,${part.inlineData.data}`;
               break;
             }
           }
@@ -296,172 +261,22 @@ export const renderVideoJob = inngest.createFunction(
         }
       }
 
-      /* 4. Get video durations */
-      const getDuration = async (fp: string): Promise<number> => {
-        try {
-          // ffmpeg-static is the ffmpeg binary; ffprobe args won't work.
-          // Use ffmpeg's built-in duration detection instead.
-          const { stdout, stderr } = await execFileAsync(ffmpeg, [
-            "-i", fp,
-          ], { timeout: 10_000 }).catch(({ stdout, stderr }) => ({ stdout: stdout ?? "", stderr: stderr ?? "" }));
-          const output = stdout + stderr;
-          const match = output.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
-          if (match) {
-            const hours = parseInt(match[1], 10);
-            const minutes = parseInt(match[2], 10);
-            const seconds = parseFloat(match[3]);
-            return hours * 3600 + minutes * 60 + seconds;
-          }
-          return 5;
-        } catch {
-          return 5;
-        }
-      };
-
-      const durations: number[] = [];
-      for (const f of inputFiles) durations.push(await getDuration(f));
-      const totalDuration = durations.reduce((a, b) => a + b, 0);
-
-      /* 5. Generate background music if requested */
-      let musicPath: string | null = null;
-      if (render.music && render.music !== "None") {
-        musicPath = join(tempDir, "music.wav");
-        await generateMusicToneSync(ffmpeg, totalDuration + 2, render.music, musicPath);
-      }
-
-      /* 6. Build filter complex */
-      const filterParts: string[] = [];
-      const inputArgs: string[] = [];
-
-      const concatPath = join(tempDir, "concat.txt");
-      const concatContent = inputFiles
-        .map((f: string) => `file '${f.replace(/\\\\/g, "/").replace(/'/g, "'\\''")}'`)
-        .join("\n");
-      await writeFile(concatPath, concatContent, "utf-8");
-      inputArgs.push("-f", "concat", "-safe", "0", "-i", concatPath);
-
-      const voiceIdx: number[] = [];
-      let idx = 1;
-      for (let i = 0; i < render.scenes.length; i++) {
-        if (voiceFiles[i]) {
-          inputArgs.push("-i", voiceFiles[i]);
-          voiceIdx[i] = idx++;
-        }
-      }
-
-      let musicIdx = -1;
-      if (musicPath) {
-        inputArgs.push("-i", musicPath);
-        musicIdx = idx++;
-      }
-
-      // Scale filter
-      let sf: string;
-      if (render.aspectRatio === "9:16")
-        sf = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black";
-      else if (render.aspectRatio === "16:9")
-        sf = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black";
-      else
-        sf = "scale=1080:1080:force_original_aspect_ratio=decrease,pad=1080:1080:(ow-iw)/2:(oh-ih)/2:color=black";
-
-      filterParts.push(`[0:v]${sf},setsar=1,format=yuv420p[vscaled]`);
-
-      // Voice audio mixing
-      const audioInputs: string[] = [];
-      if (voiceIdx.length > 0) {
-        let cumDelay = 0;
-        for (let i = 0; i < render.scenes.length; i++) {
-          if (voiceIdx[i] !== undefined) {
-            const vi = voiceIdx[i];
-            const dMs = Math.round(cumDelay * 1000);
-            filterParts.push(
-              `[${vi}:a]adelay=${dMs}|${dMs},aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=mono[v${i}]`
-            );
-            audioInputs.push(`[v${i}]`);
-          }
-          cumDelay += durations[i];
-        }
-        if (audioInputs.length > 1)
-          filterParts.push(`${audioInputs.join("")}amix=inputs=${audioInputs.length}:duration=longest:dropout_transition=0[voice]`);
-        else if (audioInputs.length === 1)
-          filterParts.push(`${audioInputs[0]}acopy[voice]`);
-      }
-
-      if (musicIdx >= 0)
-        filterParts.push(`[${musicIdx}:a]volume=0.15,afade=t=in:st=0:d=2,afade=t=out:st=${Math.max(0, totalDuration - 2)}:d=2[music]`);
-
-      const hasVoice = voiceIdx.length > 0;
-      const hasMusic = musicIdx >= 0;
-      if (hasVoice && hasMusic)
-        filterParts.push("[voice][music]amix=inputs=2:duration=longest:dropout_transition=0[aout]");
-      else if (hasVoice)
-        filterParts.push("[voice]acopy[aout]");
-      else if (hasMusic)
-        filterParts.push("[music]acopy[aout]");
-      else {
-        filterParts.push("anullsrc=r=44100:cl=mono[silence]");
-        filterParts.push(`[silence]atrim=duration=${totalDuration},aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=mono[aout]`);
-      }
-
-      // Captions
-      if (render.captions && render.scenes.some((s: { narration?: string }) => s.narration)) {
-        let cumTime = 0;
-        const drawTexts: string[] = [];
-        for (let i = 0; i < render.scenes.length; i++) {
-          const s = render.scenes[i];
-          if (s.narration && s.narration.trim()) {
-            const st = cumTime;
-            const et = cumTime + durations[i];
-            const text = s.narration
-              .replace(/\\/g, "\\\\")
-              .replace(/:/g, "\\:")
-              .replace(/'/g, "\\'")
-              .replace(/%/g, "%%")
-              .replace(/\n/g, " ")
-              .substring(0, 120);
-            drawTexts.push(
-              `drawtext=text='${text}':fontcolor=white:fontsize=28:box=1:boxcolor=black@0.6:boxborderw=8:x=(w-text_w)/2:y=h-th-60:enable='between(t,${st.toFixed(2)},${et.toFixed(2)})'`
-            );
-          }
-          cumTime += durations[i];
-        }
-        if (drawTexts.length > 0)
-          filterParts.push(`[vscaled]${drawTexts.join(",")}[vout]`);
-        else
-          filterParts.push("[vscaled]copy[vout]");
-      } else {
-        filterParts.push("[vscaled]copy[vout]");
-      }
-
-      /* 7. Run FFmpeg */
-      const outputPath = join(tempDir, "final.mp4");
-      const filterComplex = filterParts.join(";");
-
-      const args = [
-        "-y",
-        ...inputArgs,
-        "-filter_complex", filterComplex,
-        "-map", "[vout]",
-        "-map", "[aout]",
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "23",
-        "-c:a", "aac",
-        "-b:a", "128k",
-        "-ar", "44100",
-        "-pix_fmt", "yuv420p",
-        "-movflags", "+faststart",
-        "-shortest",
-        outputPath,
-      ];
-
-      await execFileAsync(ffmpeg, args, {
-        timeout: STEP_TIMEOUT_MS,
-        maxBuffer: 100 * 1024 * 1024,
+      /* 3. Execute render via shared pipeline */
+      const { executeRender } = await import("@/lib/video/render-pipeline");
+      const result = await executeRender({
+        scenes: render.scenes.map((s) => ({ id: s.id, video: s.video, narration: s.narration })),
+        aspectRatio: render.aspectRatio,
+        captions: render.captions,
+        music: render.music,
+        voice: render.voice,
+        language: render.language,
+        voiceAudios: voiceDataUris,
+        transition: render.transition,
+        transitionDuration: render.transitionDuration,
       });
 
-      /* 8. Upload final video to Blob */
-      const outputBuffer = await readFile(outputPath);
+      /* 4. Upload final video to Blob */
+      const outputBuffer = await readFile(result.outputPath);
       if (outputBuffer.length === 0) {
         throw new Error("FFmpeg produced an empty output file.");
       }
@@ -469,7 +284,7 @@ export const renderVideoJob = inngest.createFunction(
       const filename = `final-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
       const videoUrl = await uploadToBlob(outputBuffer, filename, "video/mp4");
 
-      /* 9. Mark job completed */
+      /* 5. Mark job completed */
       console.log(`[inngest/render] Completed ${jobId}, ${outputBuffer.length} bytes`);
       await updateJob(jobId, { status: "completed", videoUrl });
 
@@ -478,10 +293,10 @@ export const renderVideoJob = inngest.createFunction(
         status: "completed",
         videoUrl,
         size: outputBuffer.length,
-        duration: totalDuration,
-        hasVoice,
-        hasMusic,
-        hasCaptions: !!render.captions,
+        duration: result.totalDuration,
+        hasVoice: result.hasVoice,
+        hasMusic: result.hasMusic,
+        hasCaptions: result.hasCaptions,
       };
     } catch (error) {
       console.error(`[inngest/render] Failed ${jobId}:`, error instanceof Error ? error.message : error);
@@ -491,13 +306,7 @@ export const renderVideoJob = inngest.createFunction(
       });
       throw error;
     } finally {
-      if (tempDir) {
-        try {
-          await rm(tempDir, { recursive: true, force: true });
-        } catch {
-          // Best-effort cleanup
-        }
-      }
+      // Cleanup handled by the shared render pipeline
     }
   }
 );

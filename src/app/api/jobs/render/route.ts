@@ -12,7 +12,7 @@ import { createJob, getJob, type JobData } from "@/lib/jobs";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { scenes, aspectRatio, captions, music, voice, language, voiceAudios } = body;
+    const { scenes, aspectRatio, captions, music, voice, language, voiceAudios, transition, transitionDuration } = body;
 
     if (!Array.isArray(scenes) || scenes.length === 0) {
       return NextResponse.json(
@@ -73,6 +73,8 @@ export async function POST(request: Request) {
         voiceAudios: voiceAudios || {},
         voice: voice || 'Natural',
         language: language || 'Hindi',
+        transition: transition || 'none',
+        transitionDuration: typeof transitionDuration === 'number' ? transitionDuration : 0.5,
       },
     };
 

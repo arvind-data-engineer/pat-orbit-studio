@@ -6,7 +6,9 @@ This engine runs entirely on your own hardware — no paid API required for vide
 
 ## What's New in v3.1
 
-- **Scene transitions** — Optional crossfade between multi-clip segments
+- **Scene-level transitions** — Optional crossfade between separate scenes in final render
+- **Clip-level transitions** — Optional crossfade between multi-clip segments within a scene
+- **Shared render pipeline** — Both sync and async render paths use identical FFmpeg logic
 - **Improved health endpoint** — Reports transition settings, interpolation config
 - **Fixed infinite recursion** — `_get_temp_dir()` no longer calls itself recursively
 - **Fixed PIL import** — `extract_last_frame_from_video` now has correct PIL import
@@ -103,9 +105,13 @@ VIDEO_OOM_RETRY=true        # Retry once with preview settings on OOM
 # Temp directory (v3.0) — keep generated files on D: drive
 VIDEO_TEMP_DIR=D:/AI/cache/video
 
-# Scene transitions (v3.1)
+# Clip-level transitions (v3.1) — within a scene's multi-clip segments
 VIDEO_TRANSITION=none        # "none" (hard cut) or "crossfade"
 VIDEO_TRANSITION_DURATION=0.5  # crossfade duration in seconds
+
+# Scene-level transitions (v3.1) — between separate scenes in final render
+VIDEO_SCENE_TRANSITION=none  # "none" or "crossfade"
+VIDEO_SCENE_TRANSITION_DURATION=0.5  # crossfade duration in seconds
 ```
 
 ### RTX 3050 6GB Recommended Settings
@@ -302,20 +308,34 @@ VIDEO_ENGINE=local npm run dev
 
 ## Scene Transitions
 
-By default, multi-clip videos use hard cuts between clips. You can enable crossfade transitions:
+PAT Orbit supports two levels of transitions:
+
+### 1. Clip-Level Transitions (within a scene)
+
+When SVD generates multiple clips for a single scene, you can crossfade between them:
 
 ```bash
-# Enable crossfade transitions
 VIDEO_TRANSITION=crossfade
-VIDEO_TRANSITION_DURATION=0.5  # 0.5 second fade between clips
+VIDEO_TRANSITION_DURATION=0.5
 ```
+
+### 2. Scene-Level Transitions (between scenes in final render)
+
+When rendering the final video, scenes can crossfade into each other:
+
+```bash
+VIDEO_SCENE_TRANSITION=crossfade
+VIDEO_SCENE_TRANSITION_DURATION=0.5
+```
+
+Or configure in the UI: Settings → Transitions → Scene transition → Crossfade → Duration.
 
 | Transition | Description | Speed | Quality |
 |------------|-------------|-------|---------|
 | `none` | Hard cut (default) | Fast (stream copy) | Clean cuts |
-| `crossfade` | Smooth fade between clips | Slower (re-encode) | Professional |
+| `crossfade` | Smooth fade between clips/scenes | Slower (re-encode) | Professional |
 
-**Note:** Crossfade requires re-encoding all clips, which increases generation time. On RTX 3050, expect an additional 30-60 seconds for a 4-clip sequence.
+**Note:** Crossfade requires re-encoding, which increases rendering time. On RTX 3050, expect 30-60 seconds additional per crossfade transition.
 
 ## Troubleshooting
 

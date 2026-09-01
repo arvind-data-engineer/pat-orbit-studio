@@ -285,6 +285,8 @@ export default function Home() {
   const [voice, setVoice] = useState("Natural");
   const [captions, setCaptions] = useState(true);
   const [music, setMusic] = useState("None");
+  const [renderTransition, setRenderTransition] = useState("none");
+  const [renderTransitionDuration, setRenderTransitionDuration] = useState("0.5");
   const [rendering, setRendering] = useState(false);
 
   const [result, setResult] = useState<StoryResult | null>(null);
@@ -1180,7 +1182,7 @@ export default function Home() {
       const createResp = await fetch("/api/jobs/render", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voice, language, voiceAudios: renderVoiceAudios }),
+        body: JSON.stringify({ scenes: scenesPayload, aspectRatio, captions, music, voice, language, voiceAudios: renderVoiceAudios, transition: renderTransition, transitionDuration: parseFloat(renderTransitionDuration) }),
       });
       const createData = await createResp.json();
       if (!createResp.ok) throw new Error(createData.error || "Failed to start render.");
@@ -1355,6 +1357,12 @@ export default function Home() {
                   <button onClick={() => setVoice(voice === "Natural" ? "Deep" : voice === "Deep" ? "Soft" : "Natural")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${voice !== "Natural" ? "text-white/90" : "text-white/50"}`}>Voice: {voice}</button>
                   <button onClick={() => setCaptions(!captions)} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${captions ? "text-white/90" : "text-white/50"}`}>Captions: {captions ? "ON" : "OFF"}</button>
                   <button onClick={() => setMusic(music === "None" ? "Ambient" : music === "Ambient" ? "Cinematic" : music === "Cinematic" ? "Emotional" : "None")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${music !== "None" ? "text-white/90" : "text-white/50"}`}>Music: {music}</button>
+                  <div className="mx-2.5 my-1 border-t border-white/[0.06]" />
+                  <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/30">Transitions</div>
+                  <button onClick={() => setRenderTransition(renderTransition === "none" ? "crossfade" : "none")} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] ${renderTransition !== "none" ? "text-white/90" : "text-white/50"}`}>Scene transition: {renderTransition === "none" ? "None" : "Crossfade"}</button>
+                  {renderTransition !== "none" && (
+                    <button onClick={() => setRenderTransitionDuration(renderTransitionDuration === "0.5" ? "1.0" : renderTransitionDuration === "1.0" ? "0.25" : "0.5")} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] transition-colors hover:bg-white/[0.05] text-white/90">Duration: {renderTransitionDuration}s</button>
+                  )}
                 </div>
               )}
             </div>

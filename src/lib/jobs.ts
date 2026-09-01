@@ -59,6 +59,8 @@ export interface JobData {
     voiceAudios?: Record<number, string>;
     voice?: string;
     language?: string;
+    transition?: string;
+    transitionDuration?: number;
   };
 }
 
