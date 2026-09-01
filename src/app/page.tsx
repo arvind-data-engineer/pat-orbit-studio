@@ -1391,95 +1391,140 @@ export default function Home() {
           <>
             {/* ===== CREATE SCREEN ===== */}
 
-            {/* ── VIDEO-FIRST HERO ────────────────────────────────────── */}
+            {/* ── HERO ──────────────────────────────────────────── */}
             <div className="relative -mx-4 sm:-mx-6 -mt-8 sm:-mt-12">
-              {/* Demo video — fills the first viewport */}
-              <div className="relative w-full aspect-video max-h-[75vh] overflow-hidden bg-black">
-                {/* Real autoplay video with fallback gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-950/40 via-violet-950/30 to-fuchsia-950/40">
-                  <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-purple-800/10 via-transparent to-fuchsia-800/10" style={{ animationDuration: '6s' }} />
+              <div className="relative w-full overflow-hidden bg-[#08090c]" style={{ minHeight: '85vh' }}>
+                {/* Cinematic gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-950/30 via-[#08090c] to-fuchsia-950/20">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(139,92,246,0.08)_0%,_transparent_70%)]" />
                 </div>
-                <video
-                  autoPlay loop muted playsInline preload="auto"
-                  poster=""
-                  className="absolute inset-0 h-full w-full object-cover"
-                  onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
-                >
-                  <source src="https://cdn.coverr.co/videos/coverr-aerial-shot-of-a-forest-1573/1080p.mp4" type="video/mp4" />
-                  <source src="https://cdn.coverr.co/videos/coverr-time-lapse-of-city-traffic-8610/1080p.mp4" type="video/mp4" />
-                </video>
-                {/* Cinematic vignette overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/60" />
-                <div className="absolute inset-0 shadow-[inset_0_0_120px_40px_rgba(0,0,0,0.5)]" />
-                {/* Film-grain texture */}
-                <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)%25\'/%3E%3C/svg%3E")', backgroundSize: '128px 128px' }} />
-                {/* Film-strip perforations top */}
-                <div className="absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-black/70 to-transparent">
-                  <div className="flex items-center gap-2 px-6 pt-1.5">
-                    {Array.from({length: 16}).map((_, i) => (
-                      <div key={i} className="h-2 w-3 rounded-[1px] bg-white/[0.07]" />
-                    ))}
+                <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-purple-500/[0.04] rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
+                {/* Hero content */}
+                <div className="relative z-10 flex flex-col items-center justify-center px-4 pt-28 pb-12 sm:pt-36">
+                  <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/[0.06] px-4 py-1.5 text-[11px] font-medium text-purple-300/80">
+                    <Icon.Sparkles className="h-3 w-3" />
+                    AI-Powered Video Creation
+                  </div>
+                  <h1 className="text-center text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
+                    <span className="text-white">Turn your ideas</span>
+                    <br />
+                    <span className="bg-gradient-to-r from-purple-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">into cinematic videos</span>
+                  </h1>
+                  <p className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl text-white/50 leading-relaxed text-center">
+                    Create scenes, generate visuals, direct motion, add voice and music — all from one creative workspace.
+                  </p>
+                  <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button onClick={() => document.getElementById('creation-input')?.scrollIntoView({ behavior: 'smooth' })} className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_4px_24px_-4px_rgba(139,92,246,0.4)] transition-all hover:shadow-[0_8px_32px_-4px_rgba(139,92,246,0.55)] hover:scale-[1.02] active:scale-[0.98]">
+                      <Icon.Sparkles className="h-4 w-4" />
+                      Create a video
+                    </button>
+                    <button onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })} className="flex items-center gap-2 rounded-xl border border-white/[0.12] bg-white/[0.04] px-6 py-3.5 text-[14px] font-medium text-white/70 transition-all hover:bg-white/[0.08] hover:text-white/90">
+                      See how it works
+                    </button>
                   </div>
                 </div>
-                {/* Film-strip perforations bottom */}
-                <div className="absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-black/70 to-transparent">
-                  <div className="flex items-center gap-2 px-6 pb-1.5">
-                    {Array.from({length: 16}).map((_, i) => (
-                      <div key={i} className="h-2 w-3 rounded-[1px] bg-white/[0.07]" />
+                {/* How it works steps */}
+                <div id="how-it-works" className="relative z-10 mx-auto max-w-5xl px-4 pb-16">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                    {[
+                      { num: '01', label: 'Describe', desc: 'Write your idea', icon: '\u2726' },
+                      { num: '02', label: 'Scenes', desc: 'AI builds scenes', icon: '\u25C8' },
+                      { num: '03', label: 'Visuals', desc: 'Generate images & video', icon: '\u25A3' },
+                      { num: '04', label: 'Voice', desc: 'Add narration & music', icon: '\u266B' },
+                      { num: '05', label: 'Render', desc: 'Export your film', icon: '\u25B6' },
+                    ].map((step, i) => (
+                      <div key={i} className="group relative rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center transition-all hover:border-purple-500/20 hover:bg-purple-500/[0.03]">
+                        <div className="mb-2 text-[18px] text-purple-400/60 group-hover:text-purple-400/80 transition-colors">{step.icon}</div>
+                        <div className="text-[10px] font-bold text-purple-400/50 mb-1">{step.num}</div>
+                        <div className="text-[12px] font-semibold text-white/80">{step.label}</div>
+                        <div className="text-[10px] text-white/35 mt-0.5">{step.desc}</div>
+                      </div>
                     ))}
                   </div>
-                </div>
-                {/* Brand watermark top-left */}
-                <div className="absolute left-5 top-8 z-10 flex items-center gap-2">
-                  <span className="text-[11px] font-bold tracking-[0.25em] text-white/20 uppercase">PAT Orbit Studio</span>
-                </div>
-                {/* Floating tag top-right */}
-                <div className="absolute right-5 top-8 z-10">
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[10px] font-medium text-white/30 backdrop-blur-sm">AI Generated</span>
                 </div>
               </div>
             </div>
 
-            {/* ── CREATION INPUT BAR ──────────────────────────────────── */}
-            <div className="relative z-10 mx-auto -mt-10 max-w-3xl px-4 sm:px-6 sm:max-w-3xl">
-              <div className="overflow-hidden rounded-2xl border border-white/[0.10] bg-[#0c0d12]/90 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-                {/* Textarea */}
-                <div className="relative px-5 pt-5 pb-0">
-                  <div className="relative group">
-                    <textarea
-                      value={story}
-                      onChange={(e) => { setStory(e.target.value); setError(""); }}
-                      placeholder="Describe your video idea..."
-                      rows={3}
-                      maxLength={1500}
-                      className="w-full resize-none rounded-xl border border-white/[0.08] bg-[#08090c] px-4 py-3.5 text-[15px] leading-6 text-white outline-none transition-all placeholder:text-white/25 focus:border-purple-500/30 focus:shadow-[0_0_24px_-8px_rgba(139,92,246,0.12)]"
-                    />
-                    <div className="absolute bottom-2 right-3 text-[10px] text-white/15 tabular-nums">{story.length}/1500</div>
-                  </div>
+            {/* ── CREATION INPUT ──────────────────────────────────── */}
+            <div id="creation-input" className="mx-auto max-w-3xl px-4 sm:px-6">
+              <div className="rounded-2xl border border-white/[0.08] bg-[#0c0d12]/80 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.5)] backdrop-blur-xl p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Icon.Sparkles className="h-4 w-4 text-purple-400/70" />
+                  <span className="text-[14px] font-semibold text-white/80">What do you want to create?</span>
                 </div>
-                {/* Chips + Create row */}
-                <div className="flex items-center gap-2 px-5 pb-4 pt-1">
-                  <div className="flex flex-1 flex-wrap items-center gap-1.5 overflow-hidden">
-                    <Icon.Lightbulb className="h-3 w-3 flex-shrink-0 text-white/20" />
-                    {["Magical adventure", "Detective mystery", "Robot becomes human", "Time travel"].map((idea) => (
-                      <button key={idea} onClick={() => { setStory(idea); setError(""); }} className="whitespace-nowrap rounded-full border border-white/[0.05] bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/35 transition-all hover:border-purple-500/20 hover:bg-purple-500/[0.05] hover:text-white/55">
-                        {idea}
+                {/* Story textarea */}
+                <div className="relative mb-4">
+                  <textarea
+                    value={story}
+                    onChange={(e) => { setStory(e.target.value); setError(""); }}
+                    placeholder="A retired astronaut receives a mysterious signal from a distant planet..."
+                    rows={3}
+                    maxLength={1500}
+                    className="w-full resize-none rounded-xl border border-white/[0.08] bg-[#08090c] px-4 py-3.5 text-[15px] leading-6 text-white outline-none transition-all placeholder:text-white/20 focus:border-purple-500/30 focus:shadow-[0_0_24px_-8px_rgba(139,92,246,0.12)]"
+                  />
+                  <div className="absolute bottom-2.5 right-3 text-[10px] text-white/15 tabular-nums">{story.length}/1500</div>
+                </div>
+                {/* Style chips */}
+                <div className="mb-4">
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-white/30">Style</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Cinematic', 'Anime', 'Cartoon', 'Realistic', '3D'].map((s) => (
+                      <button key={s} onClick={() => setStyle(s)} className={`rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all ${style === s ? 'bg-white text-black shadow-sm' : 'bg-white/[0.04] text-white/55 border border-white/[0.06] hover:bg-white/[0.08] hover:text-white/75'}`}>
+                        {s}
                       </button>
                     ))}
                   </div>
-                  <button onClick={generateStory} disabled={!story.trim() || loading} className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.35)] transition-all hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none">
-                    {loading ? (<><Icon.Spinner className="h-3.5 w-3.5 animate-spin" />Creating</>) : (<><Icon.Sparkles className="h-3.5 w-3.5" />Create Video</>)}
-                  </button>
                 </div>
-                {error && <div className="mx-5 mb-4 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-3 py-2 text-[12px] text-red-300/90">{error}</div>}
+                {/* Duration + Language + Voice row */}
+                <div className="mb-4 grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/30">Duration</label>
+                    <div className="flex gap-1.5">
+                      {['30s', '60s', '90s'].map((d) => (
+                        <button key={d} onClick={() => setDuration(d)} className={`flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-all ${duration === d ? 'bg-white text-black' : 'bg-white/[0.04] text-white/55 border border-white/[0.06] hover:bg-white/[0.08]'}`}>
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/30">Language</label>
+                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[12px] font-medium text-white/60 outline-none focus:border-white/[0.15]">
+                      <option>Hindi</option><option>Hinglish</option><option>English</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-white/30">Voice</label>
+                    <div className="flex gap-1.5">
+                      {['Natural', 'Deep', 'Soft'].map((v) => (
+                        <button key={v} onClick={() => setVoice(v)} className={`flex-1 rounded-lg py-1.5 text-[10px] font-medium transition-all ${voice === v ? 'bg-white text-black' : 'bg-white/[0.04] text-white/55 border border-white/[0.06] hover:bg-white/[0.08]'}`}>
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Suggestion chips */}
+                <div className="mb-4 flex flex-wrap gap-1.5">
+                  {["Magical adventure", "Detective mystery", "Robot becomes human", "Time travel"].map((idea) => (
+                    <button key={idea} onClick={() => { setStory(idea); setError(""); }} className="rounded-full border border-white/[0.05] bg-white/[0.03] px-3 py-1 text-[11px] text-white/35 transition-all hover:border-purple-500/20 hover:bg-purple-500/[0.05] hover:text-white/55">
+                      {idea}
+                    </button>
+                  ))}
+                </div>
+                {/* Create button */}
+                <button onClick={generateStory} disabled={!story.trim() || loading} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-3.5 text-[15px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.35)] transition-all hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none">
+                  {loading ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Creating your video...</>) : (<><Icon.Sparkles className="h-4 w-4" />Create Video</>)}
+                </button>
+                {error && <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/[0.07] px-4 py-3 text-[13px] text-red-300/90">{error}</div>}
                 {loading && (
-                  <div className="mx-5 mb-4 space-y-1">
+                  <div className="mt-4 space-y-1.5">
                     {loadingSteps.map((step, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        {step.done ? (<span className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20"><Icon.Check className="h-1.5 w-1.5 text-emerald-400" /></span>)
-                        : i === loadingStep + 1 ? (<span className="flex h-3 w-3 flex-shrink-0 items-center justify-center"><Icon.Spinner className="h-2.5 w-2.5 animate-spin text-purple-400/60" /></span>)
-                        : (<span className="flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-full border border-white/[0.08]"><span className="h-0.5 w-0.5 rounded-full bg-white/[0.12]" /></span>)}
-                        <span className={`text-[10px] ${step.done ? 'text-white/20' : i === loadingStep + 1 ? 'text-white/50' : 'text-white/30'}`}>{step.label}</span>
+                      <div key={i} className="flex items-center gap-2.5">
+                        {step.done ? (<span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/20"><Icon.Check className="h-2 w-2 text-emerald-400" /></span>)
+                        : i === loadingStep + 1 ? (<span className="flex h-4 w-4 flex-shrink-0 items-center justify-center"><Icon.Spinner className="h-3 w-3 animate-spin text-purple-400/60" /></span>)
+                        : (<span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border border-white/[0.08]"><span className="h-0.5 w-0.5 rounded-full bg-white/[0.12]" /></span>)}
+                        <span className={`text-[11px] ${step.done ? 'text-white/20' : i === loadingStep + 1 ? 'text-white/55' : 'text-white/30'}`}>{step.label}</span>
                       </div>
                     ))}
                   </div>
@@ -1487,39 +1532,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ── SETTINGS + QUICK START (below fold) ──────────────── */}
+            {/* ── QUICK START TEMPLATES ──────────────────── */}
             <div className="mx-auto mt-8 max-w-3xl">
-              {/* Settings row */}
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] p-4">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div>
-                    <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/25">Language</label>
-                    <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/60 outline-none focus:border-white/[0.15]">
-                      <option>Hindi</option><option>Hinglish</option><option>English</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/25">Style</label>
-                    <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/60 outline-none focus:border-white/[0.15]">
-                      <option>Cinematic</option><option>Cartoon</option><option>Anime</option><option>Realistic</option><option>3D</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/25">Duration</label>
-                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/60 outline-none focus:border-white/[0.15]">
-                      <option>30s</option><option>60s</option><option>90s</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/25">Voice</label>
-                    <select value={voice} onChange={(e) => setVoice(e.target.value)} className="w-full rounded-lg border border-white/[0.08] bg-[#0a0b0f] px-2 py-1.5 text-[11px] font-medium text-white/60 outline-none focus:border-white/[0.15]">
-                      <option>Natural</option><option>Deep</option><option>Soft</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Start templates */}
               <div className="mt-4">
                 <div className="mb-2 flex items-center gap-2">
                   <Icon.Zap className="h-3 w-3 text-white/25" />
@@ -1574,8 +1588,8 @@ export default function Home() {
                     <button onClick={saveCurrentProject} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-medium transition-all active:scale-[0.98] ${hasUnsavedChanges ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25' : saved && !hasUnsavedChanges ? 'border border-white/[0.08] bg-white/[0.04] text-emerald-400/70' : 'border border-white/[0.08] bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white/80'}`}>
                       <Icon.Folder className="text-white/55" />{saved && !hasUnsavedChanges ? "Saved" : "Save"}
                     </button>
-                    <button onClick={exportVideo} disabled={!finalVideo} className="flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[12px] font-semibold text-black transition-all hover:bg-white/90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none">
-                      <Icon.Download className="text-black/60" />Export
+                    <button onClick={exportVideo} disabled={!finalVideo} className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-violet-600 px-4 py-2 text-[12px] font-semibold text-white transition-all hover:from-purple-500 hover:to-violet-500 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none">
+                      <Icon.Download className="text-white/80" />Export
                     </button>
                   </div>
                 </div>
@@ -2395,7 +2409,7 @@ export default function Home() {
                           )}
 
                           {/* CTA button */}
-                          <button onClick={startRender} disabled={!renderFullyReady} className={`w-full rounded-xl px-4 py-3.5 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none ${renderFullyReady ? 'bg-gradient-to-b from-white to-white/90 text-black shadow-[0_4px_20px_-4px_rgba(255,255,255,0.25)] hover:shadow-[0_6px_28px_-4px_rgba(255,255,255,0.35)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/40'}`}>
+                          <button onClick={startRender} disabled={!renderFullyReady} className={`w-full rounded-xl px-4 py-3.5 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none ${renderFullyReady ? 'bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.35)] hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.5)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/40'}`}>
                             {renderFullyReady ? (
                               <span className="flex items-center justify-center gap-2"><Icon.Sparkles className="h-4 w-4" />Render Final Video</span>
                             ) : (
@@ -2602,10 +2616,10 @@ export default function Home() {
           <div className="mb-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-white">Projects</h2>
-                <p className="mt-1 text-[13px] text-white/45">Your video library</p>
+                <h2 className="text-2xl font-bold tracking-tight text-white">Your videos</h2>
+                <p className="mt-1 text-[13px] text-white/45">All your AI-generated projects in one place</p>
               </div>
-              <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-5 py-2.5 text-[13px] font-semibold text-black shadow-[0_2px_12px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_20px_-4px_rgba(255,255,255,0.3)] active:scale-[0.98]">
+              <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.35)] transition-all hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.5)] active:scale-[0.98]">
                 <Icon.Plus className="h-3.5 w-3.5" />New Video
               </button>
             </div>
@@ -2641,16 +2655,16 @@ export default function Home() {
 
           {/* Empty state */}
           {projects.length === 0 ? (
-            <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent p-12 text-center sm:p-16">
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-purple-500/[0.03] to-transparent p-12 text-center sm:p-16">
               <div className="pointer-events-none absolute inset-0 -z-10">
-                <div className="absolute left-1/2 top-0 h-[200px] w-[400px] -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-500/[0.03] to-transparent blur-3xl" />
+                <div className="absolute left-1/2 top-0 h-[200px] w-[400px] -translate-x-1/2 rounded-full bg-gradient-to-b from-purple-500/[0.06] to-transparent blur-3xl" />
               </div>
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
-                <Icon.Film className="h-7 w-7 text-white/25" />
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-purple-500/20 bg-purple-500/[0.06]">
+                <Icon.Sparkles className="h-7 w-7 text-purple-400/60" />
               </div>
-              <h3 className="text-[16px] font-semibold text-white/70">No videos yet</h3>
-              <p className="mx-auto mt-2 max-w-[300px] text-[13px] leading-relaxed text-white/35">Your completed videos will appear here. Create your first one with a simple idea.</p>
-              <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-white to-white/90 px-5 py-2.5 text-[13px] font-semibold text-black shadow-[0_2px_12px_-4px_rgba(255,255,255,0.2)] transition-all hover:shadow-[0_4px_20px_-4px_rgba(255,255,255,0.3)] active:scale-[0.98]">
+              <h3 className="text-[18px] font-semibold text-white/80">Your next story starts here</h3>
+              <p className="mx-auto mt-2 max-w-[340px] text-[13px] leading-relaxed text-white/40">Create your first AI video and turn an idea into a cinematic scene with voice, motion, and music.</p>
+              <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 px-6 py-3 text-[14px] font-semibold text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.35)] transition-all hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.5)] active:scale-[0.98]">
                 <Icon.Sparkles className="h-3.5 w-3.5" />Create your first video
               </button>
             </div>
