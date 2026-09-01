@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { analyzeRegenerationRequest, type RegenerationTarget } from "@/lib/ai/regeneration";
+import { useEffect, useRef, useState } from "react";
+import { analyzeRegenerationRequest } from "@/lib/ai/regeneration";
 import type { DirectorScene, ProductionPlan } from "@/lib/ai/director-schema";
 import { loadProjects, saveProjects as storageSaveProjects, createAutoSave, getStorageInfo } from "@/lib/storage";
 import { downloadProjectFile, importProject, readFileAsText } from "@/lib/project-serialization";
@@ -367,6 +367,13 @@ export default function Home() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const [loadingStep, setLoadingStep] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function showToast(msg: string, durationMs = 2500) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast(msg);
+    toastTimerRef.current = setTimeout(() => { setToast(null); toastTimerRef.current = null; }, durationMs);
+  }
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const importFileRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -393,11 +400,12 @@ export default function Home() {
   /* Polling intervals */
   const pollIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
 
-  /* Cleanup polling on unmount */
+  /* Cleanup polling and toast timer on unmount */
   useEffect(() => {
     return () => {
       pollIntervalsRef.current.forEach(clearInterval);
       pollIntervalsRef.current = [];
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
 
@@ -424,6 +432,15 @@ export default function Home() {
   /* Load projects from storage abstraction */
   useEffect(() => {
     setProjects(loadProjects().map((p) => ({ ...p, result: p.result as StoryResult })) as Project[]);
+
+    // Sync projects when another tab changes localStorage
+    function handleStorageChange(e: StorageEvent) {
+      if (e.key === 'pat-orbit-projects') {
+        setProjects(loadProjects().map((p) => ({ ...p, result: p.result as StoryResult })) as Project[]);
+      }
+    }
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   /* Loading step animation */
@@ -463,10 +480,18 @@ export default function Home() {
         e.preventDefault();
         if (result) saveProjectRef.current();
       }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (result && !rendering) {
+          const allVidsReady = Object.keys(sceneVideos).length >= result.scenes.length;
+          if (allVidsReady) startRender();
+        }
+      }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, showCharacters, isEditingScene]);
+  }, [result, activeScene, mobileNavOpen, settingsOpen, deleteConfirmId, showCharacters, isEditingScene, rendering, sceneVideos]);
 
   function saveProjects(nextProjects: Project[]) {
     setProjects(nextProjects);
@@ -613,6 +638,28 @@ export default function Home() {
     setSaved(false);
   }
 
+  function deleteScene(sceneId: number) {
+    if (!result || result.scenes.length <= 1) return; // Don't delete the last scene
+    const idx = result.scenes.findIndex((s) => s.id === sceneId);
+    if (idx < 0) return;
+    const newScenes = result.scenes.filter((s) => s.id !== sceneId);
+    setResult({ ...result, scenes: newScenes });
+    // Clean up associated state
+    setSceneImages((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    setSceneVideos((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    setVoiceAudios((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    setVoiceStatus((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    setVoiceGenerated((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    setSceneCharacters((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    setSceneStatus((prev) => { const n = { ...prev }; delete n[sceneId]; return n; });
+    // Move to the next scene or the previous one
+    if (activeScene === sceneId) {
+      const nextIdx = Math.min(idx, newScenes.length - 1);
+      setActiveScene(newScenes[nextIdx].id);
+    }
+    setSaved(false);
+  }
+
   /* Total duration calculation */
   const totalDurationSec = result?.scenes.reduce((sum, s) => {
     const d = parseInt(s.sceneDuration || '10', 10);
@@ -719,11 +766,10 @@ export default function Home() {
     // Check storage quota
     const info = getStorageInfo();
     if (info.percentUsed > 90) {
-      setToast(`Project saved — storage ${info.percentUsed}% full`);
+      showToast(`Project saved — storage ${info.percentUsed}% full`);
     } else {
-      setToast("Project saved");
+      showToast("Project saved");
     }
-    setTimeout(() => setToast(null), 2500);
   }
 
   // Keep the keyboard shortcut ref in sync with the latest save function.
@@ -764,8 +810,7 @@ export default function Home() {
     setActiveScene(1);
     setCurrentProjectId(project.id);
     setSaved(true);
-    setToast("Project loaded");
-    setTimeout(() => setToast(null), 2500);
+    showToast("Project loaded");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -798,30 +843,26 @@ export default function Home() {
       voiceGenerated: project.voiceGenerated ? { ...project.voiceGenerated } : undefined,
     };
     saveProjects([dup, ...projects]);
-    setToast("Project duplicated");
-    setTimeout(() => setToast(null), 2500);
+    showToast("Project duplicated");
   }
 
   /* ── Export ────────────────────────────────────────────────────── */
   function handleExport() {
     if (!result || !currentProjectId) {
-      setToast("No project to export");
-      setTimeout(() => setToast(null), 2500);
+      showToast("No project to export");
       return;
     }
     const project = projects.find((p) => p.id === currentProjectId);
     if (!project) {
-      setToast("Project not found");
-      setTimeout(() => setToast(null), 2500);
+      showToast("Project not found");
       return;
     }
     try {
       downloadProjectFile(project);
-      setToast("Project exported");
+      showToast("Project exported");
     } catch {
-      setToast("Export failed");
+      showToast("Export failed");
     }
-    setTimeout(() => setToast(null), 2500);
   }
 
   /* ── Import ────────────────────────────────────────────────────── */
@@ -832,19 +873,17 @@ export default function Home() {
       const text = await readFileAsText(file);
       const result = importProject(text);
       if (!result.success || !result.project) {
-        setToast(result.error || "Import failed");
-        setTimeout(() => setToast(null), 3000);
+        showToast(result.error || "Import failed", 3000);
         return;
       }
       // Add the imported project and load it
       const imported = { ...result.project, result: result.project!.result as StoryResult } as Project;
       saveProjects([imported, ...projects]);
       loadProject(imported);
-      setToast(`Imported: ${result.project.title}`);
+      showToast(`Imported: ${result.project.title}`);
     } catch {
-      setToast("Failed to read import file");
+      showToast("Failed to read import file");
     }
-    setTimeout(() => setToast(null), 2500);
     // Reset file input so the same file can be re-imported
     if (importFileRef.current) importFileRef.current.value = "";
   }
@@ -1132,6 +1171,20 @@ export default function Home() {
     }
   }
 
+  function cancelGeneration(sceneId: number) {
+    // Cancel image generation
+    if (imageAbortRef.current[sceneId]) {
+      imageAbortRef.current[sceneId].abort();
+      delete imageAbortRef.current[sceneId];
+    }
+    // Cancel video generation
+    if (videoAbortRef.current[sceneId]) {
+      videoAbortRef.current[sceneId].abort();
+      delete videoAbortRef.current[sceneId];
+    }
+    setSceneStatus((c) => ({ ...c, [sceneId]: "idle" }));
+  }
+
   /* ================================================================ */
   /*  RENDER                                                           */
   /* ================================================================ */
@@ -1268,8 +1321,7 @@ export default function Home() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
-      setToast("Video exported successfully");
-      setTimeout(() => setToast(null), 2500);
+      showToast("Video exported successfully");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Export failed. Please try again.");
     }
@@ -1823,8 +1875,13 @@ export default function Home() {
                         {/* Image button */}
                         <button onClick={() => startImageGeneration(currentScene.id)} disabled={isBusy}
                           className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsImage ? 'bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 shadow-[0_2px_16px_-6px_rgba(52,211,153,0.25)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
-                          {isGenImg ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Generating image for {currentScene.title}...</>) : hasImg ? (<><Icon.Image className="h-4 w-4" />Regenerate Image</>) : (<><Icon.Image className="h-4 w-4" />Generate Image</>)}
+                          {isGenImg ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Generating image...</>) : hasImg ? (<><Icon.Image className="h-4 w-4" />Regenerate Image</>) : (<><Icon.Image className="h-4 w-4" />Generate Image</>)}
                         </button>
+                        {isGenImg && (
+                          <button onClick={() => cancelGeneration(currentScene.id)} className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
+                            Cancel
+                          </button>
+                        )}
                         {!hasImg && !isBusy && <p className="text-center text-[10px] text-white/30">Start here - generate the scene image first</p>}
 
                         {/* Video button - only when image exists or video exists */}
@@ -1834,7 +1891,12 @@ export default function Home() {
                               className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsVideo ? 'bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.45)] hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.55)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
                               {isGenVid ? (() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return (<><Icon.Spinner className="h-4 w-4 animate-spin" />{prog && prog !== 'video' ? prog : `Generating video for ${currentScene.title}`}</>); })() : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
                             </button>
-                            {isGenVid && <p className="mt-1 text-center text-[10px] text-white/25">{(() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return prog && prog !== 'video' ? `${prog} — this may take several minutes` : 'Generating video — this may take several minutes'; })()}</p>}
+                            {isGenVid && <>
+                              <p className="mt-1 text-center text-[10px] text-white/25">{(() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return prog && prog !== 'video' ? `${prog} — this may take several minutes` : 'Generating video — this may take several minutes'; })()}</p>
+                              <button onClick={() => cancelGeneration(currentScene.id)} className="w-full mt-1 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/60">
+                                Cancel generation
+                              </button>
+                            </>}
                             {!isGenVid && !hasVid && needsVideo && (() => {
                               const sceneDur = parseInt(currentScene.sceneDuration || '10', 10) || 10;
                               const est = getQuickEstimate('local', 'production', sceneDur);
@@ -1936,9 +1998,16 @@ export default function Home() {
                             <Icon.Copy2 />Duplicate
                           </button>
                           {!isEditingScene && (
-                            <button onClick={() => beginEditScene(currentScene)} className="flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.08] px-2.5 py-1.5 text-[10px] font-medium text-emerald-400/80 transition-colors hover:bg-emerald-500/[0.15]">
-                              <Icon.Wand className="h-3 w-3" />Edit Scene
-                            </button>
+                            <>
+                              <button onClick={() => beginEditScene(currentScene)} className="flex items-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.08] px-2.5 py-1.5 text-[10px] font-medium text-emerald-400/80 transition-colors hover:bg-emerald-500/[0.15]">
+                                <Icon.Wand className="h-3 w-3" />Edit Scene
+                              </button>
+                              {result.scenes.length > 1 && (
+                                <button onClick={() => deleteScene(currentScene.id)} className="flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/[0.08] px-2.5 py-1.5 text-[10px] font-medium text-red-400/80 transition-colors hover:bg-red-500/[0.15]">
+                                  <Icon.Trash className="h-3 w-3" />Delete
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -2204,6 +2273,36 @@ export default function Home() {
                       </div>
                     </div>
 
+                    {/* Batch Generation */}
+                    {(() => {
+                      const missingImages = result.scenes.filter((s) => !sceneImages[s.id]).length;
+                      const missingVideos = result.scenes.filter((s) => !sceneVideos[s.id] && sceneImages[s.id]).length;
+                      const anyGenerating = Object.values(sceneStatus).some((s) => s !== 'idle');
+                      if (missingImages === 0 && missingVideos === 0) return null;
+                      return (
+                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
+                          <div className="mb-2 flex items-center gap-2">
+                            <Icon.Zap className="h-3.5 w-3.5 text-white/50" />
+                            <span className="text-[12px] font-semibold text-white/75">Batch Actions</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {missingImages > 0 && (
+                              <button onClick={() => { for (const s of result.scenes) { if (!sceneImages[s.id]) startImageGeneration(s.id); } }} disabled={anyGenerating}
+                                className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-40">
+                                Generate {missingImages} image{missingImages !== 1 ? 's' : ''}
+                              </button>
+                            )}
+                            {missingVideos > 0 && (
+                              <button onClick={() => { for (const s of result.scenes) { if (!sceneVideos[s.id] && sceneImages[s.id]) startVideoGeneration(s.id); } }} disabled={anyGenerating}
+                                className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[11px] font-medium text-white/60 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-40">
+                                Generate {missingVideos} video{missingVideos !== 1 ? 's' : ''}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Render Panel */}
                     {(() => {
                       const narrationScenes = result.scenes.filter((s) => s.narration?.trim()).length;
@@ -2451,6 +2550,12 @@ export default function Home() {
                           className="flex h-5 w-5 items-center justify-center rounded text-white/15 transition-colors hover:bg-white/[0.06] hover:text-white/40">
                           <Icon.Copy2 />
                         </button>
+                        {result.scenes.length > 1 && (
+                          <button onClick={(e) => { e.stopPropagation(); deleteScene(scene.id); }} aria-label="Delete scene"
+                            className="flex h-5 w-5 items-center justify-center rounded text-white/15 transition-colors hover:bg-red-500/10 hover:text-red-400/60">
+                            <Icon.Trash />
+                          </button>
+                        )}
                       </div>
 
                       {/* Complete indicator */}
