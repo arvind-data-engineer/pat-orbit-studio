@@ -47,36 +47,52 @@ export async function POST(request: Request) {
     }
 
     /* Use Gemini generateContent with audio response modality for TTS */
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: enhancedNarration,
-      config: {
-        responseModalities: ["audio"],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName,
+    const TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"];
+    let lastError: unknown = null;
+
+    for (const ttsModel of TTS_MODELS) {
+      try {
+        const response = await ai.models.generateContent({
+          model: ttsModel,
+          contents: enhancedNarration,
+          config: {
+            responseModalities: ["audio"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName,
+                },
+              },
+              languageCode: langCode,
             },
           },
-          languageCode: langCode,
-        },
-      },
-    });
-
-    /* Extract audio from response parts */
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-
-    for (const part of parts) {
-      if (part.inlineData?.data && part.inlineData?.mimeType) {
-        return NextResponse.json({
-          audio: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-          mimeType: part.inlineData.mimeType,
-          voice: voiceName,
         });
+
+        /* Extract audio from response parts */
+        const parts = response.candidates?.[0]?.content?.parts ?? [];
+
+        for (const part of parts) {
+          if (part.inlineData?.data && part.inlineData?.mimeType) {
+            return NextResponse.json({
+              audio: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+              mimeType: part.inlineData.mimeType,
+              voice: voiceName,
+            });
+          }
+        }
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[Voice] ${ttsModel} failed:`, msg.slice(0, 200));
+        if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
+          continue;
+        }
+        throw err;
       }
     }
 
-    throw new Error("No audio was returned by the model.");
+    if (lastError) throw lastError;
+    throw new Error("No audio was returned by any available model.");
   } catch (error) {
     console.error("Generate voice error:", error);
 

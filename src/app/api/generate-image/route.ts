@@ -108,22 +108,40 @@ export async function POST(request: Request) {
       enhancedPrompt += `\n\nCinematic composition, high quality, detailed, professional photography.`;
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-image",
-      contents: enhancedPrompt,
-    });
+    const IMAGE_MODELS = ["gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-2.5-flash-image"];
+    let lastError: unknown = null;
 
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-
-    for (const part of parts) {
-      if (part.inlineData?.data && part.inlineData?.mimeType) {
-        return NextResponse.json({
-          image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+    for (const model of IMAGE_MODELS) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: enhancedPrompt,
         });
+
+        const parts = response.candidates?.[0]?.content?.parts ?? [];
+
+        for (const part of parts) {
+          if (part.inlineData?.data && part.inlineData?.mimeType) {
+            return NextResponse.json({
+              image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+            });
+          }
+        }
+      } catch (err) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[Image] ${model} failed:`, msg.slice(0, 200));
+        // If quota/rate limit, try next model
+        if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
+          continue;
+        }
+        // For other errors, throw immediately
+        throw err;
       }
     }
 
-    throw new Error("No image was returned by Gemini.");
+    if (lastError) throw lastError;
+    throw new Error("No image was returned by any available model.");
   } catch (error) {
     console.error("Generate image error:", error);
 
