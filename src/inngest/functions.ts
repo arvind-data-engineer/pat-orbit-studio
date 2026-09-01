@@ -29,7 +29,7 @@ const STEP_TIMEOUT_MS = 1_200_000;  // 20 minutes (multi-clip SVD can take 10+ m
  * Supports SVD (local) and Wan 2.1 (wan21) engines.
  */
 async function processVideoWithGenericEngine(
-  engine: { generate: (req: VideoGenerationRequest) => Promise<{ jobId: string }>; getStatus?: (jobId: string) => Promise<{ jobId: string; status: string; videoUrl?: string; error?: string }> },
+  engine: { generate: (req: VideoGenerationRequest) => Promise<{ jobId: string }>; getStatus?: (jobId: string) => Promise<{ jobId: string; status: string; videoUrl?: string; error?: string; progress?: string; duration?: number }> },
   jobId: string,
   job: Awaited<ReturnType<typeof getJob>> & object
 ): Promise<{ jobId: string; status: string; videoUrl?: string }> {
@@ -72,6 +72,10 @@ async function processVideoWithGenericEngine(
       // Upload the video to Vercel Blob for persistence
       let videoUrl = status.videoUrl;
 
+      // Store duration if provided by the local engine
+      const extraUpdate: Record<string, unknown> = {};
+      if (status.duration) extraUpdate.duration = status.duration;
+
       // If the local engine returned a data URI, upload it to Blob
       if (videoUrl.startsWith("data:")) {
         try {
@@ -85,10 +89,8 @@ async function processVideoWithGenericEngine(
           console.error(`[inngest/video] Failed to upload local video to Blob:`, err);
           // Keep the data URI as fallback — it still works in the browser
         }
-      }
-
-      console.log(`[inngest/video] ${engineName} engine completed ${jobId}`);
-      await updateJob(jobId, { status: "completed", videoUrl });
+      }          console.log(`[inngest/video] ${engineName} engine completed ${jobId}`);
+      await updateJob(jobId, { status: "completed", videoUrl, ...extraUpdate });
       return { jobId, status: "completed", videoUrl };
     }
 
@@ -99,8 +101,11 @@ async function processVideoWithGenericEngine(
       throw new Error(errorMsg);
     }
 
-    // Still processing — continue polling
-    if (i % 6 === 0 && i > 0) {
+    // Report progress
+    if (status.progress && i % 3 === 0) {
+      console.log(`[inngest/video] ${engineName} engine ${jobId}: ${status.progress}`);
+      await updateJob(jobId, { status: "processing", error: status.progress });
+    } else if (i % 6 === 0 && i > 0) {
       console.log(`[inngest/video] ${engineName} engine polling ${jobId} (${i * POLL_INTERVAL_MS / 1000}s elapsed)`);
     }
   }

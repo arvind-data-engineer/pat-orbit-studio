@@ -155,6 +155,8 @@ class LocalVideoEngine implements VideoEngine {
       status: "queued" | "processing" | "completed" | "failed";
       video_url?: string;
       error?: string;
+      progress?: string;
+      duration?: number;
     };
 
     return {
@@ -162,6 +164,8 @@ class LocalVideoEngine implements VideoEngine {
       status: data.status,
       videoUrl: data.video_url,
       error: data.error,
+      progress: data.progress,
+      duration: data.duration,
     };
   }
 

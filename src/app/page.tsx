@@ -293,7 +293,7 @@ export default function Home() {
   const [projectName, setProjectName] = useState("Untitled Video");
   const [saved, setSaved] = useState(false);
 
-  const [sceneStatus, setSceneStatus] = useState<Record<number, "idle" | "image" | "video">>({});
+  const [sceneStatus, setSceneStatus] = useState<Record<number, string>>({});
   const [sceneImages, setSceneImages] = useState<Record<number, string>>({});
   const [sceneVideos, setSceneVideos] = useState<Record<number, string>>({});
 
@@ -924,8 +924,9 @@ export default function Home() {
       const { jobId } = createData;
       if (!jobId) throw new Error("No job ID returned.");
 
-      const MAX_POLL = 120;
-      const POLL_INTERVAL = 3000;
+      // Multi-clip generation can take 15+ min. Poll for up to 20 minutes.
+      const MAX_POLL = 240;
+      const POLL_INTERVAL = 5000;
 
       await new Promise<void>((resolve, reject) => {
         let attempts = 0;
@@ -938,7 +939,7 @@ export default function Home() {
           attempts++;
           if (attempts > MAX_POLL) {
             clearInterval(interval);
-            reject(new Error("Video generation timed out. Please try again."));
+            reject(new Error("Video generation timed out after 20 minutes. The local engine may still be processing."));
             return;
           }
           try {
@@ -953,6 +954,9 @@ export default function Home() {
             } else if (data.status === "failed") {
               clearInterval(interval);
               reject(new Error(data.error || "Video generation failed."));
+            } else if (data.progress) {
+              // Update status display with progress from the server
+              setSceneStatus((c) => ({ ...c, [sceneId]: `video:${data.progress}` }));
             }
           } catch (err) {
             if (err instanceof Error && err.name === "AbortError") {
@@ -1574,7 +1578,7 @@ export default function Home() {
                         const hasVideo = !!sceneVideos[scene.id];
                         const hasImage = !!sceneImages[scene.id];
                         const hasVoice = voiceStatus[scene.id] === 'ready';
-                        const isGenerating = sceneStatus[scene.id] === 'image' || sceneStatus[scene.id] === 'video';
+                        const isGenerating = sceneStatus[scene.id]?.startsWith('image') || sceneStatus[scene.id]?.startsWith('video');
                         const isComplete = hasImage && hasVideo && hasVoice;
                         const isActive = activeScene === scene.id;
                         return (
@@ -1638,7 +1642,7 @@ export default function Home() {
                         const hasImg = !!sceneImages[currentScene.id];
                         const hasVid = !!sceneVideos[currentScene.id];
                         const hasVoc = voiceStatus[currentScene.id] === 'ready';
-                        const isGen = sceneStatus[currentScene.id] === 'image' || sceneStatus[currentScene.id] === 'video';
+                        const isGen = sceneStatus[currentScene.id]?.startsWith('image') || sceneStatus[currentScene.id]?.startsWith('video');
                         if (hasImg && hasVid && hasVoc) return <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-400">COMPLETE</span>;
                         if (isGen) return <span className="flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-400"><Icon.Spinner className="h-2 w-2 animate-spin" />GENERATING</span>;
                         if (hasVid) return <span className="rounded-md bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold text-blue-400">VIDEO READY</span>;
@@ -1665,7 +1669,7 @@ export default function Home() {
                           <span className="text-white/20">Video</span>
                         </div>
                       </div>
-                    ) : currentScene && sceneStatus[currentScene.id] === "video" ? (
+                    ) : currentScene && sceneStatus[currentScene.id]?.startsWith("video") ? (
                       <div className="flex aspect-video flex-col items-center justify-center bg-[#0c0d12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.02) 1px, transparent 0)", backgroundSize: "24px 24px" }}>
                         <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-500/20 bg-violet-500/10">
                           <Icon.Video className="h-6 w-6 text-violet-400 animate-pulse" />
@@ -1721,7 +1725,7 @@ export default function Home() {
                     const hasImg = !!sceneImages[currentScene.id];
                     const hasVid = !!sceneVideos[currentScene.id];
                     const isGenImg = sceneStatus[currentScene.id] === 'image';
-                    const isGenVid = sceneStatus[currentScene.id] === 'video';
+                    const isGenVid = sceneStatus[currentScene.id]?.startsWith('video');
                     const isBusy = isGenImg || isGenVid;
                     const hasVoc = voiceStatus[currentScene.id] === 'ready';
                     const needsImage = !hasImg && !hasVid && !isBusy;
@@ -1742,9 +1746,9 @@ export default function Home() {
                           <div>
                             <button onClick={() => startVideoGeneration(currentScene.id)} disabled={isBusy || !hasImg}
                               className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 ${needsVideo ? 'bg-gradient-to-b from-violet-500 to-violet-600 text-white shadow-[0_4px_20px_-4px_rgba(139,92,246,0.45)] hover:shadow-[0_6px_28px_-4px_rgba(139,92,246,0.55)]' : 'bg-white/[0.05] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white/75'}`}>
-                              {isGenVid ? (<><Icon.Spinner className="h-4 w-4 animate-spin" />Generating video for {currentScene.title}...</>) : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
+                              {isGenVid ? (() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return (<><Icon.Spinner className="h-4 w-4 animate-spin" />{prog && prog !== 'video' ? prog : `Generating video for ${currentScene.title}`}</>); })() : hasVid ? (<><Icon.Video className="h-4 w-4" />Regenerate Video</>) : (<><Icon.Video className="h-4 w-4" />Generate Video</>)}
                             </button>
-                            {isGenVid && <p className="mt-1 text-center text-[10px] text-white/25">Video generation takes a few minutes. This is normal.</p>}
+                            {isGenVid && <p className="mt-1 text-center text-[10px] text-white/25">{(() => { const prog = sceneStatus[currentScene.id]?.replace('video:', ''); return prog && prog !== 'video' ? `${prog} — this may take several minutes` : 'Generating video — this may take several minutes'; })()}</p>}
                           </div>
                       )}
                       {hasImg && !hasVid && !isBusy && <p className="text-center text-[10px] text-white/30">Image is ready - generate video next</p>}

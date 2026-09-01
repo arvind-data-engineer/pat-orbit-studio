@@ -89,6 +89,10 @@ export interface VideoJobStatusResult {
   videoUrl?: string;
   /** Present when status is "failed". */
   error?: string;
+  /** Present when status is "processing" — e.g. "Clip 2/3". */
+  progress?: string;
+  /** Actual output duration in seconds, if known. */
+  duration?: number;
 }
 
 // ── Engine Interface ────────────────────────────────────────────────
