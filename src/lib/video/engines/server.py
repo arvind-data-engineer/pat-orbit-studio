@@ -27,9 +27,10 @@ Environment variables:
     VIDEO_WIDTH            — Output width (0 = 1024)
     VIDEO_HEIGHT           — Output height (0 = 576)
     DECODE_CHUNKS          — VAE decode chunks (0 = auto)
-    VIDEO_QUALITY          — "preview" or "production" (default: production)
-                            preview: 8 frames, 10 steps (faster, lower quality)
-                            production: 14 frames, 20 steps (slower, higher quality)
+    VIDEO_QUALITY          — "preview", "production", or "quality" (default: production)
+                            preview: 8 frames, 3 steps (~6 min/clip, good for testing)
+                            production: 14 frames, 10 steps (~20 min/clip, best practical quality)
+                            quality: 14 frames, 20 steps (~40 min/clip, maximum quality)
                             Explicit VIDEO_FRAMES/VIDEO_STEPS override these defaults.
 
 API:
@@ -68,8 +69,9 @@ CACHE_DIR = os.environ.get("VIDEO_ENGINE_CACHE_DIR", "")
 VIDEO_QUALITY = os.environ.get("VIDEO_QUALITY", "production").lower()
 
 PRESETS = {
-    "preview": {"frames": 8, "steps": 10},
-    "production": {"frames": 14, "steps": 20},
+    "preview": {"frames": 8, "steps": 3},
+    "production": {"frames": 14, "steps": 10},
+    "quality": {"frames": 14, "steps": 20},
 }
 
 # Resolve effective frames/steps: explicit env > quality preset > auto
@@ -302,8 +304,90 @@ def _update_job(job: Job, **kwargs):
 
 # ── Clip Helpers ──────────────────────────────────────────────────────
 
-def generate_single_clip(image, job_id: str, clip_index: int, gen_kwargs: dict, fps: int):
-    """Generate one SVD clip, encode to MP4, return (path, size, duration). Raises on failure."""
+def extract_last_frame_from_frames(frames):
+    """Extract the last frame from a list of PIL Image frames.
+    
+    This is the primary method for clip-to-clip continuity.
+    Returns the last frame as a PIL Image, resized to the model's expected input.
+    """
+    try:
+        if not frames or len(frames) == 0:
+            return None
+        last_frame = frames[-1]
+        # Convert numpy array to PIL Image if needed
+        if not hasattr(last_frame, 'save'):
+            import numpy as np
+            last_frame = Image.fromarray(np.array(last_frame))
+        return last_frame.convert("RGB")
+    except Exception as e:
+        logger.warning(f"Failed to extract last frame from frames: {e}")
+        return None
+
+
+def extract_last_frame_from_video(video_path: str):
+    """Extract the last frame from an MP4 clip as a PIL Image using FFmpeg.
+    
+    Fallback method: used only if extract_last_frame_from_frames fails.
+    Seeks to near the end of the video and extracts one frame.
+    """
+    try:
+        ffmpeg_path = None
+        try:
+            import imageio_ffmpeg
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception:
+            ffmpeg_path = shutil.which("ffmpeg")
+
+        if not ffmpeg_path:
+            return None
+
+        # Get duration via ffprobe or ffmpeg
+        ffprobe = ffmpeg_path.replace("ffmpeg", "ffprobe").replace("ffmpeg.exe", "ffprobe.exe")
+        if not os.path.exists(ffprobe):
+            ffprobe = shutil.which("ffprobe")
+
+        duration = 2.0  # default
+        if ffprobe:
+            result = subprocess.run(
+                [ffprobe, "-v", "quiet", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", video_path],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                duration = float(result.stdout.strip())
+
+        # Seek to near end and extract one frame
+        frame_path = os.path.join(tempfile.gettempdir(), f"svd_lastframe_{uuid.uuid4().hex[:8]}.png")
+        seek_time = max(0, duration - 0.1)
+        result = subprocess.run(
+            [ffmpeg_path, "-y", "-i", video_path, "-ss", str(seek_time),
+             "-frames:v", "1", frame_path],
+            capture_output=True, text=True, timeout=30,
+        )
+
+        if result.returncode != 0 or not os.path.exists(frame_path):
+            return None
+
+        img = Image.open(frame_path).convert("RGB")
+        try:
+            os.remove(frame_path)
+        except OSError:
+            pass
+        return img
+
+    except Exception as e:
+        logger.warning(f"Failed to extract last frame from video: {e}")
+        return None
+
+
+def generate_single_clip(image, job_id: str, clip_index: int, gen_kwargs: dict, fps: int,
+                          start_image=None):
+    """Generate one SVD clip, encode to MP4, return (path, size, duration). Raises on failure.
+    
+    If start_image is provided (PIL Image), it is used as the conditioning
+    image instead of the original Director image. This enables clip-to-clip
+    continuity where each clip starts from the last frame of the previous clip.
+    """
     import torch
     import numpy as np
     import imageio
@@ -312,11 +396,15 @@ def generate_single_clip(image, job_id: str, clip_index: int, gen_kwargs: dict, 
     ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
     os.environ["IMAGEIO_FFMPEG_EXE"] = ffmpeg_path
 
+    # Deterministic seed: base_seed + clip_index ensures different but reproducible clips
     generator = torch.Generator(device="cpu").manual_seed(42 + clip_index)
     gen_kwargs_copy = {**gen_kwargs, "generator": generator}
 
+    # Use continuity image if provided, otherwise use the original Director image
+    conditioning_image = start_image if start_image is not None else image
+
     with torch.inference_mode():
-        frames = pipeline(image, **gen_kwargs_copy).frames[0]
+        frames = pipeline(conditioning_image, **gen_kwargs_copy).frames[0]
 
     num_frames = len(frames)
     clip_duration = num_frames / fps
@@ -336,8 +424,10 @@ def generate_single_clip(image, job_id: str, clip_index: int, gen_kwargs: dict, 
         os.remove(tmp_mp4)
         raise RuntimeError(f"Clip {clip_index} produced invalid MP4")
 
+    # Extract last frame for continuity before freeing frames
+    last_frame = extract_last_frame_from_frames(frames)
     del frames
-    return tmp_mp4, file_size, clip_duration
+    return tmp_mp4, file_size, clip_duration, last_frame
 
 
 def concat_clips_with_ffmpeg(clip_paths: list, output_path: str):
@@ -586,9 +676,13 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
     if num_steps is not None:
         gen_kwargs["num_inference_steps"] = num_steps
 
-    # ── Generate clip(s) ───────────────────────────────────────
+    # Continuity: enabled by default for multi-clip generation
+    use_continuity = request_data.get("continuity", True) and num_clips > 1
+
+    # ── Generate clip(s) with continuity ──────────────────────
     t_total_start = time.time()
     clip_paths = []
+    continuity_image = None  # Last frame of previous clip (for continuity)
 
     for clip_idx in range(num_clips):
         if job.cancelled:
@@ -599,8 +693,9 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
         t_clip_start = time.time()
 
         try:
-            clip_path, clip_size, clip_dur = generate_single_clip(
-                image, job.job_id, clip_idx, gen_kwargs, VIDEO_FPS
+            clip_path, clip_size, clip_dur, last_frame = generate_single_clip(
+                image, job.job_id, clip_idx, gen_kwargs, VIDEO_FPS,
+                start_image=continuity_image,
             )
             clip_paths.append(clip_path)
             temp_files.append(clip_path)
@@ -627,6 +722,17 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
             f"Clip {clip_idx + 1}/{num_clips} done: "
             f"{clip_size/1024:.0f} KB, {t_clip_end - t_clip_start:.1f}s"
         )
+
+        # Set up continuity for next clip (clip N+1 starts from clip N's final frame)
+        if use_continuity and clip_idx < num_clips - 1:
+            continuity_image = last_frame  # Primary: from pipeline output (fast, no FFmpeg)
+            if continuity_image is None:
+                # Fallback: extract from encoded MP4 (slower, uses FFmpeg)
+                continuity_image = extract_last_frame_from_video(clip_path)
+            if continuity_image is not None:
+                logger.info(f"Continuity: clip {clip_idx + 2} will start from last frame of clip {clip_idx + 1}")
+            else:
+                logger.warning(f"Continuity: failed to extract last frame, clip {clip_idx + 2} will use original image")
 
         # Free GPU memory between clips
         if dev == "cuda":
@@ -707,10 +813,15 @@ def _process_job_inner(job: Job, request_data: dict, temp_files: list):
     video_b64 = base64.b64encode(video_bytes).decode("utf-8")
     video_url = f"data:video/mp4;base64,{video_b64}"
 
+    # Log timing breakdown
+    t_total_end = time.time()
+    total_time = t_total_end - t_total_start
     logger.info(
         f"Job {job.job_id} completed: {len(clip_paths)} clip(s), "
         f"{actual_output_duration:.1f}s video, {len(video_bytes)/1024:.0f} KB, "
-        f"total={total_time:.1f}s"
+        f"total={total_time:.1f}s ({total_time/60:.1f} min), "
+        f"frames={num_frames}, steps={num_steps or 'default'}, "
+        f"continuity={'on' if num_clips > 1 else 'n/a'}"
     )
 
     # Free GPU memory
@@ -740,7 +851,7 @@ try:
     app = FastAPI(
         title="PAT Orbit Local Video Engine",
         description="Local inference server for open-source video generation",
-        version="2.0.0",
+        version="3.0.0",
     )
 
     @app.get("/health")
@@ -782,7 +893,7 @@ try:
 
         return {
             "status": "ok",
-            "version": "2.0.0",
+            "version": "3.0.0",
             "engine": "svd-xt-1.1",
             "model": MODEL_ID,
             "device": model_info.get("device", device),
@@ -826,6 +937,9 @@ try:
                     status_code=400,
                     detail="Invalid image data. Please regenerate the scene image.",
                 )
+
+        # Continuity: enabled by default for multi-clip, can be disabled
+        continuity = request_data.get("continuity", True)
 
         # Check if GPU is already busy
         with jobs_lock:
