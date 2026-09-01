@@ -17,6 +17,7 @@
 
 import type {
   VideoEngine,
+  EngineCapabilities,
   VideoGenerationRequest,
   VideoJobStatusResult,
 } from "../types";
@@ -43,6 +44,22 @@ interface LocalJob {
 // ── Engine Implementation ────────────────────────────────────────────
 
 class LocalVideoEngine implements VideoEngine {
+  /**
+   * SVD-XT is image-to-video only.
+   * Text prompts are stored but not used for generation.
+   */
+  capabilities(): EngineCapabilities {
+    return {
+      supportsTextToVideo: false,
+      supportsImageToVideo: true,
+      supportsTextConditioning: false,
+      supportsMultiClip: true,
+      supportsAudio: false,
+      maxRecommendedVram: 8,
+      displayName: "SVD-XT 1.1 (Local)",
+    };
+  }
+
   /**
    * Start video generation by posting to the local inference server.
    * Returns a jobId that the caller polls via getStatus().

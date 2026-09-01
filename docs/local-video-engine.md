@@ -206,7 +206,11 @@ Cancel a running job (best-effort).
 ```
 PAT Orbit (Next.js)
     ↓
-VideoEngine abstraction
+Shared Generation Service (generate.ts)
+    ↓
+VideoConditioning (conditioning.ts)
+    ↓
+VideoEngine Registry (engine.ts)
     ↓
 Local adapter (local.ts)
     ↓

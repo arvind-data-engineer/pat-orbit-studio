@@ -23,6 +23,7 @@
 
 import type {
   VideoEngine,
+  EngineCapabilities,
   VideoGenerationRequest,
   VideoJobStatusResult,
 } from "../types";
@@ -38,6 +39,22 @@ function getServerUrl(): string {
 // ── Engine Implementation ────────────────────────────────────────────
 
 class Wan21VideoEngine implements VideoEngine {
+  /**
+   * Wan 2.1 T2V-1.3B is text-to-video only.
+   * Does NOT support image-to-video. Image field is ignored.
+   */
+  capabilities(): EngineCapabilities {
+    return {
+      supportsTextToVideo: true,
+      supportsImageToVideo: false,
+      supportsTextConditioning: true,
+      supportsMultiClip: false,
+      supportsAudio: false,
+      maxRecommendedVram: 8,
+      displayName: "Wan 2.1 T2V-1.3B (Local, Experimental)",
+    };
+  }
+
   /**
    * Start video generation by posting to the Wan 2.1 inference server.
    * Returns a jobId that the caller polls via getStatus().

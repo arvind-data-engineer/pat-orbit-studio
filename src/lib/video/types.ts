@@ -6,6 +6,30 @@
  * Concrete implementations live in provider-specific modules.
  */
 
+// ── Engine Capabilities ────────────────────────────────────────────
+
+/**
+ * Describes what a video engine supports.
+ * Used by the application to determine which actions are available
+ * without hard-coding model-specific logic.
+ */
+export interface EngineCapabilities {
+  /** Engine can generate video from text prompt alone. */
+  supportsTextToVideo: boolean;
+  /** Engine can generate video from an input image. */
+  supportsImageToVideo: boolean;
+  /** Engine can use text conditioning alongside image input (e.g. Wan 2.2 TI2V). */
+  supportsTextConditioning: boolean;
+  /** Engine supports generating multiple clips and concatenating. */
+  supportsMultiClip: boolean;
+  /** Engine produces audio alongside video. */
+  supportsAudio: boolean;
+  /** Recommended maximum VRAM in GB for practical use. */
+  maxRecommendedVram?: number;
+  /** Engine-specific human-readable name. */
+  displayName: string;
+}
+
 // ── Request ─────────────────────────────────────────────────────────
 
 export interface VideoGenerationRequest {
@@ -109,4 +133,11 @@ export interface VideoEngine {
 
   /** Request cancellation of a running job. Best-effort — may not succeed. */
   cancel?(jobId: string): Promise<void>;
+
+  /**
+   * Describe what this engine supports.
+   * Optional — engines that don't implement this are treated as
+   * supporting everything (backward compatible).
+   */
+  capabilities?(): EngineCapabilities;
 }

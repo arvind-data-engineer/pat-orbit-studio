@@ -2,8 +2,10 @@ import { GoogleGenAI } from "@google/genai";
 import { inngest } from "@/lib/inngest";
 import { getJob, updateJob } from "@/lib/jobs";
 import { uploadToBlob } from "@/lib/blob";
-import { useWan21Engine, getActiveEngine } from "@/lib/video/engine";
-import type { VideoGenerationRequest } from "@/lib/video/types";
+import { getActiveEngine } from "@/lib/video/engine";
+import { generateVideo } from "@/lib/video/generate";
+import { buildVeoPrompt } from "@/lib/video/prompt-builder";
+import { buildConditioning } from "@/lib/video/conditioning";
 import ffmpegPath from "ffmpeg-static";
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -14,106 +16,10 @@ import { join } from "path";
 const execFileAsync = promisify(execFile);
 
 /* ================================================================== */
-/*  Inngest step timeout: 10 minutes per step                          */
+/*  Inngest step timeout: 20 minutes per step                          */
 /* ================================================================== */
 
 const STEP_TIMEOUT_MS = 1_200_000;  // 20 minutes (multi-clip SVD can take 10+ min)
-
-// Local engine helper removed — replaced by processVideoWithGenericEngine
-/* ================================================================== */
-/*  GENERIC LOCAL ENGINE HELPER                                         */
-/* ================================================================== */
-
-/**
- * Process a video generation job using any registered local engine.
- * Supports SVD (local) and Wan 2.1 (wan21) engines.
- */
-async function processVideoWithGenericEngine(
-  engine: { generate: (req: VideoGenerationRequest) => Promise<{ jobId: string }>; getStatus?: (jobId: string) => Promise<{ jobId: string; status: string; videoUrl?: string; error?: string; progress?: string; duration?: number }> },
-  jobId: string,
-  job: Awaited<ReturnType<typeof getJob>> & object
-): Promise<{ jobId: string; status: string; videoUrl?: string }> {
-  // Build the generation request from the job data
-  const request: VideoGenerationRequest = {
-    prompt: job.prompt || "",
-  };
-
-  if (job.image) request.image = job.image;
-  if (job.duration) {
-    const match = job.duration.match(/(\d+)/);
-    if (match) request.duration = parseInt(match[1], 10);
-  }
-  if (job.aspectRatio) request.aspectRatio = job.aspectRatio;
-  if (job.sceneId !== undefined) request.sceneId = job.sceneId;
-  if (job.sceneTitle) request.sceneTitle = job.sceneTitle;
-  if (job.characters) request.characters = job.characters;
-  if (job.camera) request.camera = job.camera as VideoGenerationRequest["camera"];
-  if (job.motion) request.motion = job.motion as VideoGenerationRequest["motion"];
-  if (job.continuityBefore) request.continuity = job.continuityBefore as VideoGenerationRequest["continuity"];
-
-  // Start generation on the local engine
-  const engineName = useWan21Engine() ? "Wan 2.1" : "SVD";
-  console.log(`[inngest/video] ${engineName} engine: generating for ${jobId}`);
-  const { jobId: localJobId } = await engine.generate(request);
-
-  // Poll until completed or failed
-  const MAX_POLLS = 240; // Up to 20 minutes for Wan 2.1 (slower on low VRAM)
-  const POLL_INTERVAL_MS = 5_000;
-
-  for (let i = 0; i < MAX_POLLS; i++) {
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-
-    if (!engine.getStatus) {
-      throw new Error(`${engineName} engine does not support status polling.`);
-    }
-    const status = await engine.getStatus(localJobId);
-
-    if (status.status === "completed" && status.videoUrl) {
-      // Upload the video to Vercel Blob for persistence
-      let videoUrl = status.videoUrl;
-
-      // Store duration if provided by the local engine
-      const extraUpdate: Record<string, unknown> = {};
-      if (status.duration) extraUpdate.duration = status.duration;
-
-      // If the local engine returned a data URI, upload it to Blob
-      if (videoUrl.startsWith("data:")) {
-        try {
-          const base64Data = videoUrl.split(",")[1] || "";
-          const videoBuffer = Buffer.from(base64Data, "base64");
-          if (videoBuffer.length > 0) {
-            const filename = `scene-video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.mp4`;
-            videoUrl = await uploadToBlob(videoBuffer, filename, "video/mp4");
-          }
-        } catch (err) {
-          console.error(`[inngest/video] Failed to upload local video to Blob:`, err);
-          // Keep the data URI as fallback — it still works in the browser
-        }
-      }          console.log(`[inngest/video] ${engineName} engine completed ${jobId}`);
-      await updateJob(jobId, { status: "completed", videoUrl, ...extraUpdate });
-      return { jobId, status: "completed", videoUrl };
-    }
-
-    if (status.status === "failed") {
-      const errorMsg = status.error || `${engineName} video generation failed.`;
-      console.error(`[inngest/video] ${engineName} engine failed ${jobId}: ${errorMsg}`);
-      await updateJob(jobId, { status: "failed", error: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    // Report progress
-    if (status.progress && i % 3 === 0) {
-      console.log(`[inngest/video] ${engineName} engine ${jobId}: ${status.progress}`);
-      await updateJob(jobId, { status: "processing", error: status.progress });
-    } else if (i % 6 === 0 && i > 0) {
-      console.log(`[inngest/video] ${engineName} engine polling ${jobId} (${i * POLL_INTERVAL_MS / 1000}s elapsed)`);
-    }
-  }
-
-  // Timeout
-  await updateJob(jobId, { status: "failed", error: `${engineName} video generation timed out.` });
-  throw new Error(`${engineName} video generation timed out.`);
-}
 
 /* ================================================================== */
 /*  VIDEO GENERATION FUNCTION                                           */
@@ -134,14 +40,55 @@ export const generateVideoJob = inngest.createFunction(
     console.log(`[inngest/video] Processing ${jobId}, scene ${job.sceneId ?? 'unknown'}`);
     await updateJob(jobId, { status: "processing" });
 
-    /* 2. Route to local engines if configured */
-    const activeEngine = getActiveEngine();
-    if (activeEngine) {
-      return processVideoWithGenericEngine(activeEngine, jobId, job);
+    /* 2. Try shared generation service (handles local engines) */
+    const localResult = await generateVideo({
+      jobId,
+      job: {
+        prompt: job.prompt,
+        image: job.image,
+        duration: job.duration,
+        aspectRatio: job.aspectRatio,
+        sceneId: job.sceneId,
+        sceneTitle: job.sceneTitle,
+        characters: job.characters,
+        camera: job.camera,
+        motion: job.motion,
+        continuityBefore: job.continuityBefore,
+      },
+      onProgress: (progress) => {
+        console.log(`[inngest/video] ${jobId}: ${progress}`);
+        updateJob(jobId, { status: "processing", error: progress });
+      },
+      uploadToBlob,
+    });
+
+    // If not __VEO__, the shared service handled it
+    if (localResult.error !== "__VEO__") {
+      if (localResult.success && localResult.videoUrl) {
+        const extraUpdate: Record<string, unknown> = {};
+        if (localResult.duration) extraUpdate.duration = localResult.duration;
+        await updateJob(jobId, { status: "completed", videoUrl: localResult.videoUrl, ...extraUpdate });
+        return { jobId, status: "completed", videoUrl: localResult.videoUrl };
+      }
+      await updateJob(jobId, { status: "failed", error: localResult.error || "Video generation failed." });
+      throw new Error(localResult.error || "Video generation failed.");
     }
 
-    /* 3. Generate video with Veo */
+    /* 3. Veo (cloud) path */
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const conditioning = buildConditioning({
+      prompt: job.prompt || "",
+      image: job.image,
+      duration: job.duration,
+      aspectRatio: job.aspectRatio,
+      sceneId: job.sceneId,
+      sceneTitle: job.sceneTitle,
+      characters: job.characters,
+      camera: job.camera as never,
+      motion: job.motion as never,
+      continuity: job.continuityBefore as never,
+    });
+    const videoPrompt = buildVeoPrompt(conditioning);
 
     const config: Record<string, unknown> = { numberOfVideos: 1 };
     if (job.aspectRatio && ["16:9", "9:16"].includes(job.aspectRatio)) {
@@ -150,68 +97,6 @@ export const generateVideoJob = inngest.createFunction(
     if (job.duration) {
       const match = job.duration.match(/(\d+)/);
       if (match) config.durationSeconds = Math.min(parseInt(match[1], 10), 8);
-    }
-
-    // Build enhanced prompt with character consistency
-    let videoPrompt = (job.prompt || "").trim();
-    if (job.characters && job.characters.length > 0) {
-      const sceneChars = job.characters.filter((c) => c.name?.trim());
-      if (sceneChars.length > 0) {
-        const charDesc = sceneChars.map((c) => {
-          const parts = [c.name];
-          if (c.appearance?.trim()) parts.push(`Appearance: ${c.appearance.trim()}`);
-          if (c.role?.trim()) parts.push(`Role: ${c.role.trim()}`);
-          return parts.join(' - ');
-        });
-        videoPrompt = `Characters: ${charDesc.join('; ')}.\n\nScene: ${videoPrompt}`;
-      }
-    }
-    if (job.sceneTitle) {
-      videoPrompt = `Title: ${job.sceneTitle}. ${videoPrompt}`;
-    }
-
-    // Use Director camera/motion plans for enhanced video generation
-    if (job.camera) {
-      const camParts: string[] = [];
-      if (job.camera.shotType) camParts.push(`${job.camera.shotType} shot`);
-      if (job.camera.angle) camParts.push(`${job.camera.angle} angle`);
-      if (job.camera.movement && job.camera.movement !== 'static') camParts.push(`${job.camera.movement} camera movement`);
-      if (camParts.length > 0) {
-        videoPrompt += `\n\nCamera direction: ${camParts.join(', ')}.`;
-      }
-    }
-    if (job.motion) {
-      const motionParts: string[] = [];
-      if (job.motion.subjectMovement && job.motion.subjectMovement !== 'none') {
-        motionParts.push(`Subject: ${job.motion.subjectMovement}`);
-      }
-      if (job.motion.environmentMovement && job.motion.environmentMovement !== 'none') {
-        motionParts.push(`Environment: ${job.motion.environmentMovement}`);
-      }
-      if (job.motion.intensity && job.motion.intensity !== 'subtle') {
-        motionParts.push(`Intensity: ${job.motion.intensity}`);
-      }
-      if (motionParts.length > 0) {
-        videoPrompt += `\n\nMotion direction: ${motionParts.join('. ')}.`;
-      }
-    }
-
-    // Use Director continuity data for consistent video generation
-    if (job.continuityBefore) {
-      const continuityParts: string[] = [];
-      if (job.continuityBefore.location) continuityParts.push(`Location: ${job.continuityBefore.location}`);
-      if (job.continuityBefore.timeOfDay) continuityParts.push(`Time of day: ${job.continuityBefore.timeOfDay}`);
-      if (job.continuityBefore.weather) continuityParts.push(`Weather: ${job.continuityBefore.weather}`);
-      if (job.continuityBefore.characters.length > 0) {
-        const charStates = job.continuityBefore.characters.map((c) => `${c.name}: ${c.appearance}`).join('; ');
-        continuityParts.push(`Character appearance: ${charStates}`);
-      }
-      if (job.continuityBefore.importantObjects.length > 0) {
-        continuityParts.push(`Important objects: ${job.continuityBefore.importantObjects.join(', ')}`);
-      }
-      if (continuityParts.length > 0) {
-        videoPrompt += `\n\nContinuity (preserve from previous scene): ${continuityParts.join('. ')}.`;
-      }
     }
 
     const params: Record<string, unknown> = {
@@ -242,9 +127,7 @@ export const generateVideoJob = inngest.createFunction(
     for (let i = 0; i < MAX_POLLS; i++) {
       if (currentOp.done) break;
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-      currentOp = await ai.operations.getVideosOperation({
-        operation: currentOp,
-      });
+      currentOp = await ai.operations.getVideosOperation({ operation: currentOp });
     }
 
     if (!currentOp.done) {
