@@ -180,8 +180,8 @@ function buildFilterGraph(config: FilterGraphInput): FilterGraphResult {
     }
 
     // Apply captions on top of the transition result
-    videoOutputLabel = "vxfaded";
     filterParts.push(`[vxfade]format=yuv420p[vraw]`);
+    videoOutputLabel = "vraw";
   } else {
     // Hard cut: use concat demuxer (fast, stream copy compatible)
     // The concat.txt approach: all scenes merged into one stream
@@ -356,6 +356,16 @@ export async function executeRender(config: RenderConfig): Promise<RenderOutput>
     }
     const totalDuration = sceneDurations.reduce((a, b) => a + b, 0);
 
+    // 3b. Validate transition duration against scene lengths
+    let effectiveTransitionDuration = transitionDuration;
+    if (transition === "crossfade" && effectiveTransitionDuration > 0) {
+      const minSceneDur = Math.min(...sceneDurations);
+      if (effectiveTransitionDuration >= minSceneDur) {
+        // Clamp to half the shortest scene so the crossfade doesn't consume the entire scene
+        effectiveTransitionDuration = Math.max(0.1, minSceneDur * 0.4);
+      }
+    }
+
     // 4. Generate music if requested
     let musicPath: string | null = null;
     let musicInputIdx = -1;
@@ -425,7 +435,7 @@ export async function executeRender(config: RenderConfig): Promise<RenderOutput>
       inputArgs,
       sceneDurations,
       transition,
-      transitionDuration,
+      transitionDuration: effectiveTransitionDuration,
       aspectRatio,
       captions,
       scenes,

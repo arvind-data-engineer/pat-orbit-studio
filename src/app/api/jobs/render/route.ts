@@ -53,6 +53,36 @@ export async function POST(request: Request) {
       );
     }
 
+    if (transition && !['none', 'crossfade'].includes(transition)) {
+      return NextResponse.json(
+        { error: "Invalid transition type." },
+        { status: 400 }
+      );
+    }
+
+    if (transitionDuration !== undefined) {
+      if (typeof transitionDuration !== 'number' || transitionDuration < 0 || transitionDuration > 5) {
+        return NextResponse.json(
+          { error: "Transition duration must be between 0 and 5 seconds." },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (voice && !['Natural', 'Deep', 'Soft'].includes(voice)) {
+      return NextResponse.json(
+        { error: "Invalid voice option." },
+        { status: 400 }
+      );
+    }
+
+    if (language && !['Hindi', 'Hinglish', 'English'].includes(language)) {
+      return NextResponse.json(
+        { error: "Invalid language option." },
+        { status: 400 }
+      );
+    }
+
     const jobId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const jobData: JobData = {
