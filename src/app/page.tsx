@@ -1198,7 +1198,7 @@ export default function Home() {
 
   const loadingSteps = [
     { label: "Analyzing idea", done: loadingStep >= 1 },
-    { label: "Building 5 scenes", done: loadingStep >= 2 },
+    { label: "Building scenes", done: loadingStep >= 2 },
     { label: "Writing narration", done: loadingStep >= 3 },
     { label: "Preparing visual prompts", done: loading },
   ];
@@ -1211,13 +1211,13 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#08090c] text-white overflow-x-hidden">
       {/* ── Top navigation bar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 h-12 flex items-center justify-between px-5 border-b border-white/[0.04] bg-[#08090c]/80 backdrop-blur-xl">
+      <nav className="fixed top-0 left-0 right-0 z-50 h-12 flex items-center justify-between px-5 border-b border-white/[0.04] bg-[#0a0b0f]/80 backdrop-blur-xl">
         <div className="flex items-center gap-6">
           <button onClick={() => { setViewMode('main'); if (!result) window.scrollTo({ top: 0 }); }} className="flex items-center gap-2.5">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-[9px] font-black text-[#08090c]">P</div>
             <span className="text-[13px] font-bold tracking-tight text-white/90">PAT Orbit</span>
           </button>
-          <div className="hidden sm:flex items-center gap-1">
+          <div className="flex items-center gap-1">
             <button onClick={() => setViewMode('main')} className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition-all ${viewMode === 'main' ? 'bg-white/[0.06] text-white/90' : 'text-white/35 hover:text-white/55 hover:bg-white/[0.03]'}`}>
               {result ? 'Editor' : 'Create'}
             </button>
@@ -1228,11 +1228,9 @@ export default function Home() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {result && viewMode === 'main' && (
-            <button onClick={() => { setResult(null); setViewMode('main'); setSceneImages({}); setSceneVideos({}); setVoiceStatus({}); setVoiceAudios({}); setFinalVideo(null); setCharacters([]); setSceneCharacters({}); setCurrentProjectId(null); setSaved(false); }} className="rounded-md px-3 py-1.5 text-[12px] font-medium text-white/35 hover:text-white/55 hover:bg-white/[0.03] transition-all">
-              + New
-            </button>
-          )}
+          <button onClick={() => { setResult(null); setViewMode('main'); setSceneImages({}); setSceneVideos({}); setVoiceStatus({}); setVoiceAudios({}); setFinalVideo(null); setCharacters([]); setSceneCharacters({}); setCurrentProjectId(null); setSaved(false); }} className="rounded-md px-3 py-1.5 text-[12px] font-medium text-white/35 hover:text-white/55 hover:bg-white/[0.03] transition-all">
+            + New
+          </button>
         </div>
       </nav>
 
