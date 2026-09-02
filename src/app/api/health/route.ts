@@ -14,6 +14,15 @@ export async function GET() {
 
     return NextResponse.json({
       status: "ok",
+      ai: {
+        provider: config.storyProvider,
+        ollama: config.storyProvider === "local" ? {
+          url: config.localLlmUrl,
+          model: config.localLlmModel,
+          available: status.story.available,
+          status: status.story.error || status.story.name,
+        } : null,
+      },
       config: {
         storyProvider: config.storyProvider,
         imageProvider: config.imageProvider,
