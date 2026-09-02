@@ -1,9 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import { getImageProvider } from "@/lib/ai/providers";
 
 type CharacterInfo = {
   name: string;
@@ -108,40 +104,20 @@ export async function POST(request: Request) {
       enhancedPrompt += `\n\nCinematic composition, high quality, detailed, professional photography.`;
     }
 
-    const IMAGE_MODELS = ["gemini-3-pro-image", "gemini-3.1-flash-image", "gemini-2.5-flash-image"];
-    let lastError: unknown = null;
+    // Use the configured image provider
+    const imageProvider = getImageProvider();
+    const imageDataUri = await imageProvider.generateImage({
+      prompt: enhancedPrompt,
+      characters,
+      sceneTitle,
+      style,
+      sceneBeat,
+      camera,
+      motion,
+      continuityBefore,
+    });
 
-    for (const model of IMAGE_MODELS) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: enhancedPrompt,
-        });
-
-        const parts = response.candidates?.[0]?.content?.parts ?? [];
-
-        for (const part of parts) {
-          if (part.inlineData?.data && part.inlineData?.mimeType) {
-            return NextResponse.json({
-              image: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-            });
-          }
-        }
-      } catch (err) {
-        lastError = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[Image] ${model} failed:`, msg.slice(0, 200));
-        // If quota/rate limit, try next model
-        if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("quota")) {
-          continue;
-        }
-        // For other errors, throw immediately
-        throw err;
-      }
-    }
-
-    if (lastError) throw lastError;
-    throw new Error("No image was returned by any available model.");
+    return NextResponse.json({ image: imageDataUri });
   } catch (error) {
     console.error("Generate image error:", error);
 

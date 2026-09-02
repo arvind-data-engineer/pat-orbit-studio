@@ -6,6 +6,7 @@ import { getActiveEngine } from "@/lib/video/engine";
 import { generateVideo } from "@/lib/video/generate";
 import { buildVeoPrompt } from "@/lib/video/prompt-builder";
 import { buildConditioning } from "@/lib/video/conditioning";
+import { getVoiceProvider } from "@/lib/ai/providers";
 import ffmpegPath from "ffmpeg-static";
 
 
@@ -200,33 +201,16 @@ export const renderVideoJob = inngest.createFunction(
           continue;
         }
 
-        // Generate fresh voice audio via Gemini TTS
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const voiceMap: Record<string, string> = { Natural: "Aoede", Deep: "Charon", Soft: "Kore" };
-        const langMap: Record<string, string> = { Hindi: "hi-IN", Hinglish: "hi-IN", English: "en-US" };
-        const voiceName = voiceMap[render.voice || ""] || "Aoede";
-        const langCode = langMap[render.language || ""] || "en-US";
-
+        // Generate fresh voice audio via configured provider
         try {
-          const response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-tts-preview",
-            contents: s.narration.trim(),
-            config: {
-              responseModalities: ["audio"],
-              speechConfig: {
-                voiceConfig: { prebuiltVoiceConfig: { voiceName } },
-                languageCode: langCode,
-              },
-            },
+          const voiceProvider = getVoiceProvider();
+          const result = await voiceProvider.generateVoice({
+            narration: s.narration.trim(),
+            language: render.language || "en-US",
+            voice: render.voice || "Natural",
           });
-
-          const parts = response.candidates?.[0]?.content?.parts ?? [];
-          for (const part of parts) {
-            if (part.inlineData?.data && part.inlineData?.mimeType) {
-              const mimeType = part.inlineData.mimeType;
-              voiceDataUris[s.id] = `data:${mimeType};base64,${part.inlineData.data}`;
-              break;
-            }
+          if (result.audio) {
+            voiceDataUris[s.id] = result.audio;
           }
         } catch {
           // Voice generation is non-fatal

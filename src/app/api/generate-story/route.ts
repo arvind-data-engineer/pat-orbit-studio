@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createProductionPlan, type DirectorInput } from "@/lib/ai/director";
+import { getStoryProvider } from "@/lib/ai/providers";
+import type { DirectorInput } from "@/lib/ai/director";
 
 export async function POST(request: Request) {
   try {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
         description: c.description?.trim() || "",
       }));
 
-    // Call the AI Director.
+    // Call the AI Director via provider abstraction.
     const input: DirectorInput = {
       idea: story.trim(),
       genre: style,
@@ -58,7 +59,8 @@ export async function POST(request: Request) {
       characters: directorCharacters,
     };
 
-    const plan = await createProductionPlan(input);
+    const storyProvider = getStoryProvider();
+    const plan = await storyProvider.generatePlan(input);
 
     // Convert Director scenes -> Studio scenes.
     // Studio Scene = { id: number, title, narration, visual, beat, sceneDuration }
